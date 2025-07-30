@@ -1,6 +1,10 @@
 "use client"
 
-import { useToast } from "@/hooks/use-toast"
+// Update the import path if the hook is located elsewhere, for example:
+// Update the import path below if your use-toast hook is located elsewhere
+// Update the import path below if your use-toast hook is located elsewhere
+import { useToast } from "../../hooks/use-toast"
+// Or, if the file does not exist, create 'use-toast.ts' in 'src/hooks' with the appropriate hook implementation.
 import {
   Toast,
   ToastClose,
@@ -8,7 +12,7 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/src/components/ui/toast"
+} from "./toast"
 
 export function Toaster() {
   const { toasts } = useToast()
