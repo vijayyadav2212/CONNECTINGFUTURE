@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const mysql = require('mysql2');
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 
@@ -189,6 +188,32 @@ const checkJwt = jwt({
   audience: process.env.AUTH0_AUDIENCE,
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ['RS256'],
+});
+
+// Public routes (no authentication required)
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Alumni Portal API',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      public: ['/api/health'],
+      protected: ['/api/protected', '/api/users', '/api/users/profile', '/api/data/:table']
+    }
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  const dbStatus = dbHelpers ? 'connected' : 'disconnected';
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: dbStatus,
+    auth0: {
+      domain: process.env.AUTH0_DOMAIN ? 'configured' : 'not configured',
+      audience: process.env.AUTH0_AUDIENCE ? 'configured' : 'not configured'
+    }
+  });
 });
 
 // Protected route example
@@ -456,4 +481,5 @@ app.get('/api/donations/analytics/summary', (req, res) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Health check available at: http://localhost:${PORT}/api/health`);
 }); 
