@@ -1,4 +1,13 @@
-import { handleAuth } from '@auth0/nextjs-auth0';
+import { handleAuth, handleCallback, handleLogin, handleLogout } from '@auth0/nextjs-auth0';
 
-export const GET = handleAuth();
-export const POST = handleAuth();
+export const GET = handleAuth({
+  login: handleLogin({}),
+  logout: handleLogout({}),
+  callback: handleCallback({})
+});
+
+export const POST = handleAuth({
+  login: handleLogin({}),
+  logout: handleLogout({}),
+  callback: handleCallback({})
+});

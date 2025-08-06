@@ -51,6 +51,8 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     { id: "ama", label: "AMA Sessions", icon: "🎙️", route: "/alumni/ama" },
     { id: "events", label: "Events", icon: "📅", route: "/alumni/events" },
     { id: "roadmaps", label: "Roadmaps", icon: "🧭", route: "/alumni/roadmap" },
+    { id: "directory", label: "Alumni Directory", icon: "📇", route: "/alumni/Directory" },
+    { id: "connections", label: "My Connections", icon: "🤝", route: "/alumni/connections" },
     { id: "memories", label: "Memories", icon: "📸", route: "/alumni/memories" },
     { id: "blog", label: "Blog/Articles", icon: "✍️", route: "/alumni/blog" },
     { id: "leaderboard", label: "Leaderboard", icon: "🏆", route: "/alumni/leaderboard" },
