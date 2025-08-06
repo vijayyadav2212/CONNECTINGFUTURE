@@ -65,16 +65,18 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #f9fafb;
   border-radius: 3px;
 }
 
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #9ca3af;
 }
 
 /* Smooth transitions */
@@ -82,7 +84,7 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* Card hover effects */
+/* Enhanced card hover effects */
 .card-hover {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
@@ -90,4 +92,98 @@
 .card-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200;
+}
+
+.btn-secondary {
+  @apply bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200;
+}
+
+/* Card styles */
+.card-white {
+  @apply bg-white rounded-2xl shadow-lg border border-gray-100;
+}
+
+/* Text styles */
+.text-heading {
+  @apply text-gray-900 font-bold;
+}
+
+.text-body {
+  @apply text-gray-700;
+}
+
+.text-muted {
+  @apply text-gray-500;
+}
+
+/* Spacing utilities */
+.section-padding {
+  @apply p-8;
+}
+
+.card-padding {
+  @apply p-6;
+}
+
+/* Border radius utilities */
+.rounded-xl {
+  border-radius: 0.75rem;
+}
+
+.rounded-2xl {
+  border-radius: 1rem;
+}
+
+/* Shadow utilities */
+.shadow-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Color utilities */
+.bg-blue-primary {
+  background-color: #2563eb;
+}
+
+.bg-green-primary {
+  background-color: #10b981;
+}
+
+.bg-purple-primary {
+  background-color: #8b5cf6;
+}
+
+.bg-yellow-primary {
+  background-color: #f59e0b;
+}
+
+/* Focus states */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none;
+  }
+  
+  .mobile-full {
+    width: 100%;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }

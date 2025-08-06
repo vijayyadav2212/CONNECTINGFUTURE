@@ -4,22 +4,178 @@ const dotenv = require('dotenv');
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 
-dotenv.config();
-
-// Test database connection before importing helpers
-let dbHelpers;
-try {
-  const dbModule = require('./database');
-  dbHelpers = dbModule.dbHelpers;
-  console.log('Database helpers loaded successfully');
-} catch (error) {
-  console.error('Warning: Database connection failed:', error.message);
-  console.log('Server will continue without database functionality...');
-}
+require('dotenv').config({ path: __dirname + '/.env' });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// MySQL connection
+const db = mysql.createConnection({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'mockapp_db',
+  port: process.env.DB_PORT || 3306,
+});
+
+db.connect((err) => {
+  if (err) {
+    console.error('MySQL connection error:', err);
+    console.log('Please check your MySQL configuration in .env file');
+    console.log('Current config:', {
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      database: process.env.DB_NAME || 'connectingfuture',
+      port: process.env.DB_PORT || 3306,
+      passwordSet: !!process.env.DB_PASSWORD
+    });
+  } else {
+    console.log('Connected to MySQL database');
+    // Initialize tables if they don't exist
+    initializeTables();
+  }
+});
+
+// Initialize database tables
+function initializeTables() {
+  // Check if the donations table has the right structure
+  db.query('DESCRIBE donations', (err, results) => {
+    if (err) {
+      console.log('Donations table does not exist, creating new one...');
+      createNewDonationsTable();
+    } else {
+      console.log('Existing donations table found with structure:', results.map(r => r.Field));
+      
+      // Check if it has the columns we need
+      const existingColumns = results.map(r => r.Field);
+      const requiredColumns = ['donor_name', 'donor_email'];
+      const hasRequiredColumns = requiredColumns.every(col => existingColumns.includes(col));
+      
+      if (!hasRequiredColumns) {
+        console.log('Existing table structure is different. Adding missing columns...');
+        alterExistingTable();
+      } else {
+        console.log('Donations table structure is compatible');
+      }
+    }
+  });
+}
+
+// Alter existing table to add missing columns
+function alterExistingTable() {
+  const alterQueries = [
+    "ALTER TABLE donations ADD COLUMN donor_name VARCHAR(255) DEFAULT ''",
+    "ALTER TABLE donations ADD COLUMN donor_email VARCHAR(255) DEFAULT ''", 
+    "ALTER TABLE donations ADD COLUMN donor_phone VARCHAR(20)",
+    "ALTER TABLE donations ADD COLUMN currency VARCHAR(3) DEFAULT 'INR'",
+    "ALTER TABLE donations ADD COLUMN payment_method VARCHAR(50) DEFAULT 'razorpay'",
+    "ALTER TABLE donations ADD COLUMN razorpay_order_id VARCHAR(255)",
+    "ALTER TABLE donations ADD COLUMN razorpay_payment_id VARCHAR(255)",
+    "ALTER TABLE donations ADD COLUMN razorpay_signature VARCHAR(255)",
+    "ALTER TABLE donations ADD COLUMN transaction_status VARCHAR(20) DEFAULT 'completed'",
+    "ALTER TABLE donations ADD COLUMN donation_type VARCHAR(20) DEFAULT 'one-time'",
+    "ALTER TABLE donations ADD COLUMN cause_category VARCHAR(100)",
+    "ALTER TABLE donations ADD COLUMN anonymous BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE donations ADD COLUMN message TEXT",
+    "ALTER TABLE donations ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE"
+  ];
+
+  let completed = 0;
+  alterQueries.forEach((query, index) => {
+    db.query(query, (err) => {
+      if (err && !err.message.includes('Duplicate column name')) {
+        console.error(`Error in alter query ${index + 1}:`, err.message);
+      } else if (!err) {
+        console.log(`Added column ${index + 1} successfully`);
+      }
+      completed++;
+      if (completed === alterQueries.length) {
+        console.log('Table structure update completed');
+        // Update existing records to have donor_email = user_email if empty
+        updateExistingRecords();
+      }
+    });
+  });
+}
+
+// Update existing records to map user_email to donor_email
+function updateExistingRecords() {
+  // First check if both columns exist
+  db.query('DESCRIBE donations', (err, results) => {
+    if (err) {
+      console.error('Error checking table structure:', err.message);
+      return;
+    }
+    
+    const columns = results.map(r => r.Field);
+    const hasUserEmail = columns.includes('user_email');
+    const hasDonorEmail = columns.includes('donor_email');
+    
+    if (hasUserEmail && hasDonorEmail) {
+      // Update donor_email from user_email where donor_email is empty
+      db.query(`
+        UPDATE donations 
+        SET donor_email = user_email, 
+            donor_name = COALESCE(NULLIF(donor_name, ''), 'Anonymous Donor'),
+            transaction_status = CASE 
+              WHEN status = 'completed' THEN 'completed'
+              WHEN status = 'pending' THEN 'pending'
+              WHEN status = 'failed' THEN 'failed'
+              ELSE 'completed'
+            END
+        WHERE donor_email = '' OR donor_email IS NULL
+      `, (err, result) => {
+        if (err) {
+          console.error('Error updating existing records:', err.message);
+        } else {
+          console.log(`Updated ${result.affectedRows} existing donation records`);
+        }
+      });
+    } else {
+      console.log('Table structure update complete - no existing records to migrate');
+    }
+  });
+}
+
+// Create new donations table (fallback)
+function createNewDonationsTable() {
+  const createDonationsTable = `
+    CREATE TABLE IF NOT EXISTS donations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      donor_name VARCHAR(255) NOT NULL,
+      donor_email VARCHAR(255) NOT NULL,
+      donor_phone VARCHAR(20),
+      amount DECIMAL(10, 2) NOT NULL,
+      currency VARCHAR(3) DEFAULT 'INR',
+      payment_method VARCHAR(50) NOT NULL,
+      payment_id VARCHAR(255) UNIQUE,
+      razorpay_order_id VARCHAR(255),
+      razorpay_payment_id VARCHAR(255),
+      razorpay_signature VARCHAR(255),
+      transaction_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+      donation_type ENUM('one-time', 'monthly', 'yearly') DEFAULT 'one-time',
+      cause_category VARCHAR(100),
+      anonymous BOOLEAN DEFAULT FALSE,
+      message TEXT,
+      receipt_sent BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_donor_email (donor_email),
+      INDEX idx_payment_id (payment_id),
+      INDEX idx_transaction_status (transaction_status),
+      INDEX idx_created_at (created_at)
+    )
+  `;
+
+  db.query(createDonationsTable, (err) => {
+    if (err) {
+      console.error('Error creating donations table:', err);
+    } else {
+      console.log('New donations table created successfully');
+    }
+  });
+}
 
 // Auth0 JWT middleware
 const checkJwt = jwt({
@@ -66,161 +222,259 @@ app.get('/api/protected', checkJwt, (req, res) => {
 });
 
 // Store user info after login (example endpoint)
-app.post('/api/users', checkJwt, async (req, res) => {
-  if (!dbHelpers) {
-    return res.status(503).json({ error: 'Database not available' });
+app.post('/api/users', checkJwt, (req, res) => {
+  const { sub, email } = req.body;
+  if (!sub || !email) {
+    return res.status(400).json({ error: 'Missing user info' });
+  }
+  db.query(
+    'INSERT INTO users (auth0_id, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE email = VALUES(email)',
+    [sub, email],
+    (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error', details: err });
+      }
+      res.json({ message: 'User stored/updated', results });
+    }
+  );
+});
+
+// Donation endpoints
+app.get('/api/donations', (req, res) => {
+  const { page = 1, limit = 10, status, donor_email } = req.query;
+  const offset = (page - 1) * limit;
+  
+  let query = 'SELECT * FROM donations';
+  let countQuery = 'SELECT COUNT(*) as total FROM donations';
+  let params = [];
+  let countParams = [];
+  
+  const whereConditions = [];
+  
+  if (status) {
+    whereConditions.push('transaction_status = ?');
+    params.push(status);
+    countParams.push(status);
   }
   
-  try {
-    const { sub, email, name, picture } = req.body;
-    if (!sub || !email) {
-      return res.status(400).json({ error: 'Missing required user info (sub, email)' });
+  if (donor_email) {
+    whereConditions.push('donor_email = ?');
+    params.push(donor_email);
+    countParams.push(donor_email);
+  }
+  
+  if (whereConditions.length > 0) {
+    const whereClause = ' WHERE ' + whereConditions.join(' AND ');
+    query += whereClause;
+    countQuery += whereClause;
+  }
+  
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  params.push(parseInt(limit), parseInt(offset));
+  
+  // Get total count
+  db.query(countQuery, countParams, (err, countResult) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
     }
     
-    const userData = {
-      auth0_id: sub,
-      email,
-      name: name || null,
-      picture: picture || null
-    };
+    const total = countResult[0].total;
     
-    const user = await dbHelpers.user.createOrUpdate(userData);
-    res.json({ 
-      message: 'User stored/updated successfully', 
-      user: user
+    // Get paginated results
+    db.query(query, params, (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      
+      res.json({
+        donations: results,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
     });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ error: 'Database error', details: error.message });
-  }
-});
-
-// Get user profile
-app.get('/api/users/profile', checkJwt, async (req, res) => {
-  if (!dbHelpers) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
-  
-  try {
-    const auth0Id = req.auth.sub;
-    const user = await dbHelpers.user.findByAuth0Id(auth0Id);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    res.json({ user });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ error: 'Database error', details: error.message });
-  }
-});
-
-// Update user profile
-app.put('/api/users/profile', checkJwt, async (req, res) => {
-  if (!dbHelpers) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
-  
-  try {
-    const auth0Id = req.auth.sub;
-    const { name, bio, graduation_year, major, current_job, company, linkedin_url, github_url, website_url, location } = req.body;
-    
-    const updateData = {
-      name,
-      bio,
-      graduation_year,
-      major,
-      current_job,
-      company,
-      linkedin_url,
-      github_url,
-      website_url,
-      location
-    };
-    
-    // Remove undefined values
-    Object.keys(updateData).forEach(key => 
-      updateData[key] === undefined && delete updateData[key]
-    );
-    
-    const result = await dbHelpers.update('users', updateData, { auth0_id: auth0Id });
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    res.json({ message: 'Profile updated successfully' });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ error: 'Database error', details: error.message });
-  }
-});
-
-// Generic endpoint for storing various user inputs
-app.post('/api/data/:tableName', checkJwt, async (req, res) => {
-  if (!dbHelpers) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
-  
-  try {
-    const { tableName } = req.params;
-    const auth0Id = req.auth.sub;
-    const data = req.body;
-    
-    // Validate table name (security measure)
-    const allowedTables = ['posts', 'events', 'donations', 'messages', 'job_postings', 'career_timeline'];
-    if (!allowedTables.includes(tableName)) {
-      return res.status(400).json({ error: 'Invalid table name' });
-    }
-    
-    // Add user_id and timestamps to data
-    data.user_auth0_id = auth0Id;
-    data.created_at = new Date();
-    data.updated_at = new Date();
-    
-    const result = await dbHelpers.insert(tableName, data);
-    res.json({ 
-      message: `Data stored in ${tableName} successfully`, 
-      id: result.insertId 
-    });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ error: 'Database error', details: error.message });
-  }
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({ 
-      error: 'Unauthorized',
-      message: 'Invalid or missing authentication token',
-      details: err.message 
-    });
-  }
-  
-  console.error('Server error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message 
   });
 });
 
-// 404 handler for unmatched routes
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    error: 'Not found',
-    message: `Route ${req.method} ${req.originalUrl} not found`,
-    availableRoutes: [
-      'GET /',
-      'GET /api/health',
-      'GET /api/protected',
-      'POST /api/users',
-      'GET /api/users/profile',
-      'PUT /api/users/profile',
-      'POST /api/data/:tableName'
-    ]
+app.post('/api/donations', (req, res) => {
+  const {
+    donor_name,
+    donor_email,
+    donor_phone,
+    amount,
+    currency = 'INR',
+    payment_method,
+    payment_id,
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    transaction_status = 'pending',
+    donation_type = 'one-time',
+    cause_category,
+    anonymous = false,
+    message
+  } = req.body;
+
+  // Validation
+  if (!donor_name || !donor_email || !amount || !payment_method) {
+    return res.status(400).json({ 
+      error: 'Missing required fields: donor_name, donor_email, amount, payment_method' 
+    });
+  }
+
+  const query = `
+    INSERT INTO donations (
+      donor_name, donor_email, user_email, donor_phone, amount, currency, payment_method,
+      payment_id, order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+      transaction_status, donation_type, cause_category, anonymous, message, description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const values = [
+    donor_name, donor_email, donor_email, donor_phone, amount, currency, payment_method,
+    payment_id, razorpay_order_id || payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+    transaction_status, donation_type, cause_category, anonymous, message, message
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    res.status(201).json({
+      id: result.insertId,
+      donor_name,
+      donor_email,
+      amount,
+      transaction_status,
+      created_at: new Date().toISOString()
+    });
+  });
+});
+
+app.get('/api/donations/:id', (req, res) => {
+  const { id } = req.params;
+  
+  db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
+    
+    res.json(results[0]);
+  });
+});
+
+app.put('/api/donations/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  
+  // Get current donation
+  db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
+    
+    // Build update query
+    const allowedFields = [
+      'donor_name', 'donor_email', 'donor_phone', 'transaction_status',
+      'razorpay_payment_id', 'razorpay_signature', 'receipt_sent', 'message'
+    ];
+    
+    const updateFields = [];
+    const values = [];
+    
+    allowedFields.forEach(field => {
+      if (updates[field] !== undefined) {
+        updateFields.push(`${field} = ?`);
+        values.push(updates[field]);
+      }
+    });
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    values.push(id);
+    const query = `UPDATE donations SET ${updateFields.join(', ')} WHERE id = ?`;
+    
+    db.query(query, values, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      
+      res.json({ message: 'Donation updated successfully' });
+    });
+  });
+});
+
+app.delete('/api/donations/:id', (req, res) => {
+  const { id } = req.params;
+  
+  db.query('DELETE FROM donations WHERE id = ?', [id], (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
+    
+    res.json({ message: 'Donation deleted successfully' });
+  });
+});
+
+// Analytics endpoint
+app.get('/api/donations/analytics/summary', (req, res) => {
+  const queries = {
+    totalAmount: 'SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE transaction_status = "completed"',
+    totalDonations: 'SELECT COUNT(*) as count FROM donations WHERE transaction_status = "completed"',
+    monthlyAmount: `
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM donations 
+      WHERE transaction_status = "completed" 
+      AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+    `,
+    monthlyDonations: `
+      SELECT COUNT(*) as count 
+      FROM donations 
+      WHERE transaction_status = "completed" 
+      AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+    `
+  };
+
+  const results = {};
+  let completed = 0;
+  const totalQueries = Object.keys(queries).length;
+
+  Object.entries(queries).forEach(([key, query]) => {
+    db.query(query, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      
+      results[key] = result[0];
+      completed++;
+      
+      if (completed === totalQueries) {
+        res.json({
+          totalDonationAmount: results.totalAmount.total,
+          totalDonations: results.totalDonations.count,
+          monthlyDonationAmount: results.monthlyAmount.total,
+          monthlyDonations: results.monthlyDonations.count
+        });
+      }
+    });
   });
 });
 
