@@ -1,4 +1,5 @@
 'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -1045,3 +1046,5 @@ export default function MessagesPage() {
     </AlumniNavigation>
   );
 }
+
+export default withPageAuthRequired(MessagesPage);

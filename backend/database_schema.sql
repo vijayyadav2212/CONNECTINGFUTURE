@@ -1,84 +1,181 @@
--- Database schema for ConnectingFuture messaging system
+-- Alumni Portal Database Schema
+-- Run this SQL to create the necessary tables
 
--- Create database if it doesn't exist
-CREATE DATABASE IF NOT EXISTS auth_demo;
-USE auth_demo;
+CREATE DATABASE IF NOT EXISTS alumni_portal;
+USE alumni_portal;
 
--- Users table (if not exists)
+-- Users table (Alumni and Students)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     auth0_id VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) NOT NULL,
     name VARCHAR(255),
-    avatar VARCHAR(500),
+    picture TEXT,
+    bio TEXT,
+    user_type ENUM('alumni', 'student') DEFAULT 'alumni',
+    graduation_year INT,
+    major VARCHAR(255),
+    current_job VARCHAR(255),
+    company VARCHAR(255),
+    linkedin_url VARCHAR(500),
+    github_url VARCHAR(500),
+    website_url VARCHAR(500),
+    location VARCHAR(255),
+    is_mentor BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_auth0_id (auth0_id),
+    INDEX idx_email (email),
+    INDEX idx_user_type (user_type)
 );
 
--- Messages table
+-- Posts/Blog table
+CREATE TABLE IF NOT EXISTS posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_auth0_id VARCHAR(255) NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(100),
+    tags JSON,
+    is_published BOOLEAN DEFAULT TRUE,
+    likes_count INT DEFAULT 0,
+    comments_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    INDEX idx_user (user_auth0_id),
+    INDEX idx_category (category),
+    INDEX idx_published (is_published)
+);
+
+-- Events table
+CREATE TABLE IF NOT EXISTS events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_auth0_id VARCHAR(255) NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    event_date DATETIME NOT NULL,
+    location VARCHAR(255),
+    event_type VARCHAR(100),
+    max_attendees INT,
+    current_attendees INT DEFAULT 0,
+    is_virtual BOOLEAN DEFAULT FALSE,
+    meeting_link VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    INDEX idx_user (user_auth0_id),
+    INDEX idx_event_date (event_date),
+    INDEX idx_event_type (event_type)
+);
+
+-- Event Attendees table
+CREATE TABLE IF NOT EXISTS event_attendees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    user_auth0_id VARCHAR(255) NOT NULL,
+    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    attendance_status ENUM('registered', 'attended', 'cancelled') DEFAULT 'registered',
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_event_user (event_id, user_auth0_id)
+);
+
+-- Job Postings table
+CREATE TABLE IF NOT EXISTS job_postings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_auth0_id VARCHAR(255) NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    company VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    requirements TEXT,
+    location VARCHAR(255),
+    job_type VARCHAR(100),
+    salary_range VARCHAR(255),
+    application_url VARCHAR(500),
+    expires_at DATETIME,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    INDEX idx_user (user_auth0_id),
+    INDEX idx_company (company),
+    INDEX idx_active (is_active)
+);
+
+-- Donations table
+CREATE TABLE IF NOT EXISTS donations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_auth0_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'USD',
+    donation_type VARCHAR(100),
+    message TEXT,
+    is_anonymous BOOLEAN DEFAULT FALSE,
+    payment_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+    payment_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    INDEX idx_user (user_auth0_id),
+    INDEX idx_status (payment_status)
+);
+
+-- Messages table (for internal messaging)
 CREATE TABLE IF NOT EXISTS messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    sender_id VARCHAR(255) NOT NULL,
-    receiver_id VARCHAR(255) NOT NULL,
+    sender_auth0_id VARCHAR(255) NOT NULL,
+    receiver_auth0_id VARCHAR(255) NOT NULL,
+    subject VARCHAR(500),
     content TEXT NOT NULL,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('sent', 'delivered', 'read', 'failed') DEFAULT 'sent',
+    is_read BOOLEAN DEFAULT FALSE,
+    message_type VARCHAR(100) DEFAULT 'direct',
+    parent_message_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_sender (sender_id),
-    INDEX idx_receiver (receiver_id),
-    INDEX idx_timestamp (timestamp)
+    FOREIGN KEY (sender_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_message_id) REFERENCES messages(id) ON DELETE SET NULL,
+    INDEX idx_sender (sender_auth0_id),
+    INDEX idx_receiver (receiver_auth0_id),
+    INDEX idx_read_status (is_read)
 );
 
--- Conversations table (for storing conversation metadata)
-CREATE TABLE IF NOT EXISTS conversations (
+-- Mentorship table
+CREATE TABLE IF NOT EXISTS mentorship (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    participant1_id VARCHAR(255) NOT NULL,
-    participant2_id VARCHAR(255) NOT NULL,
-    last_message_id INT,
-    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mentor_auth0_id VARCHAR(255) NOT NULL,
+    mentee_auth0_id VARCHAR(255) NOT NULL,
+    status ENUM('pending', 'active', 'completed', 'cancelled') DEFAULT 'pending',
+    start_date DATE,
+    end_date DATE,
+    meeting_frequency VARCHAR(100),
+    focus_areas JSON,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_conversation (participant1_id, participant2_id),
-    FOREIGN KEY (last_message_id) REFERENCES messages(id) ON DELETE SET NULL
+    FOREIGN KEY (mentor_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    FOREIGN KEY (mentee_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_mentor_mentee (mentor_auth0_id, mentee_auth0_id),
+    INDEX idx_mentor (mentor_auth0_id),
+    INDEX idx_mentee (mentee_auth0_id),
+    INDEX idx_status (status)
 );
 
--- Message attachments table (for future file sharing)
-CREATE TABLE IF NOT EXISTS message_attachments (
+-- Career Timeline table
+CREATE TABLE IF NOT EXISTS career_timeline (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    message_id INT NOT NULL,
-    filename VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    file_size INT DEFAULT 0,
-    mime_type VARCHAR(100),
+    user_auth0_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    company VARCHAR(255),
+    description TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    is_current BOOLEAN DEFAULT FALSE,
+    timeline_type ENUM('education', 'work', 'achievement', 'other') DEFAULT 'work',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_auth0_id) REFERENCES users(auth0_id) ON DELETE CASCADE,
+    INDEX idx_user (user_auth0_id),
+    INDEX idx_timeline_type (timeline_type)
 );
-
--- User status table (for tracking online/offline status)
-CREATE TABLE IF NOT EXISTS user_status (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id VARCHAR(255) UNIQUE NOT NULL,
-    status ENUM('online', 'away', 'busy', 'offline') DEFAULT 'offline',
-    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    socket_id VARCHAR(255),
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Insert some sample data for testing (optional)
--- This will help test the messaging system with existing users
-
--- Note: Make sure to update these IDs with actual Auth0 user IDs from your system
--- INSERT INTO users (auth0_id, email, name) VALUES 
--- ('auth0|sample1', 'user1@example.com', 'Sample User 1'),
--- ('auth0|sample2', 'user2@example.com', 'Sample User 2');
-
--- Grant permissions (adjust as needed for your MySQL user)
--- GRANT ALL PRIVILEGES ON auth_demo.* TO 'your_mysql_user'@'localhost';
--- FLUSH PRIVILEGES;
-
--- Show tables to verify creation
-SHOW TABLES;
-
--- Describe the messages table to verify structure
-DESCRIBE messages;

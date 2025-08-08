@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { GraduationCap, User, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell } from 'lucide-react';
 
 // Interfaces
 interface NavItem {
   id: string;
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   route: string;
   badge?: string;
 }
@@ -37,10 +38,10 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   // Sample alumni data
   const alumniData: AlumniData = {
     name: "Vijay Yadav",
-    graduationYear: "2019",
+    graduationYear: "2018",
     company: "Google",
     position: "Senior Software Engineer",
-    avatar: null,
+    avatar: null, 
     verifiedBadge: true
   };
 
@@ -51,6 +52,8 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     { id: "ama", label: "AMA Sessions", icon: "🎙️", route: "/alumni/ama" },
     { id: "events", label: "Events", icon: "📅", route: "/alumni/events" },
     { id: "roadmaps", label: "Roadmaps", icon: "🧭", route: "/alumni/roadmap" },
+    { id: "directory", label: "Alumni Directory", icon: "📇", route: "/alumni/Directory" },
+    { id: "connections", label: "My Connections", icon: "🤝", route: "/alumni/connections" },
     { id: "memories", label: "Memories", icon: "📸", route: "/alumni/memories" },
     { id: "blog", label: "Blog/Articles", icon: "✍️", route: "/alumni/blog" },
     { id: "leaderboard", label: "Leaderboard", icon: "🏆", route: "/alumni/leaderboard" },
@@ -66,93 +69,84 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Navigation Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 w-64 h-screen bg-white shadow-xl border-r border-slate-200 flex flex-col">
-        {/* Logo & Branding */}
-        <div className="p-6 border-b border-slate-200 flex-shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">🎓</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">Alumni Connect</h1>
-              <p className="text-sm text-slate-500">Professional Network</p>
+      <aside className="fixed left-0 top-0 z-40 w-64 h-screen bg-white shadow-lg border-r border-gray-200">
+        {/* Scrollable Container for entire sidebar */}
+        <div className="h-full overflow-y-auto">
+          {/* Logo & Branding */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Alumni Connect</h1>
+                <p className="text-sm text-gray-500">IIT Delhi</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Alumni Profile Summary */}
-        <div className="p-6 border-b border-slate-200 flex-shrink-0">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">VY</span>
-              </div>
-              {alumniData.verifiedBadge && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
+          {/* Alumni Profile Summary */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="relative">
+                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-lg">AK</span>
                 </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-slate-900">{alumniData.name}</h3>
-              <p className="text-sm text-slate-600">Class of {alumniData.graduationYear}</p>
-              <div className="flex items-center mt-1">
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">🎓 Verified Alumni</span>
+                {alumniData.verifiedBadge && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">{alumniData.name}</h3>
+                <p className="text-sm text-gray-600">Class of {alumniData.graduationYear}</p>
+                <div className="flex items-center mt-1">
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Verified Alumni</span>
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* Availability Toggle */}
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <span className="text-sm font-medium text-slate-700">Available for Mentorship</span>
-            <button
-              onClick={() => setIsAvailableForMentorship(!isAvailableForMentorship)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isAvailableForMentorship ? 'bg-green-500' : 'bg-slate-300'
-              }`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                isAvailableForMentorship ? 'translate-x-6' : 'translate-x-1'
-              }`} />
-            </button>
-          </div>
-        </div>
 
-        {/* Scrollable Navigation Menu */}
-        <div className="flex-1 overflow-y-auto">
+          {/* Navigation Menu */}
           <nav className="p-4">
             {navigationItems.map((item: NavItem) => (
               <Link
                 key={item.id}
                 href={item.route}
-                className={`w-full flex items-center justify-between px-4 py-3 mb-1 rounded-lg text-left transition-all duration-200 hover:bg-slate-50 group ${
-                  isActiveRoute(item.route) ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-700 hover:text-slate-900'
+                className={`w-full flex items-center justify-between px-4 py-3 mb-1 rounded-lg text-left transition-all duration-200 hover:bg-gray-50 group ${
+                  isActiveRoute(item.route) 
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <span className="text-lg">{item.icon}</span>
+                  <div className={`${isActiveRoute(item.route) ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                    {item.icon}
+                  </div>
                   <span className="font-medium">{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
                     {item.badge}
                   </span>
                 )}
               </Link>
             ))}
           </nav>
-        </div>
 
-        {/* Bottom Action */}
-        <div className="p-4 flex-shrink-0 border-t border-slate-200">
-          <button
-            onClick={() => setShowPersonalizationModal(true)}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            ✨ Personalize Experience
-          </button>
+          {/* Mentorship Status */}
+          <div className="p-4 border-t border-gray-200">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium text-green-700">Available</span>
+              </div>
+              <span className="text-xs text-green-600">Mentorship Status</span>
+            </div>
+          </div>
         </div>
       </aside>
 
