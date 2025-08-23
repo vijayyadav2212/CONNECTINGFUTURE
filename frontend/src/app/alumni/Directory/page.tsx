@@ -19,6 +19,7 @@ import {
 import { AlumniProfileDialog } from "@/components/alumni/AlumniProfileDialog";
 import { MessageDialog } from "@/components/alumni/MessageDialog";
 import { AdvancedFilters } from "@/components/alumni/AdvancedFilters";
+import AlumniNavigation from '../AluminaNavigation';
 import { 
   Search, 
   Filter, 
@@ -303,77 +304,44 @@ function AlumniDirectoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Navigation Header */}
-      <nav className="bg-white/95 backdrop-blur-lg shadow-lg border-b border-blue-100/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-6">
-              <Link href="/alumni/dashboard" className="flex items-center text-blue-600 hover:text-blue-700 transition-all duration-200 group">
-                <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                <span className="font-medium">Back to Dashboard</span>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                  <GraduationCap className="w-5 h-5 text-white" />
-                </div>
+    <AlumniNavigation>
+      <div className="p-8 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Enhanced Header */}
+          <div className="bg-blue-600 rounded-2xl p-8 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Alumni Directory</h1>
-                  <p className="text-xs text-gray-500">Professional Network Hub</p>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <GraduationCap className="w-8 h-8 text-white" />
+                    <h1 className="text-4xl font-bold">Alumni Directory</h1>
+                  </div>
+                  <p className="text-blue-100 text-lg">Connect with fellow graduates, expand your professional network, and discover new opportunities</p>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/20">
+                  <Users className="w-5 h-5 text-white" />
+                  <span className="text-lg font-semibold text-white">{filteredAlumni.length} Alumni</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                <Users className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-700">{filteredAlumni.length} Alumni</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-700">Welcome back,</p>
-                  <p className="text-xs text-gray-500">{user.name}</p>
-                </div>
-                <a href="/api/auth/logout">
-                  <Button variant="outline" size="sm" className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200">
-                    Logout
-                  </Button>
-                </a>
-              </div>
-            </div>
           </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto p-6 space-y-8">
-        {/* Header Section */}
-        <div className="text-center py-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Alumni Directory
-            </h1>
-          </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Connect with fellow graduates, expand your professional network, and discover new opportunities
-          </p>
-        </div>
 
         {/* Search and Filters */}
-        <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-lg">
-          <CardContent className="p-8">
-            {/* Search Bar */}
-            <div className="relative mb-8">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <Input
-                placeholder="Search by name, company, job title, or skills..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 h-14 text-lg border-0 bg-gradient-to-r from-gray-50 to-blue-50/30 focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-xl shadow-inner"
-              />
-            </div>
+        <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-100">
+          {/* Search Bar */}
+          <div className="relative mb-8">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              placeholder="Search by name, company, job title, or skills..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-12 h-14 text-lg border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-slate-50 focus:bg-white shadow-sm"
+            />
+          </div>
 
             {/* Basic Filters */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -383,12 +351,12 @@ function AlumniDirectoryPage() {
                   Department
                 </Label>
                 <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <SelectTrigger className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm text-gray-900">
+                    <SelectValue className="text-gray-900" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      <SelectItem key={dept} value={dept} className="text-gray-900 hover:bg-blue-50">{dept}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -400,12 +368,12 @@ function AlumniDirectoryPage() {
                   Industry
                 </Label>
                 <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
-                  <SelectTrigger className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm text-gray-900">
+                    <SelectValue className="text-gray-900" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {industries.map(industry => (
-                      <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                      <SelectItem key={industry} value={industry} className="text-gray-900 hover:bg-blue-50">{industry}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -417,65 +385,104 @@ function AlumniDirectoryPage() {
                   Graduation Year
                 </Label>
                 <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="From"
-                    value={yearFrom}
-                    onChange={(e) => setYearFrom(e.target.value)}
-                    min="2000"
-                    max="2025"
-                    className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm"
-                  />
+                  <div className="relative group">
+                    <Input
+                      type="number"
+                      placeholder="From"
+                      value={yearFrom}
+                      onChange={(e) => setYearFrom(e.target.value)}
+                      min="2000"
+                      max="2025"
+                      className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm text-gray-900 placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    />
+                    <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button
+                        type="button"
+                        onClick={() => setYearFrom(String(Math.min(2025, parseInt(yearFrom) + 1)))}
+                        className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded text-xs font-bold"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setYearFrom(String(Math.max(2000, parseInt(yearFrom) - 1)))}
+                        className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded text-xs font-bold"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
                   <span className="self-center text-gray-400 font-medium">—</span>
-                  <Input
-                    type="number"
-                    placeholder="To"
-                    value={yearTo}
-                    onChange={(e) => setYearTo(e.target.value)}
-                    min="2000"
-                    max="2025"
-                    className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm"
-                  />
+                  <div className="relative group">
+                    <Input
+                      type="number"
+                      placeholder="To"
+                      value={yearTo}
+                      onChange={(e) => setYearTo(e.target.value)}
+                      min="2000"
+                      max="2025"
+                      className="h-12 border-gray-200 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm text-gray-900 placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    />
+                    <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button
+                        type="button"
+                        onClick={() => setYearTo(String(Math.min(2025, parseInt(yearTo) + 1)))}
+                        className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded text-xs font-bold"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setYearTo(String(Math.max(2000, parseInt(yearTo) - 1)))}
+                        className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded text-xs font-bold"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className="flex items-center gap-2 h-12 border-gray-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-200 rounded-xl"
-                >
-                  <Filter className="w-4 h-4" />
-                  Advanced Filters
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={clearFilters} 
-                  className="flex items-center gap-2 h-12 text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-xl"
-                >
-                  <X className="w-4 h-4" />
-                  Clear All
-                </Button>
-              </div>
+            <div className="flex items-end justify-between w-full">
+              <Button
+                variant="outline"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="flex items-center gap-2 h-12 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900 transition-all duration-200 rounded-xl shadow-sm"
+              >
+                <Filter className="w-4 h-4" />
+                Advanced Filters
+                <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                onClick={clearFilters} 
+                className="flex items-center gap-2 h-12 text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-xl"
+              >
+                <X className="w-4 h-4" />
+                Clear All
+              </Button>
+            </div>
             </div>
 
             {/* Results Count */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-sm">
-                  <Users className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-semibold text-gray-800">{filteredAlumni.length} alumni found</span>
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-slate-700 font-medium">{filteredAlumni.length} alumni found</span>
               </div>
               {(searchTerm || selectedIndustry !== "All Industries" || selectedDepartment !== "All Departments") && (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
-                  Filtered Results
-                </Badge>
+                <Button
+                  variant="ghost"
+                  onClick={clearFilters}
+                  className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-all duration-200"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear All
+                </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
         {/* Advanced Filters */}
         <AdvancedFilters
@@ -487,26 +494,26 @@ function AlumniDirectoryPage() {
         {/* Alumni Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
           {filteredAlumni.map((alumni) => (
-            <Card key={alumni.id} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/95 backdrop-blur-lg hover:scale-[1.02] overflow-hidden">
-              <CardContent className="p-0">
-                {/* Card Header with Gradient */}
-                <div className="relative bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-6 text-white">
+            <Card key={alumni.id} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/95 backdrop-blur-lg hover:scale-[1.02] overflow-hidden h-full flex flex-col">
+              <CardContent className="p-0 flex flex-col h-full">
+                {/* Card Header with Gradient - Fixed Height */}
+                <div className="relative bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-6 text-white min-h-[160px] flex items-center">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12"></div>
-                  <div className="relative z-10">
-                    <div className="flex items-start gap-4 mb-4">
-                      <Avatar className="w-20 h-20 border-4 border-white/30 shadow-xl">
+                  <div className="relative z-10 w-full">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-16 h-16 border-4 border-white/30 shadow-xl flex-shrink-0">
                         <AvatarImage src={alumni.profilePicture} alt={alumni.name} />
-                        <AvatarFallback className="bg-white/20 text-white text-xl font-bold backdrop-blur-sm">
+                        <AvatarFallback className="bg-white/20 text-white text-lg font-bold backdrop-blur-sm">
                           {alumni.name.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-xl mb-1">{alumni.name}</h3>
-                        <p className="text-white/95 font-semibold text-lg">{alumni.currentPosition}</p>
-                        <p className="text-white/85 font-medium">{alumni.company}</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-lg mb-1 truncate">{alumni.name}</h3>
+                        <p className="text-white/95 font-semibold text-base line-clamp-1">{alumni.currentPosition}</p>
+                        <p className="text-white/85 font-medium line-clamp-1">{alumni.company}</p>
                         {alumni.isConnected && (
-                          <Badge className="mt-2 bg-green-500/20 text-green-100 border-green-300/30 shadow-sm">
+                          <Badge className="mt-2 bg-green-500/20 text-green-100 border-green-300/30 shadow-sm text-xs">
                             Connected
                           </Badge>
                         )}
@@ -515,118 +522,122 @@ function AlumniDirectoryPage() {
                   </div>
                 </div>
 
-                {/* Card Body */}
-                <div className="p-6 space-y-5">
-                  {/* Alumni Details */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                      <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-sm">
-                        <GraduationCap className="w-4 h-4 text-white" />
+                {/* Card Body - Flexible Height */}
+                <div className="p-6 flex-1 flex flex-col">
+                  {/* Alumni Details - Fixed Height Section */}
+                  <div className="space-y-3 mb-5">
+                    <div className="flex items-center gap-3 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                      <div className="p-1.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-md shadow-sm flex-shrink-0">
+                        <GraduationCap className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">Class of {alumni.graduationYear}</p>
-                        <p className="text-gray-600 text-sm">{alumni.branch}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                      <div className="p-2 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
-                        <Building className="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{alumni.industry}</p>
-                        <p className="text-gray-600 text-sm">Industry</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm truncate">Class of {alumni.graduationYear}</p>
+                        <p className="text-gray-600 text-xs truncate">{alumni.branch}</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                      <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-sm">
-                        <MapPin className="w-4 h-4 text-white" />
+                    <div className="flex items-center gap-3 p-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
+                      <div className="p-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-md shadow-sm flex-shrink-0">
+                        <Building className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{alumni.location.split(',')[0]}</p>
-                        <p className="text-gray-600 text-sm">{alumni.country}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{alumni.industry}</p>
+                        <p className="text-gray-600 text-xs">Industry</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-2.5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100">
+                      <div className="p-1.5 bg-gradient-to-r from-purple-500 to-purple-600 rounded-md shadow-sm flex-shrink-0">
+                        <MapPin className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{alumni.location.split(',')[0]}</p>
+                        <p className="text-gray-600 text-xs truncate">{alumni.country}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Bio */}
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-xl p-4 border border-gray-100">
+                  {/* Bio - Fixed Height */}
+                  <div className="bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-xl p-3 border border-gray-100 mb-4 h-[72px] overflow-hidden">
                     <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">{alumni.bio}</p>
                   </div>
 
-                  {/* Skills */}
-                  <div>
+                  {/* Skills - Fixed Height */}
+                  <div className="mb-5 h-[100px] overflow-hidden">
                     <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                       <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                       Skills & Expertise
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {alumni.skills.slice(0, 3).map((skill, index) => (
+                      {alumni.skills.slice(0, 4).map((skill, index) => (
                         <Badge key={index} variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 hover:from-blue-200 hover:to-indigo-200 border-blue-200 shadow-sm">
                           {skill}
                         </Badge>
                       ))}
-                      {alumni.skills.length > 3 && (
+                      {alumni.skills.length > 4 && (
                         <Badge variant="outline" className="text-xs text-gray-600 border-gray-300 hover:bg-gray-50">
-                          +{alumni.skills.length - 3} more
+                          +{alumni.skills.length - 4}
                         </Badge>
                       )}
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t border-gray-100">
-                    <Button 
-                      size="sm" 
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200"
-                      onClick={() => handleSendMessage(alumni)}
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Message
-                    </Button>
+                  {/* Action Buttons - Fixed at Bottom */}
+                  <div className="mt-auto space-y-3">
+                    <div className="flex gap-3 pt-4 border-t border-gray-100">
+                      <Button 
+                        size="sm" 
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200"
+                        onClick={() => handleSendMessage(alumni)}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
 
-                    <Button
-                      variant={alumni.isConnected ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => handleConnect(alumni.id)}
-                      className={alumni.isConnected 
-                        ? "text-green-700 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100 shadow-sm" 
-                        : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-200"
-                      }
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      {alumni.isConnected ? "Connected" : "Connect"}
-                    </Button>
-                  </div>
+                      <Button
+                        variant={alumni.isConnected ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => handleConnect(alumni.id)}
+                        className={alumni.isConnected 
+                          ? "text-green-700 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100 shadow-sm" 
+                          : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-200"
+                        }
+                      >
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        {alumni.isConnected ? "Connected" : "Connect"}
+                      </Button>
+                    </div>
 
-                  {/* Contact Links */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-gray-600 hover:text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition-all duration-200 rounded-lg"
-                      onClick={() => handleViewProfile(alumni)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      <span className="text-xs font-medium">Profile</span>
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-gray-600 hover:text-green-600 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 transition-all duration-200 rounded-lg"
-                    >
-                      <Mail className="w-4 h-4 mr-1" />
-                      <span className="text-xs font-medium">Email</span>
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-gray-600 hover:text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition-all duration-200 rounded-lg"
-                    >
-                      <Linkedin className="w-4 h-4 mr-1" />
-                      <span className="text-xs font-medium">LinkedIn</span>
-                    </Button>
+                    {/* Contact Links */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-600 hover:text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition-all duration-200 rounded-lg"
+                        onClick={() => handleViewProfile(alumni)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        <span className="text-xs font-medium">Profile</span>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-600 hover:text-green-600 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 transition-all duration-200 rounded-lg"
+                        onClick={() => window.open(`mailto:${alumni.email}`, '_blank')}
+                      >
+                        <Mail className="w-4 h-4 mr-1" />
+                        <span className="text-xs font-medium">Email</span>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-600 hover:text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition-all duration-200 rounded-lg"
+                        onClick={() => window.open(alumni.linkedin, '_blank')}
+                      >
+                        <Linkedin className="w-4 h-4 mr-1" />
+                        <span className="text-xs font-medium">LinkedIn</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -669,25 +680,26 @@ function AlumniDirectoryPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Profile Dialog */}
+        <AlumniProfileDialog
+          alumni={selectedAlumni}
+          open={showProfileDialog}
+          onOpenChange={setShowProfileDialog}
+          onConnect={handleConnect}
+          onMessage={handleSendMessage}
+        />
+
+        {/* Message Dialog */}
+        <MessageDialog
+          alumni={selectedAlumni}
+          open={showMessageDialog}
+          onOpenChange={setShowMessageDialog}
+          onSendMessage={handleMessageSend}
+        />
+        </div>
       </div>
-
-      {/* Profile Dialog */}
-      <AlumniProfileDialog
-        alumni={selectedAlumni}
-        open={showProfileDialog}
-        onOpenChange={setShowProfileDialog}
-        onConnect={handleConnect}
-        onMessage={handleSendMessage}
-      />
-
-      {/* Message Dialog */}
-      <MessageDialog
-        alumni={selectedAlumni}
-        open={showMessageDialog}
-        onOpenChange={setShowMessageDialog}
-        onSendMessage={handleMessageSend}
-      />
-    </div>
+    </AlumniNavigation>
   );
 }
 

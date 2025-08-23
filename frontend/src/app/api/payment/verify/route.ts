@@ -12,9 +12,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if Razorpay secret is configured
+    if (!process.env.RAZORPAY_KEY_SECRET) {
+      return NextResponse.json(
+        { error: 'Payment gateway not configured. Please contact administrator.' },
+        { status: 503 }
+      );
+    }
+
     const body = orderId + "|" + paymentId;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(body)
       .digest("hex");
 

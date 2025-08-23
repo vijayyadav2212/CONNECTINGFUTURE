@@ -13,9 +13,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if webhook secret is configured
+    if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
+      return NextResponse.json(
+        { error: 'Webhook not configured. Please contact administrator.' },
+        { status: 503 }
+      );
+    }
+
     // Verify webhook signature
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
       .update(body)
       .digest('hex');
 
