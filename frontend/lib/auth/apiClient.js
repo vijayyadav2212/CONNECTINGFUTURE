@@ -3,7 +3,8 @@ import tokenManager from './tokenManager';
 
 class ApiClient {
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api';
+    const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+    this.baseURL = raw.endsWith('/api') ? raw : `${raw.replace(/\/$/, '')}/api`;
   }
 
   // Get headers with authentication

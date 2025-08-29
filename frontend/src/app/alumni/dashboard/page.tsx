@@ -1,66 +1,76 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AlumniNavigation from '../AluminaNavigation';
-import { User, Building, FileText, Trophy, Calendar, MessageSquare, Map, Heart, Settings, Users, Briefcase, BookOpen, Award, Send, Mic, Route, UserPlus } from 'lucide-react';
+import { User, Building, FileText, Trophy, Calendar, MessageSquare, Map, Heart, Settings, Users, Briefcase, BookOpen, Award, Send, Mic, Route, UserPlus, MapPin, Linkedin } from 'lucide-react';
 
 // Interfaces
-interface AlumniStats {
-  menteesHelped: number;
-  jobsPosted: number;
-  blogsWritten: number;
-  points: number;
-}
-
-interface AlumniData {
-  name: string;
-  graduationYear: string;
-  company: string;
-  position: string;
-  avatar: string | null;
-  verifiedBadge: boolean;
-  stats: AlumniStats;
-}
-
 interface DashboardSectionProps {
-  alumniData: AlumniData;
+  profile: any;
 }
 
 export default function AlumniDashboard() {
   const router = useRouter();
-  const [showPersonalizationModal, setShowPersonalizationModal] = useState<boolean>(false);
-  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
-  const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
 
-  // Sample alumni data
-  const alumniData: AlumniData = {
-    name: "Vijay Yadav",
-    graduationYear: "2018",
-    company: "Google",
-    position: "Senior Software Engineer",
-    avatar: null,
-    verifiedBadge: true,
-    stats: {
-      menteesHelped: 24,
-      jobsPosted: 8,
-      blogsWritten: 12,
-      points: 1247
-    }
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Ensure token exists, then call frontend proxy which forwards cookies
+        const resp = await fetch('/api/user/profile', { cache: 'no-store' });
+        if (!resp.ok) {
+          if (resp.status === 401) {
+            router.push('/api/auth/login?returnTo=/alumni/dashboard');
+            return;
+          }
+          const txt = await resp.text();
+          throw new Error(txt || `Failed: ${resp.status}`);
+        }
+        const data = await resp.json();
+        setProfile(data.user || data);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [router]);
 
   return (
     <AlumniNavigation>
       <div className="p-8">
-        <DashboardSection alumniData={alumniData} />
+        {loading && (
+          <div className="text-slate-600">Loading your dashboard…</div>
+        )}
+        {error && (
+          <div className="text-red-600">{error}</div>
+        )}
+        {!loading && !error && profile && (
+          <DashboardSection profile={profile} />
+        )}
       </div>
     </AlumniNavigation>
   );
 }
 
 // Dashboard Section Component
-function DashboardSection({ alumniData }: DashboardSectionProps) {
+function DashboardSection({ profile }: DashboardSectionProps) {
   const router = useRouter();
+  const name = profile?.name || 'Alumni';
+  const graduationYear = profile?.graduation_year || profile?.graduationYear || '';
+  const company = profile?.company || profile?.currentCompany || '';
+  const position = profile?.job_title || profile?.current_job || profile?.jobTitle || '';
+  const location = profile?.location || '';
+  const linkedin = profile?.linkedin_url || profile?.linkedIn || '';
+  const bio = profile?.bio || '';
+  const skills: string[] = typeof profile?.skills === 'string' ? profile.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : Array.isArray(profile?.skills) ? profile.skills : [];
+  const mentor = !!profile?.is_mentor || !!profile?.isOpenToMentoring;
   
   return (
     <div className="space-y-8">
@@ -72,14 +82,12 @@ function DashboardSection({ alumniData }: DashboardSectionProps) {
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-2">
-                Welcome back, {alumniData.name}!
-              </h1>
+              <h1 className="text-4xl font-bold mb-2">Welcome back, {name}!</h1>
               <p className="text-blue-100 text-lg">
                 Ready to make an impact today?
               </p>
             </div>
-            <button className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-white font-medium hover:bg-white/30 transition-all duration-200 flex items-center space-x-2">
+            <button onClick={() => router.push('/registration?redirect=/alumni/dashboard')} className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-white font-medium hover:bg-white/30 transition-all duration-200 flex items-center space-x-2">
               <Settings className="w-4 h-4" />
               <span>Update Interests</span>
             </button>
@@ -87,7 +95,45 @@ function DashboardSection({ alumniData }: DashboardSectionProps) {
         </div>
       </div>
 
-      {/* Quick Stats Cards */}
+      {/* Profile summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 lg:col-span-2">
+          <h3 className="text-slate-900 font-semibold mb-4">Your profile</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-700">
+            <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-slate-500" />{position || '—'}</div>
+            <div className="flex items-center gap-2"><Building className="w-4 h-4 text-slate-500" />{company || '—'}</div>
+            <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-slate-500" />{graduationYear || '—'}</div>
+            <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-slate-500" />{location || '—'}</div>
+            {linkedin && (
+              <a className="flex items-center gap-2 text-blue-600 hover:underline" href={linkedin} target="_blank" rel="noreferrer">
+                <Linkedin className="w-4 h-4" />LinkedIn
+              </a>
+            )}
+          </div>
+          {bio && <p className="mt-4 text-slate-700">{bio}</p>}
+          {skills.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {skills.map((s) => (
+                <span key={s} className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">{s}</span>
+              ))}
+            </div>
+          )}
+          {mentor && (
+            <div className="mt-4 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+              <Users className="w-3.5 h-3.5" /> Open to mentoring
+            </div>
+          )}
+        </div>
+
+        {/* Impact points placeholder */}
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
+          <h3 className="text-slate-900 font-semibold mb-4">Impact</h3>
+          <div className="text-3xl font-bold text-slate-900">—</div>
+          <p className="text-slate-600">Your contributions will show here.</p>
+        </div>
+      </div>
+
+      {/* Quick Stats Cards (placeholder data) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
           <div className="flex items-center justify-between mb-4">
@@ -96,7 +142,7 @@ function DashboardSection({ alumniData }: DashboardSectionProps) {
             </div>
             <span className="text-green-500 text-sm font-medium">+12%</span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-1">{alumniData.stats.menteesHelped}</h3>
+          <h3 className="text-2xl font-bold text-slate-900 mb-1">—</h3>
           <p className="text-slate-600 font-medium">Mentees Helped</p>
         </div>
 
@@ -107,7 +153,7 @@ function DashboardSection({ alumniData }: DashboardSectionProps) {
             </div>
             <span className="text-blue-500 text-sm font-medium">+3</span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-1">{alumniData.stats.jobsPosted}</h3>
+          <h3 className="text-2xl font-bold text-slate-900 mb-1">—</h3>
           <p className="text-slate-600 font-medium">Jobs Posted</p>
         </div>
 
@@ -118,7 +164,7 @@ function DashboardSection({ alumniData }: DashboardSectionProps) {
             </div>
             <span className="text-purple-500 text-sm font-medium">+2</span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-1">{alumniData.stats.blogsWritten}</h3>
+          <h3 className="text-2xl font-bold text-slate-900 mb-1">—</h3>
           <p className="text-slate-600 font-medium">Blogs Written</p>
         </div>
 
@@ -129,7 +175,7 @@ function DashboardSection({ alumniData }: DashboardSectionProps) {
             </div>
             <span className="text-yellow-500 text-sm font-medium">+47</span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-1">{alumniData.stats.points}</h3>
+          <h3 className="text-2xl font-bold text-slate-900 mb-1">—</h3>
           <p className="text-slate-600 font-medium">Impact Points</p>
         </div>
       </div>

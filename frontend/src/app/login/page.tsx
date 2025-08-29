@@ -56,20 +56,23 @@ export default function LoginPage() {
             <p className="text-gray-600">Sign in to your account</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <a href="/api/auth/login" className="w-full">
+            {/* Sign In redirects to dashboard; middleware will gate to registration if needed */}
+            <a href="/api/auth/login?returnTo=/alumni/dashboard" className="w-full">
               <Button className="w-full" size="lg">
                 Sign In with Auth0
               </Button>
             </a>
-            
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
-                <Link href="/registration" className="text-blue-600 hover:underline">
-                  Sign up here
-                </Link>
-              </p>
-            </div>
+
+            {/* Direct Sign Up on Auth0 Hosted Page; set a short signup intent cookie */}
+            <form action="/api/auth/login" method="get" className="w-full" onSubmit={() => {
+              try { document.cookie = `signup_intent=1; path=/; max-age=900`; } catch {}
+            }}>
+              <input type="hidden" name="screen_hint" value="signup" />
+              <input type="hidden" name="returnTo" value="/registration" />
+              <Button className="w-full" size="lg" variant="outline" type="submit">
+                Create Account (Sign Up)
+              </Button>
+            </form>
             
             <div className="text-center">
               <Link href="/" className="text-sm text-gray-600 hover:underline">

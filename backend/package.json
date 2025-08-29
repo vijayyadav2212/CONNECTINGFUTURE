@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
+  "start": "node server.js",
+  "dev": "node server.js",
+  "prisma": "prisma",
+  "prisma:generate": "prisma generate",
+  "prisma:pull": "prisma db pull",
+  "prisma:push": "prisma db push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,11 +17,15 @@
   "description": "",
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.8.0",
+    "@prisma/client": "^5.17.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^4.19.2",
     "express-jwt": "^8.5.1",
     "jwks-rsa": "^3.2.0",
-    "mysql2": "^3.14.2"
+  "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "prisma": "^5.17.0"
   }
 }

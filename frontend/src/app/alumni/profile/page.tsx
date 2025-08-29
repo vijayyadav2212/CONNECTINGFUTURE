@@ -95,7 +95,7 @@ function ProfilePage() {
                       </span>
                     </div>
                   </div>
-                  <Button className="flex items-center gap-2">
+                  <Button onClick={() => window.location.href = '/registration?redirect=/alumni/profile'} className="flex items-center gap-2">
                     <Edit className="w-4 h-4" />
                     Edit Profile
                   </Button>

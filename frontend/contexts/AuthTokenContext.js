@@ -35,15 +35,30 @@ export function AuthTokenProvider({ children }) {
       // Fetch new token
       try {
         const response = await fetch('/api/auth/token');
-        if (response.ok) {
+        if (response.status === 204) {
+          // Not authenticated or no token available yet
+          setToken(null);
+          tokenManager.clearToken();
+        } else if (response.ok) {
           const data = await response.json();
-          tokenManager.setToken(data.accessToken, data.expiresIn);
-          setToken(data.accessToken);
+          if (data?.accessToken) {
+            tokenManager.setToken(data.accessToken, data.expiresIn);
+            setToken(data.accessToken);
+            // Trigger a background profile fetch to ensure user is saved in DB
+            try { fetch('/api/user/profile', { cache: 'no-store' }).catch(() => {}); } catch {}
+          } else {
+            setToken(null);
+            tokenManager.clearToken();
+          }
         } else {
-          console.error('Failed to fetch token');
+          // Non-OK and not 204: avoid throwing; just clear token
+          setToken(null);
+          tokenManager.clearToken();
         }
       } catch (error) {
-        console.error('Error fetching token:', error);
+        // Network issues: clear token silently
+        setToken(null);
+        tokenManager.clearToken();
       } finally {
         setTokenLoading(false);
       }
@@ -60,14 +75,20 @@ export function AuthTokenProvider({ children }) {
 
     try {
       const response = await fetch('/api/auth/token');
+      if (response.status === 204) {
+        setToken(null);
+        return null;
+      }
       if (response.ok) {
         const data = await response.json();
         tokenManager.setToken(data.accessToken, data.expiresIn);
         setToken(data.accessToken);
+        // Trigger background profile fetch to ensure DB save
+        try { fetch('/api/user/profile', { cache: 'no-store' }).catch(() => {}); } catch {}
         return data.accessToken;
       }
     } catch (error) {
-      console.error('Error refreshing token:', error);
+      // ignore
     } finally {
       setTokenLoading(false);
     }

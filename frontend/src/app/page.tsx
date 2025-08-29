@@ -41,7 +41,7 @@ export default function HomePage() {
                     </div>
                     <span className="text-gray-700 font-medium">Welcome, {user.name}</span>
                   </div>
-                  <Link href="/alumni/dashboard">
+                  <Link href="/post-login">
                     <Button className="bg-blue-600 hover:bg-blue-700">
                       Dashboard
                     </Button>

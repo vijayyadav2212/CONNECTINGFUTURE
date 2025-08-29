@@ -149,14 +149,17 @@ export default function DonationHistory() {
     }).format(numAmount);
   };
 
-  // Format date
+  // Format date (IST) with time
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    const d = new Date(dateString);
+    return d.toLocaleString('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata',
     });
   };
 

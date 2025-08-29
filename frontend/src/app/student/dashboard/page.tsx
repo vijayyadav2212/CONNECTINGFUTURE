@@ -2,6 +2,14 @@ export default function StudentDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-end mb-4">
+          <a
+            href="/api/auth/logout"
+            className="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          >
+            Logout
+          </a>
+        </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Student Dashboard</h1>
           
