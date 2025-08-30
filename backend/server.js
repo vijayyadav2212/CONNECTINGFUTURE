@@ -12,6 +12,7 @@ const fetch = (...args) => fetchFn(...args);
 // Modularized DB schema creators
 const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
+const { createRoadmapsSchema } = require('./database/roadmaps');
 
 require('dotenv').config({ path: __dirname + '/.env' });
 
@@ -201,9 +202,10 @@ async function initializeTables() {
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_email ON users(email)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
-  // Initialize modularized schemas for messages and donations
+  // Initialize modularized schemas 
   await createMessagesSchema(dbQuery);
   await createDonationsSchema(dbQuery);
+  await createRoadmapsSchema(dbQuery);
 
   console.log('Tables are ready');
   } catch (e) {
@@ -664,6 +666,110 @@ app.get('/api/donations/analytics/summary', (req, res) => {
       }})
       .catch(err => res.status(500).json({ error: err.message }));
   });
+});
+
+/**
+ * Roadmaps CRUD
+ */
+
+// Create a roadmap
+app.post('/api/roadmaps', async (req, res) => {
+  try {
+    const {
+      owner_email,
+      title,
+      description,
+      category,
+      level,
+      duration,
+      phases,
+      tags,
+      is_published = false
+    } = req.body || {};
+
+    if (!owner_email || !title || !description || !category || !level || !duration || !phases) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const { rows } = await dbQuery(`
+      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, !!is_published]);
+
+    return res.status(201).json(rows && rows[0]);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List roadmaps (optionally filter by owner)
+app.get('/api/roadmaps', async (req, res) => {
+  try {
+    const { owner_email, page = 1, limit = 20 } = req.query || {};
+    const p = Math.max(1, parseInt(page, 10));
+    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
+    const offset = (p - 1) * l;
+
+    if (owner_email) {
+      const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?', [owner_email, l, offset]);
+      return res.json({ roadmaps: rows, page: p, limit: l });
+    }
+
+    const { rows } = await dbQuery('SELECT * FROM roadmaps ORDER BY updated_at DESC LIMIT ? OFFSET ?', [l, offset]);
+    return res.json({ roadmaps: rows, page: p, limit: l });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Get one roadmap
+app.get('/api/roadmaps/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE id = ? LIMIT 1', [id]);
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    return res.json(rows[0]);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Update a roadmap
+app.put('/api/roadmaps/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const allowed = ['title','description','category','level','duration','phases','tags','is_published'];
+    const updates = [];
+    const values = [];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        updates.push(`${key} = ?`);
+        values.push(key === 'phases' ? parseInt(req.body[key], 10) : req.body[key]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+    // touch updated_at
+    updates.push('updated_at = NOW()');
+    values.push(id);
+    await dbQuery(`UPDATE roadmaps SET ${updates.join(', ')} WHERE id = ?`, values);
+    const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE id = ? LIMIT 1', [id]);
+    return res.json(rows && rows[0]);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete a roadmap
+app.delete('/api/roadmaps/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rowCount } = await dbQuery('DELETE FROM roadmaps WHERE id = ?', [id]);
+    if (!rowCount) return res.status(404).json({ error: 'Not found' });
+    return res.json({ message: 'Deleted' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 });
 
 const PORT = process.env.PORT || 4000;

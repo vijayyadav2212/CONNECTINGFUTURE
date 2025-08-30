@@ -1,7 +1,8 @@
 "use client";
 
 import { useUser, withPageAuthRequired } from "@auth0/nextjs-auth0/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +12,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Map, Target, BookOpen, Users, Plus, TrendingUp, Building, X, Sparkles, BarChart3 } from "lucide-react";
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation";
 
+type Roadmap = {
+  id: number;
+  owner_email: string;
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  duration: string;
+  phases: number;
+  tags?: string | null;
+  followers?: number;
+  is_published?: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
 function RoadmapPage() {
   const { user, error, isLoading } = useUser();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editing, setEditing] = useState<Roadmap | null>(null);
+  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -28,19 +51,105 @@ function RoadmapPage() {
     setShowCreateModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDelete = async (id: number) => {
+    const confirm = window.confirm("Delete this roadmap? This can't be undone.");
+    if (!confirm) return;
+    try {
+      setDeletingIds(prev => new Set(prev).add(id));
+      const res = await fetch(`${backendUrl}/api/roadmaps/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      setRoadmaps(prev => prev.filter(r => r.id !== id));
+    } catch {
+      // optionally surface a toast
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  // Fetch user's roadmaps
+  useEffect(() => {
+    if (!user?.email) return;
+    setLoadingList(true);
+    fetch(`${backendUrl}/api/roadmaps?owner_email=${encodeURIComponent(user.email)}`)
+      .then(r => r.json())
+      .then(data => {
+        setRoadmaps(Array.isArray(data.roadmaps) ? data.roadmaps : []);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingList(false));
+  }, [user?.email]);
+
+  const resetForm = () => setFormData({ title: "", description: "", category: "", level: "", duration: "", phases: "", tags: "" });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Creating roadmap:", formData);
-    setShowCreateModal(false);
+    try {
+      if (!user?.email) return;
+      const payload = {
+        owner_email: user.email,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        level: formData.level,
+        duration: formData.duration,
+        phases: Number(formData.phases),
+        tags: formData.tags
+      };
+      const res = await fetch(`${backendUrl}/api/roadmaps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Failed to create');
+      const created = await res.json();
+      setRoadmaps(prev => [created, ...prev]);
+      setShowCreateModal(false);
+      resetForm();
+    } catch {}
+  };
+
+  const openEdit = (rm: Roadmap) => {
+    setEditing(rm);
     setFormData({
-      title: "",
-      description: "",
-      category: "",
-      level: "",
-      duration: "",
-      phases: "",
-      tags: ""
+      title: rm.title || "",
+      description: rm.description || "",
+      category: rm.category || "",
+      level: rm.level || "",
+      duration: rm.duration || "",
+      phases: String(rm.phases ?? ""),
+      tags: rm.tags || ""
     });
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    try {
+      const res = await fetch(`${backendUrl}/api/roadmaps/${editing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          level: formData.level,
+          duration: formData.duration,
+          phases: Number(formData.phases),
+          tags: formData.tags
+        })
+      });
+      if (!res.ok) throw new Error('Failed to update');
+      const updated = await res.json();
+      setRoadmaps(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setShowEditModal(false);
+      setEditing(null);
+      resetForm();
+    } catch {}
   };
 
   if (isLoading) {
@@ -175,114 +284,81 @@ function RoadmapPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl font-semibold text-gray-900">My Career Roadmaps</CardTitle>
               <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                3 Active
+                {loadingList ? 'Loading...' : `${roadmaps.length} Active`}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="bg-gradient-to-br from-white to-blue-50/30 border border-blue-100 rounded-xl p-6 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-200">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center shadow-sm">
-                      <Map className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-700 bg-clip-text text-transparent">Full Stack Developer Roadmap</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">Frontend</Badge>
-                        <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 bg-purple-50">Backend</Badge>
-                        <Badge variant="outline" className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50">Database</Badge>
+            {loadingList && (
+              <p className="text-sm text-gray-500">Loading your roadmaps...</p>
+            )}
+            {!loadingList && roadmaps.length === 0 && (
+              <div className="border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-600">
+                You haven't created any roadmaps yet. Click "Create New Roadmap" to get started.
+              </div>
+            )}
+            {roadmaps.map((rm) => (
+              <div key={rm.id} className="bg-gradient-to-br from-white to-blue-50/30 border border-blue-100 rounded-xl p-6 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-200">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center shadow-sm">
+                        <Map className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-700 bg-clip-text text-transparent">{rm.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">{rm.category}</Badge>
+                          <Badge variant="outline" className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50">{rm.level}</Badge>
+                        </div>
                       </div>
                     </div>
+                    <p className="text-gray-600 mb-4 leading-relaxed">
+                      {rm.description}
+                    </p>
                   </div>
-                  <p className="text-gray-600 mb-4 leading-relaxed">
-                    A comprehensive guide to becoming a full-stack developer, covering both frontend and backend technologies with hands-on projects.
-                  </p>
-                </div>
-                <div className="text-right ml-6">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-600">89</p>
-                    <p className="text-xs text-blue-600 font-medium">followers</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">8</p>
-                  <p className="text-sm text-gray-600">Phases</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">6-12</p>
-                  <p className="text-sm text-gray-600">Months</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">Beginner</p>
-                  <p className="text-sm text-gray-600">Level</p>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="flex gap-3">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700">View Roadmap</Button>
-                  <Button variant="outline" size="sm">Edit</Button>
-                </div>
-                <p className="text-sm text-gray-500">Updated 2 weeks ago</p>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-white to-green-50/30 border border-green-100 rounded-xl p-6 hover:shadow-lg hover:shadow-green-100/50 transition-all duration-200">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-200 rounded-lg flex items-center justify-center shadow-sm">
-                      <Target className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold bg-gradient-to-r from-gray-900 via-green-700 to-emerald-600 bg-clip-text text-transparent">Data Science Career Path</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50">Python</Badge>
-                        <Badge variant="outline" className="text-xs border-emerald-200 text-emerald-700 bg-emerald-50">Machine Learning</Badge>
-                        <Badge variant="outline" className="text-xs border-teal-200 text-teal-700 bg-teal-50">Statistics</Badge>
-                      </div>
+                  <div className="text-right ml-6">
+                    <div className="bg-blue-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-blue-600">{rm.followers ?? 0}</p>
+                      <p className="text-xs text-blue-600 font-medium">followers</p>
                     </div>
                   </div>
-                  <p className="text-gray-600 mb-4 leading-relaxed">
-                    Step-by-step guide to transition into data science, including mathematics, programming, and machine learning fundamentals.
-                  </p>
                 </div>
-                <div className="text-right ml-6">
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-600">45</p>
-                    <p className="text-xs text-green-600 font-medium">followers</p>
+
+                <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-gray-900">{rm.phases}</p>
+                    <p className="text-sm text-gray-600">Phases</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-gray-900">{rm.duration}</p>
+                    <p className="text-sm text-gray-600">Duration</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-gray-900">{rm.level}</p>
+                    <p className="text-sm text-gray-600">Level</p>
                   </div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">10</p>
-                  <p className="text-sm text-gray-600">Phases</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">8-15</p>
-                  <p className="text-sm text-gray-600">Months</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">Intermediate</p>
-                  <p className="text-sm text-gray-600">Level</p>
-                </div>
-              </div>
 
-              <div className="flex justify-between items-center">
-                <div className="flex gap-3">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700">View Roadmap</Button>
-                  <Button variant="outline" size="sm">Edit</Button>
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-3">
+                    <Link href={`/alumni/roadmap/${rm.id}`}>
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700">View Roadmap</Button>
+                    </Link>
+                    <Button variant="outline" size="sm" onClick={() => openEdit(rm)}>Edit</Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(rm.id)}
+                      disabled={deletingIds.has(rm.id)}
+                    >
+                      {deletingIds.has(rm.id) ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">Updated {rm.updated_at ? new Date(rm.updated_at).toLocaleDateString() : 'recently'}</p>
                 </div>
-                <p className="text-sm text-gray-500">Updated 1 month ago</p>
               </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -524,6 +600,128 @@ function RoadmapPage() {
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
                   >
                     Create Roadmap
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Roadmap Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-gradient-to-br from-black/40 via-black/50 to-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-white via-white to-purple-50/30 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-purple-100/50">
+              <div className="p-6 border-b border-gradient-to-r from-purple-100 to-blue-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center shadow-sm">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-purple-800 bg-clip-text text-transparent">Edit Roadmap</h2>
+                      <p className="text-gray-600">Update your roadmap details</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setShowEditModal(false); setEditing(null); }}
+                    className="w-8 h-8 p-0 hover:bg-purple-100/50"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdate} className="p-6 space-y-6 bg-gradient-to-br from-white to-purple-50/20">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title-edit" className="text-sm font-semibold text-gray-800">Title *</Label>
+                    <Input
+                      id="title-edit"
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description-edit" className="text-sm font-semibold text-gray-800">Description *</Label>
+                    <Textarea
+                      id="description-edit"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="category-edit" className="text-sm font-semibold text-gray-800">Category *</Label>
+                      <Input
+                        id="category-edit"
+                        value={formData.category}
+                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="level-edit" className="text-sm font-semibold text-gray-800">Level *</Label>
+                      <Input
+                        id="level-edit"
+                        value={formData.level}
+                        onChange={(e) => setFormData({...formData, level: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="duration-edit" className="text-sm font-semibold text-gray-800">Duration *</Label>
+                      <Input
+                        id="duration-edit"
+                        value={formData.duration}
+                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phases-edit" className="text-sm font-semibold text-gray-800">Phases *</Label>
+                      <Input
+                        id="phases-edit"
+                        type="number"
+                        value={formData.phases}
+                        onChange={(e) => setFormData({...formData, phases: e.target.value})}
+                        min="1"
+                        max="20"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="tags-edit" className="text-sm font-semibold text-gray-800">Tags</Label>
+                    <Input
+                      id="tags-edit"
+                      value={formData.tags}
+                      onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-6 border-t border-gradient-to-r from-purple-100 to-blue-100">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setShowEditModal(false); setEditing(null); }}
+                    className="hover:bg-gray-50"
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg">
+                    Save Changes
                   </Button>
                 </div>
               </form>
