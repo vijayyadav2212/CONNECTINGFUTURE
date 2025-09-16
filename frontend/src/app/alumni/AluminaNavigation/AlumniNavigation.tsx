@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { GraduationCap, User, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell } from 'lucide-react';
+import { GraduationCap, User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell } from 'lucide-react';
 
 // Interfaces
 interface NavItem {
@@ -47,6 +47,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   const navigationItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <User className="w-5 h-5" />, route: "/alumni/dashboard" },
+    { id: "directory", label: "Directory", icon: <Users className="w-5 h-5" />, route: "/alumni/Directory" },
     { id: "mentorship", label: "Mentorship", icon: <User className="w-5 h-5" />, badge: "3", route: "/alumni/mentorship" },
     { id: "jobs", label: "Jobs & Internships", icon: <Building className="w-5 h-5" />, route: "/alumni/job-posting" },
     { id: "ama", label: "AMA Sessions", icon: <MessageSquare className="w-5 h-5" />, route: "/alumni/ama" },
