@@ -37,7 +37,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   // Sample alumni data
   const alumniData: AlumniData = {
-    name: "Vijay Yadav",
+    name: "Vinayak Gorivale",
     graduationYear: "2018",
     company: "Google",
     position: "Senior Software Engineer",
