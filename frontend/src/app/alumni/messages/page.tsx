@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { Search, Paperclip, Smile, Phone, Video, MoreHorizontal, User as UserIcon } from "lucide-react";
 
 // API root (ensure it includes '/api')
 function buildApiRoot() {
@@ -33,6 +34,17 @@ interface ThreadItem {
   unread: number;
 }
 
+interface ConnectionRecord {
+  id: number;
+  pair_key: string;
+  requester_email: string;
+  target_email: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'removed';
+  message?: string;
+  accepted_at?: string;
+  updated_at?: string;
+}
+
 const DEMO_CONTACTS = [
   "alex.wong@example.com",
   "nisha.patel@example.com",
@@ -45,6 +57,7 @@ export default function MessagesPage() {
   const currentUserEmail = (user?.email as string | undefined) || "";
 
   const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [selectedOther, setSelectedOther] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,6 +65,9 @@ export default function MessagesPage() {
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string>("");
+  const [connections, setConnections] = useState<ConnectionRecord[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(false);
+  const [connectionActionLoading, setConnectionActionLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const canSend = useMemo(() => input.trim().length > 0 && !!selectedOther, [input, selectedOther]);
@@ -90,6 +106,122 @@ export default function MessagesPage() {
     return () => clearInterval(timer);
   }, [currentUserEmail]);
 
+  // Load connections list
+  useEffect(() => {
+    if (!currentUserEmail) return;
+    let timer: any;
+    const loadConnections = async () => {
+      try {
+        setLoadingConnections(true);
+        const resp = await fetch(`${API_ROOT}/connections?user_email=${encodeURIComponent(currentUserEmail)}`);
+        if (!resp.ok) throw new Error('Failed to load connections');
+        const data = await resp.json();
+        setConnections(data.connections || []);
+      } catch (e:any) {
+        // swallow silently for now
+      } finally {
+        setLoadingConnections(false);
+      }
+    };
+    loadConnections();
+    timer = setInterval(loadConnections, 20000);
+    return () => clearInterval(timer);
+  }, [currentUserEmail]);
+
+  function buildPairKey(a:string,b:string) {
+    const [x,y] = [a.toLowerCase().trim(), b.toLowerCase().trim()].sort();
+    return `${x}|${y}`;
+  }
+
+  const currentConnection = useMemo(() => {
+    if (!currentUserEmail || !selectedOther) return undefined;
+    const pk = buildPairKey(currentUserEmail, selectedOther);
+    return connections.find(c => c.pair_key === pk);
+  }, [connections, currentUserEmail, selectedOther]);
+
+  const connectionStatus = currentConnection?.status; // undefined | pending | accepted | rejected | removed
+
+  async function sendConnectionRequest() {
+    if (!currentUserEmail || !selectedOther) return;
+    setConnectionActionLoading(true);
+    try {
+      const resp = await fetch(`${API_ROOT}/connections/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requester_email: currentUserEmail, target_email: selectedOther })
+      });
+      if (!resp.ok) throw new Error('Failed to request connection');
+      const data = await resp.json();
+      setConnections(prev => {
+        const others = prev.filter(p => p.pair_key !== data.connection.pair_key);
+        return [data.connection, ...others];
+      });
+    } catch (e:any) {
+      setError(e.message || 'Connection request failed');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  }
+
+  async function respondConnection(action:'accept'|'reject') {
+    if (!currentUserEmail || !selectedOther) return;
+    setConnectionActionLoading(true);
+    try {
+      const resp = await fetch(`${API_ROOT}/connections/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_email: currentUserEmail, other_email: selectedOther, action })
+      });
+      if (!resp.ok) throw new Error('Failed to update request');
+      const data = await resp.json();
+      setConnections(prev => prev.map(c => c.pair_key === data.connection.pair_key ? data.connection : c));
+    } catch (e:any) {
+      setError(e.message || 'Failed to update request');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  }
+
+  async function removeConnection() {
+    if (!currentUserEmail || !selectedOther) return;
+    setConnectionActionLoading(true);
+    try {
+      const resp = await fetch(`${API_ROOT}/connections/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_email: currentUserEmail, other_email: selectedOther })
+      });
+      if (!resp.ok) throw new Error('Failed to remove');
+      const data = await resp.json();
+      if (data.connection) {
+        setConnections(prev => prev.map(c => c.pair_key === data.connection.pair_key ? data.connection : c));
+      }
+    } catch (e:any) {
+      setError(e.message || 'Failed to remove connection');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  }
+
+  // Merge accepted connections as synthetic threads so "All" shows connected accounts
+  const mergedThreads = useMemo<ThreadItem[]>(() => {
+    const base = threads || [];
+    if (!currentUserEmail) return base;
+    const present = new Set(base.map(t => t.other.toLowerCase()));
+    const accepted = (connections || []).filter(c => c.status === 'accepted');
+    const synthetic: ThreadItem[] = accepted.map(c => {
+      const other = c.requester_email.toLowerCase() === currentUserEmail.toLowerCase() ? c.target_email : c.requester_email;
+      return {
+        thread_key: `conn|${other}`,
+        other,
+        last_message: 'Connected • say hi!',
+        last_at: (c.accepted_at || c.updated_at || new Date().toISOString()),
+        unread: 0,
+      } as ThreadItem;
+    }).filter(t => !present.has(t.other.toLowerCase()));
+    return [...base, ...synthetic].sort((a,b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime());
+  }, [threads, connections, currentUserEmail]);
+
   // Load messages for selected thread and poll every 5s
   useEffect(() => {
     if (!selectedOther) return;
@@ -123,6 +255,10 @@ export default function MessagesPage() {
 
   const sendMessage = async () => {
     if (!canSend || !selectedOther || !currentUserEmail) return;
+    if (connectionStatus !== 'accepted') {
+      setError('You must be connected to send messages');
+      return;
+    }
     const optimistic: Message = {
       id: Date.now(),
       sender_email: currentUserEmail,
@@ -134,7 +270,8 @@ export default function MessagesPage() {
     setMessages((prev) => [...prev, optimistic]);
     setInput("");
     try {
-      const resp = await fetch(`${API_ROOT}/messages`, {
+      const endpoint = `${API_ROOT}/messages/connected`;
+      const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sender_email: currentUserEmail, receiver_email: selectedOther, content: optimistic.content }),
@@ -150,154 +287,215 @@ export default function MessagesPage() {
 
   return (
     <AlumniNavigation>
-      <div className="p-8 bg-gradient-to-br from-slate-50/50 to-blue-50/50 min-h-screen">
-        <div className="space-y-8">
-          {/* Enhanced Header */}
-          <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-4xl">💬</span>
-                    <h1 className="text-4xl font-black">Messages</h1>
-                  </div>
-                  <p className="text-cyan-100 text-xl">Stay connected with your network</p>
-                </div>
-                <button
-                  onClick={() => setSelectedOther(null)}
-                  className="bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/30 transition-all duration-300 shadow-lg border border-white/20"
-                >
-                  New Message
-                </button>
-              </div>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <div className="p-6 max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+              💬 Messages
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Connect with your network and mentors to build meaningful conversations
+            </p>
           </div>
 
-          {/* Message Dashboard */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Threads list */}
-            <div className="lg:col-span-1 bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20">
-              {/* Tab Navigation */}
-              <div className="p-6 border-b border-slate-200/50">
-                <div className="flex space-x-1 bg-slate-100 rounded-2xl p-1">
-                  <button
-                    onClick={() => setActiveTab("all")}
-                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
-                      activeTab === "all" ? "bg-white text-blue-600 shadow-lg" : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("unread")}
-                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
-                      activeTab === "unread" ? "bg-white text-blue-600 shadow-lg" : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    Unread
-                  </button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[700px] min-h-0">
+            {/* Conversations List */}
+            <div className="lg:col-span-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden min-h-0 flex flex-col">
+              <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+                  Conversations
+                </h2>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-gray-900 placeholder-gray-500 transition-all duration-200"
+                  />
                 </div>
               </div>
-
-              {/* Threads */}
-              <div className="p-6 space-y-3 max-h-96 overflow-y-auto">
-                {loadingThreads && <p className="text-sm text-slate-500">Loading...</p>}
-                {threads
-                  .filter((t) => (activeTab === "unread" ? t.unread > 0 : true))
-                  .map((t) => (
-                    <button
-                      key={t.thread_key}
-                      onClick={() => setSelectedOther(t.other)}
-                      className={`w-full text-left p-4 rounded-2xl hover:bg-blue-50 transition-all duration-300 border ${
-                        selectedOther === t.other ? "border-blue-400 bg-blue-50" : "border-transparent"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="font-semibold text-slate-900 truncate">{t.other}</div>
-                        {t.unread > 0 && (
-                          <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">{t.unread}</span>
-                        )}
-                      </div>
-                      <div className="text-sm text-slate-600 truncate">{t.last_message}</div>
-                      <div className="text-xs text-slate-400 mt-1">{new Date(t.last_at).toLocaleString()}</div>
-                    </button>
-                  ))}
-                {!loadingThreads && threads.length === 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm text-slate-500">No conversations yet. Start one:</p>
-                    {DEMO_CONTACTS.map((email) => (
-                      <button
-                        key={email}
-                        onClick={() => setSelectedOther(email)}
-                        className={`w-full text-left p-3 rounded-xl border hover:bg-blue-50 ${
-                          selectedOther === email ? "border-blue-400 bg-blue-50" : "border-slate-200"
+              <div className="p-0">
+                <div className="max-h-[580px] overflow-y-auto min-h-0">
+                  {mergedThreads
+                    .filter((t) => (activeTab === 'unread' ? t.unread > 0 : true))
+                    .filter((t) => t.other.toLowerCase().includes(searchTerm.toLowerCase()) || t.last_message.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map((t) => (
+                      <div
+                        key={t.thread_key}
+                        onClick={() => setSelectedOther(t.other)}
+                        className={`p-5 border-b border-white/20 cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 hover:transform hover:scale-[1.02] ${
+                          selectedOther === t.other 
+                            ? 'bg-gradient-to-r from-blue-100/70 to-purple-100/70 border-blue-200 shadow-md' 
+                            : ''
                         }`}
                       >
-                        <span className="font-medium text-slate-800">{email}</span>
-                      </button>
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                              {t.other.split('@')[0].slice(0,2).toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-bold text-gray-900 truncate text-lg">{t.other}</h3>
+                              <span className="text-xs font-medium bg-gradient-to-r from-gray-500 to-gray-600 bg-clip-text text-transparent">
+                                {new Date(t.last_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <p className="text-sm text-gray-600 truncate flex-1 leading-relaxed">{t.last_message}</p>
+                              {t.unread > 0 && (
+                                <span className="ml-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full px-3 py-1 min-w-[24px] text-center font-semibold shadow-lg">
+                                  {t.unread}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Conversation */}
-            <div className="lg:col-span-2 bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 flex flex-col">
-              {/* Header */}
-              <div className="p-6 border-b border-slate-200/50 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-xl">{selectedOther ?? "Select a conversation"}</h3>
-                  {selectedOther && <p className="text-slate-600">Secure conversation (AES-256-GCM)</p>}
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-                {loadingMessages && <p className="text-sm text-slate-500">Loading...</p>}
-                {messages.map((m) => {
-                  const mine = m.sender_email.toLowerCase() === currentUserEmail.toLowerCase();
-                  return (
-                    <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[75%] p-3 rounded-2xl shadow ${
-                          mine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-900"
-                        }`}
-                      >
-                        <div className="text-sm whitespace-pre-wrap break-words">{m.content}</div>
-                        <div className={`text-[10px] mt-1 ${mine ? "text-blue-100" : "text-slate-500"}`}>
-                          {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          {mine && m.read_at && <span className="ml-2">✓✓</span>}
+            {/* Chat Area */}
+            <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 flex flex-col overflow-hidden min-h-0">
+              {selectedOther ? (
+                <div className="flex flex-col h-full min-h-0">
+                  {/* Chat Header */}
+                  <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                          {selectedOther.split('@')[0].slice(0,2).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-xl text-gray-900">{selectedOther}</h3>
+                          <p className="text-sm font-medium">
+                            <span className="inline-flex items-center gap-2 text-gray-500">
+                              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                              Offline
+                            </span>
+                          </p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-3">
+                        <button className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
+                          <Phone className="w-5 h-5" />
+                        </button>
+                        <button className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
+                          <Video className="w-5 h-5" />
+                        </button>
+                        <button className="p-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
+                    {/* Connection badges */}
+                    <div className="mt-3 flex items-center gap-3 text-sm">
+                      {loadingConnections && <span className="text-xs text-gray-500">Checking connection...</span>}
+                      {!loadingConnections && (
+                        <>
+                          {connectionStatus === 'accepted' && <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Connected</span>}
+                          {connectionStatus === 'pending' && currentConnection?.requester_email.toLowerCase() === currentUserEmail.toLowerCase() && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Request Pending</span>
+                          )}
+                          {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Incoming Request</span>
+                          )}
+                          {connectionStatus === 'rejected' && <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Rejected</span>}
+                          {connectionStatus === 'removed' && <span className="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700">Removed</span>}
+                        </>
+                      )}
+                      <div className="ml-auto flex items-center gap-2">
+                        {!connectionStatus && (
+                          <button onClick={sendConnectionRequest} disabled={connectionActionLoading} className="text-xs px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">{connectionActionLoading ? '...' : 'Connect'}</button>
+                        )}
+                        {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
+                          <>
+                            <button onClick={() => respondConnection('accept')} disabled={connectionActionLoading} className="text-xs px-3 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">Accept</button>
+                            <button onClick={() => respondConnection('reject')} disabled={connectionActionLoading} className="text-xs px-3 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">Reject</button>
+                          </>
+                        )}
+                        {connectionStatus === 'accepted' && (
+                          <button onClick={removeConnection} disabled={connectionActionLoading} className="text-xs px-3 py-2 rounded-xl bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-60">Remove</button>
+                        )}
+                        {(connectionStatus === 'rejected' || connectionStatus === 'removed') && (
+                          <button onClick={sendConnectionRequest} disabled={connectionActionLoading} className="text-xs px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">Re-connect</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Composer */}
-              <div className="p-4 border-t border-slate-200/50 flex items-center gap-3">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") sendMessage();
-                  }}
-                  placeholder={selectedOther ? "Type a message..." : "Select or start a conversation"}
-                  className="flex-1 px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={!selectedOther}
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={!canSend}
-                  className="px-6 py-3 rounded-2xl font-semibold text-white bg-blue-600 disabled:bg-blue-300 hover:bg-blue-700"
-                >
-                  Send
-                </button>
-              </div>
+                  {/* Messages */}
+                  <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-blue-50/30">
+                    {messages.map((m) => {
+                      const mine = m.sender_email.toLowerCase() === currentUserEmail.toLowerCase();
+                      return (
+                        <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[75%] ${mine ? 'order-last' : ''}`}>
+                            <div className={`p-4 rounded-2xl shadow-md ${mine ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-white text-gray-900 border border-gray-200'}`}>
+                              <p className="text-sm leading-relaxed">{m.content}</p>
+                            </div>
+                            <div className={`flex items-center gap-2 mt-2 text-xs font-medium ${mine ? 'justify-end text-blue-600' : 'justify-start text-gray-500'}`}>
+                              <span> {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {mine && m.read_at && <span>✓✓</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
 
-              {error && <div className="px-6 pb-4 text-sm text-red-600">{error}</div>}
+                  {/* Message Input */}
+                  <div className="border-t border-white/20 p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+                    <div className="flex items-center gap-4">
+                      <button className="p-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
+                        <Paperclip className="w-5 h-5" />
+                      </button>
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          placeholder={connectionStatus === 'accepted' ? 'Type your message...' : 'Connect to start messaging'}
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
+                          disabled={connectionStatus !== 'accepted'}
+                          className="w-full px-6 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-black placeholder-gray-500 pr-14 disabled:opacity-60"
+                        />
+                        <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                          <Smile className="w-5 h-5 text-gray-500" />
+                        </button>
+                      </div>
+                      <button 
+                        onClick={sendMessage} 
+                        disabled={!input.trim() || connectionStatus !== 'accepted'}
+                        className={`p-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg ${
+                          input.trim() && connectionStatus === 'accepted'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-xl hover:scale-110'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <UserIcon className="w-20 h-20 mx-auto mb-6 text-gray-300" />
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent mb-3">
+                      Select a conversation
+                    </h3>
+                    <p className="text-lg text-gray-600">Choose a conversation from the list to start messaging</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

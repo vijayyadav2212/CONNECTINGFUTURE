@@ -1,7 +1,8 @@
 "use client";
 
 import { useUser, withPageAuthRequired } from "@auth0/nextjs-auth0/client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,123 +38,10 @@ import {
   Eye
 } from "lucide-react";
 
-// Mock data for alumni - in real app, this would come from API
-const mockAlumni = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    profilePicture: "/placeholder-user.jpg",
-    graduationYear: 2018,
-    degree: "Bachelor of Science",
-    branch: "Computer Science",
-    currentPosition: "Senior Software Engineer",
-    company: "Google",
-    industry: "Technology",
-    location: "San Francisco, California",
-    country: "United States",
-    skills: ["React", "Python", "Machine Learning", "AI/ML", "Software Development"],
-    bio: "Passionate software engineer focused on building scalable web applications and exploring AI/ML technologies.",
-    email: "sarah.chen@gmail.com",
-    linkedin: "https://linkedin.com/in/sarahchen",
-    isConnected: false,
-    domain: "Engineering"
-  },
-  {
-    id: 2,
-    name: "Marcus Rodriguez",
-    profilePicture: "/placeholder-user.jpg",
-    graduationYear: 2020,
-    degree: "Master of Business Administration",
-    branch: "Business",
-    currentPosition: "Product Manager",
-    company: "Microsoft",
-    industry: "Technology",
-    location: "Seattle, Washington",
-    country: "United States",
-    skills: ["Product Management", "Data Analysis", "Agile", "Product Strategy"],
-    bio: "Product manager with a passion for building user-centric solutions and mentoring early-stage startups.",
-    email: "marcus.r@microsoft.com",
-    linkedin: "https://linkedin.com/in/marcusrodriguez",
-    isConnected: true,
-    domain: "Product Management"
-  },
-  {
-    id: 3,
-    name: "Dr. Priya Patel",
-    profilePicture: "/placeholder-user.jpg",
-    graduationYear: 2015,
-    degree: "Doctor of Medicine",
-    branch: "Medical School",
-    currentPosition: "Cardiologist",
-    company: "Mayo Clinic",
-    industry: "Healthcare",
-    location: "Rochester, Minnesota",
-    country: "United States",
-    skills: ["Cardiology", "Medical Research", "Patient Care", "Healthcare"],
-    bio: "Dedicated cardiologist committed to advancing heart health through innovative treatments and research.",
-    email: "priya.patel@mayo.edu",
-    linkedin: "https://linkedin.com/in/priyapatel",
-    isConnected: false,
-    domain: "Medicine"
-  },
-  {
-    id: 4,
-    name: "James Kim",
-    profilePicture: "/placeholder-user.jpg",
-    graduationYear: 2019,
-    degree: "Bachelor of Science",
-    branch: "Mechanical Engineering",
-    currentPosition: "Design Engineer",
-    company: "Tesla",
-    industry: "Automotive",
-    location: "Austin, Texas",
-    country: "United States",
-    skills: ["CAD Design", "Manufacturing", "Renewable Energy", "Automotive"],
-    bio: "Mechanical engineer passionate about sustainable transportation and clean energy solutions.",
-    email: "james.kim@tesla.com",
-    linkedin: "https://linkedin.com/in/jameskim",
-    isConnected: false,
-    domain: "Engineering"
-  },
-  {
-    id: 5,
-    name: "Emily Zhang",
-    profilePicture: "/placeholder-user.jpg",
-    graduationYear: 2021,
-    degree: "Bachelor of Arts",
-    branch: "Marketing",
-    currentPosition: "Digital Marketing Manager",
-    company: "Shopify",
-    industry: "E-commerce",
-    location: "Toronto, Ontario",
-    country: "Canada",
-    skills: ["Digital Marketing", "Social Media", "Analytics", "E-commerce"],
-    bio: "Creative digital marketer helping brands tell their stories and connect with audiences worldwide.",
-    email: "emily.zhang@shopify.com",
-    linkedin: "https://linkedin.com/in/emilyzhang",
-    isConnected: false,
-    domain: "Marketing"
-  },
-  {
-    id: 6,
-    name: "David Thompson",
-    profilePicture: "/placeholder-user.jpg",
-    graduationYear: 2017,
-    degree: "Master of Science",
-    branch: "Data Science",
-    currentPosition: "Data Scientist",
-    company: "Netflix",
-    industry: "Entertainment",
-    location: "Los Angeles, California",
-    country: "United States",
-    skills: ["Machine Learning", "Python", "SQL", "Data Science", "Analytics"],
-    bio: "Data scientist leveraging analytics to enhance user experiences and drive content discovery.",
-    email: "david.thompson@netflix.com",
-    linkedin: "https://linkedin.com/in/davidthompson",
-    isConnected: true,
-    domain: "Data Science"
-  }
-];
+interface ApiUser { id:number; auth0_id:string; email:string; name:string; picture?:string; bio?:string; user_type:string; graduation_year?:number; major?:string; current_job?:string; company?:string; job_title?:string; location?:string; skills?:string; is_mentor?:boolean }
+interface ConnectionRecord { id:number; pair_key:string; requester_email:string; target_email:string; status:'pending'|'accepted'|'rejected'|'removed'; }
+function apiRoot(){ const base = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'; return base.endsWith('/api')? base: base.replace(/\/$/,'')+'/api'; }
+function pairKey(a:string,b:string){ const [x,y]=[a.toLowerCase().trim(),b.toLowerCase().trim()].sort(); return `${x}|${y}`; }
 
 const industries = [
   "All Industries",
@@ -185,51 +73,54 @@ const departments = [
 
 function AlumniDirectoryPage() {
   const { user, error, isLoading } = useUser();
+  const { toast } = useToast();
+  const myEmail = (user?.email as string) || '';
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIndustry, setSelectedIndustry] = useState("All Industries");
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments");
   const [yearFrom, setYearFrom] = useState("2000");
   const [yearTo, setYearTo] = useState("2025");
-  const [filteredAlumni, setFilteredAlumni] = useState(mockAlumni);
+  const [alumni, setAlumni] = useState<ApiUser[]>([]);
+  const [connections, setConnections] = useState<ConnectionRecord[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedAlumni, setSelectedAlumni] = useState<any>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<any>({});
 
-  // Filter alumni based on search criteria
   useEffect(() => {
-    let filtered = mockAlumni.filter(alumni => {
-      const matchesSearch = searchTerm === "" || 
-        alumni.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alumni.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alumni.currentPosition.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alumni.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      const matchesIndustry = selectedIndustry === "All Industries" || alumni.industry === selectedIndustry;
-      const matchesDepartment = selectedDepartment === "All Departments" || alumni.branch === selectedDepartment;
-      const matchesYear = alumni.graduationYear >= parseInt(yearFrom) && alumni.graduationYear <= parseInt(yearTo);
-
-      // Advanced filters
-      const matchesSkills = !advancedFilters.skills?.length || 
-        advancedFilters.skills.some((skill: string) => 
-          alumni.skills.some(alumniSkill => alumniSkill.toLowerCase().includes(skill.toLowerCase()))
-        );
-
-      const matchesCompanies = !advancedFilters.companies?.length || 
-        advancedFilters.companies.includes(alumni.company);
-
-      const matchesLocations = !advancedFilters.locations?.length || 
-        advancedFilters.locations.some((location: string) => 
-          alumni.location.includes(location)
-        );
-
-      return matchesSearch && matchesIndustry && matchesDepartment && matchesYear && 
-             matchesSkills && matchesCompanies && matchesLocations;
+    loadAlumni();
+  }, []);
+  useEffect(()=>{ if(myEmail) loadConnections(); },[myEmail]);
+  const filteredAlumni = useMemo(()=> {
+    return alumni.filter(a => {
+      const skillsArr = (a.skills||'').split(',').map(s=>s.trim()).filter(Boolean);
+      const matchesSearch = !searchTerm || [a.name||'', a.company||'', a.current_job||'', ...(skillsArr)].some(v=> v.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesIndustry = selectedIndustry === 'All Industries' || (a.company||'').toLowerCase().includes(selectedIndustry.toLowerCase());
+      const matchesDepartment = selectedDepartment === 'All Departments' || (a.major||'') === selectedDepartment;
+      const yr = a.graduation_year || 0;
+      const matchesYear = yr >= parseInt(yearFrom) && yr <= parseInt(yearTo);
+      return matchesSearch && matchesIndustry && matchesDepartment && matchesYear;
     });
+  }, [alumni, searchTerm, selectedIndustry, selectedDepartment, yearFrom, yearTo]);
 
-    setFilteredAlumni(filtered);
-  }, [searchTerm, selectedIndustry, selectedDepartment, yearFrom, yearTo, advancedFilters]);
+  async function loadAlumni(){
+    try {
+      const resp = await fetch(`${apiRoot()}/users?type=alumni&limit=200`);
+      if(!resp.ok) throw new Error('Failed to load alumni');
+      const data = await resp.json();
+      setAlumni(data.users||[]);
+    } catch(e:any){ toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
+  }
+  async function loadConnections(){
+    try { const resp = await fetch(`${apiRoot()}/connections?user_email=${encodeURIComponent(myEmail)}`); if(resp.ok){ const data = await resp.json(); setConnections(data.connections||[]); } } catch {}
+  }
+  function getConnectionFor(a:ApiUser){ if(!myEmail) return undefined; const pk = pairKey(myEmail, a.email); return connections.find(c=> c.pair_key===pk); }
+  const connectionStatus = (a:ApiUser)=> getConnectionFor(a)?.status;
+  const isRequester = (a:ApiUser)=> { const c = getConnectionFor(a); return c && c.requester_email.toLowerCase()===myEmail.toLowerCase(); };
+  async function requestConnect(a:ApiUser){ if(!myEmail) return; try { const resp = await fetch(`${apiRoot()}/connections/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ requester_email: myEmail, target_email: a.email })}); if(!resp.ok) throw new Error('Request failed'); const data = await resp.json(); setConnections(prev=>[data.connection,...prev.filter(p=>p.pair_key!==data.connection.pair_key)]); toast({ title: 'Connection Requested', description: `Request sent to ${a.name||a.email}` }); } catch(e:any){ toast({ title:'Error', description: e.message, variant:'destructive'}); } }
+  async function respond(a:ApiUser, action:'accept'|'reject'){ try { const resp = await fetch(`${apiRoot()}/connections/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_email: myEmail, other_email: a.email, action })}); if(!resp.ok) throw new Error('Action failed'); const data= await resp.json(); setConnections(prev=> prev.map(c=> c.pair_key===data.connection.pair_key? data.connection: c)); toast({ title: action==='accept'?'Connected':'Request Declined', description: `${a.name||a.email}` }); } catch(e:any){ toast({ title:'Error', description: e.message, variant:'destructive'}); } }
+  async function removeConn(a:ApiUser){ try { const resp = await fetch(`${apiRoot()}/connections/remove`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_email: myEmail, other_email: a.email })}); if(!resp.ok) throw new Error('Failed'); const data= await resp.json(); if(data.connection){ setConnections(prev=> prev.map(c=> c.pair_key===data.connection.pair_key? data.connection: c)); } toast({ title:'Connection Removed', description: a.name||a.email }); } catch(e:any){ toast({ title:'Error', description: e.message, variant:'destructive'}); } }
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -238,28 +129,13 @@ function AlumniDirectoryPage() {
     setYearFrom("2000");
     setYearTo("2025");
     setAdvancedFilters({});
+    loadAlumni();
   };
 
-  const handleConnect = (alumniId: number) => {
-    // In real app, this would make an API call
-    setFilteredAlumni(prev => 
-      prev.map(alumni => 
-        alumni.id === alumniId 
-          ? { ...alumni, isConnected: !alumni.isConnected }
-          : alumni
-      )
-    );
-  };
-
-  const handleViewProfile = (alumni: any) => {
-    setSelectedAlumni(alumni);
-    setShowProfileDialog(true);
-  };
-
-  const handleSendMessage = (alumni: any) => {
-    setSelectedAlumni(alumni);
-    setShowMessageDialog(true);
-  };
+  const handleConnect = (id: number) => {
+    const a = alumni.find(x=>x.id===id); if(!a)return; const status = connectionStatus(a); if(!status) requestConnect(a); else if(status==='accepted') removeConn(a); };
+  const handleViewProfile = (a: ApiUser) => { setSelectedAlumni(a); setShowProfileDialog(true); };
+  const handleSendMessage = (a: ApiUser) => { setSelectedAlumni(a); setShowMessageDialog(true); };
 
   const handleMessageSend = (alumniId: number, message: string, subject?: string) => {
     // In real app, this would send the message via API
@@ -493,7 +369,12 @@ function AlumniDirectoryPage() {
 
         {/* Alumni Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-          {filteredAlumni.map((alumni) => (
+          {filteredAlumni.map((alumni:any) => {
+            const c = getConnectionFor(alumni);
+            const status = c?.status;
+            const isRequester = c && c.requester_email.toLowerCase()===myEmail.toLowerCase();
+            const connected = status==='accepted';
+            return (
             <Card key={alumni.id} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/95 backdrop-blur-lg hover:scale-[1.02] overflow-hidden h-full flex flex-col">
               <CardContent className="p-0 flex flex-col h-full">
                 {/* Card Header with Gradient - Fixed Height */}
@@ -505,17 +386,15 @@ function AlumniDirectoryPage() {
                       <Avatar className="w-16 h-16 border-4 border-white/30 shadow-xl flex-shrink-0">
                         <AvatarImage src={alumni.profilePicture} alt={alumni.name} />
                         <AvatarFallback className="bg-white/20 text-white text-lg font-bold backdrop-blur-sm">
-                          {alumni.name.split(' ').map(n => n[0]).join('')}
+                          {alumni.name.split(' ').map((n: string) => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-lg mb-1 truncate">{alumni.name}</h3>
                         <p className="text-white/95 font-semibold text-base line-clamp-1">{alumni.currentPosition}</p>
                         <p className="text-white/85 font-medium line-clamp-1">{alumni.company}</p>
-                        {alumni.isConnected && (
-                          <Badge className="mt-2 bg-green-500/20 text-green-100 border-green-300/30 shadow-sm text-xs">
-                            Connected
-                          </Badge>
+                        {connected && (
+                          <Badge className="mt-2 bg-green-500/20 text-green-100 border-green-300/30 shadow-sm text-xs">Connected</Badge>
                         )}
                       </div>
                     </div>
@@ -531,8 +410,8 @@ function AlumniDirectoryPage() {
                         <GraduationCap className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-sm truncate">Class of {alumni.graduationYear}</p>
-                        <p className="text-gray-600 text-xs truncate">{alumni.branch}</p>
+                        <p className="font-semibold text-gray-900 text-sm truncate">Class of {alumni.graduation_year || '—'}</p>
+                        <p className="text-gray-600 text-xs truncate">{alumni.major || '—'}</p>
                       </div>
                     </div>
                     
@@ -541,8 +420,8 @@ function AlumniDirectoryPage() {
                         <Building className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-sm truncate">{alumni.industry}</p>
-                        <p className="text-gray-600 text-xs">Industry</p>
+                        <p className="font-semibold text-gray-900 text-sm truncate">{alumni.company || alumni.current_job || '—'}</p>
+                        <p className="text-gray-600 text-xs">Company / Role</p>
                       </div>
                     </div>
                     
@@ -551,15 +430,15 @@ function AlumniDirectoryPage() {
                         <MapPin className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-sm truncate">{alumni.location.split(',')[0]}</p>
-                        <p className="text-gray-600 text-xs truncate">{alumni.country}</p>
+                        <p className="font-semibold text-gray-900 text-sm truncate">{(alumni.location||'').split(',')[0] || '—'}</p>
+                        <p className="text-gray-600 text-xs truncate">Location</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Bio - Fixed Height */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-xl p-3 border border-gray-100 mb-4 h-[72px] overflow-hidden">
-                    <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">{alumni.bio}</p>
+                    <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">{alumni.bio || 'No bio yet.'}</p>
                   </div>
 
                   {/* Skills - Fixed Height */}
@@ -569,14 +448,14 @@ function AlumniDirectoryPage() {
                       Skills & Expertise
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {alumni.skills.slice(0, 4).map((skill, index) => (
+                      {(alumni.skills||'').split(',').filter(Boolean).slice(0, 4).map((skill:string, index:number) => (
                         <Badge key={index} variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 hover:from-blue-200 hover:to-indigo-200 border-blue-200 shadow-sm">
                           {skill}
                         </Badge>
                       ))}
-                      {alumni.skills.length > 4 && (
+                      {(alumni.skills||'').split(',').filter(Boolean).length > 4 && (
                         <Badge variant="outline" className="text-xs text-gray-600 border-gray-300 hover:bg-gray-50">
-                          +{alumni.skills.length - 4}
+                          +{(alumni.skills||'').split(',').filter(Boolean).length - 4}
                         </Badge>
                       )}
                     </div>
@@ -585,27 +464,23 @@ function AlumniDirectoryPage() {
                   {/* Action Buttons - Fixed at Bottom */}
                   <div className="mt-auto space-y-3">
                     <div className="flex gap-3 pt-4 border-t border-gray-100">
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200"
-                        onClick={() => handleSendMessage(alumni)}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Message
+                      <Button size="sm" className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200" onClick={() => handleSendMessage(alumni)}>
+                        <MessageCircle className="w-4 h-4 mr-2" /> Message
                       </Button>
-
-                      <Button
-                        variant={alumni.isConnected ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => handleConnect(alumni.id)}
-                        className={alumni.isConnected 
-                          ? "text-green-700 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100 shadow-sm" 
-                          : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-200"
-                        }
-                      >
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        {alumni.isConnected ? "Connected" : "Connect"}
-                      </Button>
+                      {!myEmail || myEmail.toLowerCase()===alumni.email.toLowerCase()? null : (
+                        <>
+                          {!status && <Button variant="outline" size="sm" onClick={()=>requestConnect(alumni)} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-200"><UserPlus className="w-4 h-4 mr-2" />Connect</Button>}
+                          {status==='pending' && isRequester && <Badge className="bg-amber-100 text-amber-700">Pending</Badge>}
+                          {status==='pending' && !isRequester && (
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={()=>respond(alumni,'accept')} className="bg-green-600 hover:bg-green-700">Accept</Button>
+                              <Button size="sm" variant="destructive" onClick={()=>respond(alumni,'reject')}>Decline</Button>
+                            </div>
+                          )}
+                          {status==='accepted' && <Button size="sm" variant="secondary" onClick={()=>removeConn(alumni)} className="bg-green-50 text-green-700 hover:bg-green-100">Connected</Button>}
+                          {(status==='rejected' || status==='removed') && <Button size="sm" variant="outline" onClick={()=>requestConnect(alumni)}>Re-connect</Button>}
+                        </>
+                      )}
                     </div>
 
                     {/* Contact Links */}
@@ -632,7 +507,7 @@ function AlumniDirectoryPage() {
                         variant="ghost" 
                         size="sm" 
                         className="text-gray-600 hover:text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition-all duration-200 rounded-lg"
-                        onClick={() => window.open(alumni.linkedin, '_blank')}
+                        onClick={() => alumni.linkedin && window.open(alumni.linkedin, '_blank')}
                       >
                         <Linkedin className="w-4 h-4 mr-1" />
                         <span className="text-xs font-medium">LinkedIn</span>
@@ -642,11 +517,12 @@ function AlumniDirectoryPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         {/* No Results */}
-        {filteredAlumni.length === 0 && (
+          {filteredAlumni.length === 0 && (
           <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-lg">
             <CardContent className="text-center py-20">
               <div className="relative mb-8">
@@ -687,7 +563,7 @@ function AlumniDirectoryPage() {
           open={showProfileDialog}
           onOpenChange={setShowProfileDialog}
           onConnect={handleConnect}
-          onMessage={handleSendMessage}
+          onMessage={(id:number)=>{ const a = alumni.find(u=>u.id===id); if(a) handleSendMessage(a); }}
         />
 
         {/* Message Dialog */}

@@ -13,6 +13,7 @@ const fetch = (...args) => fetchFn(...args);
 const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
+const { createConnectionsSchema } = require('./database/connections');
 
 require('dotenv').config({ path: __dirname + '/.env' });
 
@@ -206,6 +207,7 @@ async function initializeTables() {
   await createMessagesSchema(dbQuery);
   await createDonationsSchema(dbQuery);
   await createRoadmapsSchema(dbQuery);
+  await createConnectionsSchema(dbQuery);
 
   console.log('Tables are ready');
   } catch (e) {
@@ -937,5 +939,192 @@ app.get('/api/messages/threads', async (req, res) => {
     return res.json({ threads: Array.from(map.values()) });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Connection Requests
+ */
+
+function buildPairKey(a, b) {
+  const [x, y] = [String(a).toLowerCase().trim(), String(b).toLowerCase().trim()].sort();
+  return `${x}|${y}`;
+}
+
+// Send connection request
+app.post('/api/connections/request', async (req, res) => {
+  const { requester_email, target_email, message } = req.body || {};
+  if (!requester_email || !target_email) {
+    return res.status(400).json({ error: 'requester_email and target_email required' });
+  }
+  if (requester_email.toLowerCase() === target_email.toLowerCase()) {
+    return res.status(400).json({ error: 'Cannot connect to self' });
+  }
+  try {
+    const pair_key = buildPairKey(requester_email, target_email);
+    // Upsert logic: if existing rejected or removed, recreate; if pending/accepted, return existing state
+    const existing = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
+    if (existing.rows && existing.rows.length) {
+      const row = existing.rows[0];
+      if (row.status === 'pending') {
+        return res.json({ connection: row });
+      }
+      if (row.status === 'accepted') {
+        return res.status(409).json({ error: 'Already connected', connection: row });
+      }
+      if (row.status === 'rejected' || row.status === 'removed') {
+        // recreate a fresh pending record
+        const { rows } = await dbQuery(`
+          UPDATE connections SET requester_email = ?, target_email = ?, status = 'pending', message = ?, accepted_at = NULL, updated_at = NOW()
+          WHERE id = ? RETURNING *
+        `, [requester_email, target_email, message || null, row.id]);
+        return res.status(201).json({ connection: rows[0] });
+      }
+    }
+    const { rows } = await dbQuery(`
+      INSERT INTO connections (pair_key, requester_email, target_email, status, message)
+      VALUES (?, ?, ?, 'pending', ?)
+      RETURNING *
+    `, [pair_key, requester_email, target_email, message || null]);
+    return res.status(201).json({ connection: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Accept / Reject connection
+app.post('/api/connections/respond', async (req, res) => {
+  const { user_email, other_email, action } = req.body || {};
+  if (!user_email || !other_email || !['accept','reject'].includes(action)) {
+    return res.status(400).json({ error: 'user_email, other_email and action (accept|reject) required' });
+  }
+  try {
+    const pair_key = buildPairKey(user_email, other_email);
+    const { rows } = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'No request found' });
+    const conn = rows[0];
+    // Only target can accept/reject a pending request
+    if (conn.status !== 'pending') return res.status(400).json({ error: 'Request not pending' });
+    if (conn.requester_email.toLowerCase() === user_email.toLowerCase()) {
+      return res.status(403).json({ error: 'Requester cannot respond, only target' });
+    }
+    const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+    const { rows: updated } = await dbQuery(`
+      UPDATE connections SET status = ?, accepted_at = CASE WHEN ? = 'accepted' THEN NOW() ELSE NULL END, updated_at = NOW()
+      WHERE id = ? RETURNING *
+    `, [newStatus, newStatus, conn.id]);
+    return res.json({ connection: updated[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List connections for a user (all states or filter)
+app.get('/api/connections', async (req, res) => {
+  const { user_email, status } = req.query || {};
+  if (!user_email) return res.status(400).json({ error: 'user_email required' });
+  try {
+    let sql = 'SELECT * FROM connections WHERE requester_email = ? OR target_email = ?';
+    const params = [user_email, user_email];
+    if (status) {
+      sql += ' AND status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY updated_at DESC LIMIT 200';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ connections: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Remove connection (either side can remove accepted connection or clear pending)
+app.post('/api/connections/remove', async (req, res) => {
+  const { user_email, other_email } = req.body || {};
+  if (!user_email || !other_email) return res.status(400).json({ error: 'user_email and other_email required' });
+  try {
+    const pair_key = buildPairKey(user_email, other_email);
+    const { rows } = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
+    const conn = rows[0];
+    if (!['pending','accepted','rejected'].includes(conn.status)) {
+      return res.status(400).json({ error: 'Cannot remove in current state' });
+    }
+    const { rows: updated } = await dbQuery(`
+      UPDATE connections SET status = 'removed', updated_at = NOW() WHERE id = ? RETURNING *
+    `, [conn.id]);
+    return res.json({ connection: updated[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Helper: ensure connection exists and accepted between two emails
+async function areConnected(emailA, emailB) {
+  const pair_key = buildPairKey(emailA, emailB);
+  const { rows } = await dbQuery('SELECT status FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
+  if (!rows || !rows.length) return false;
+  return rows[0].status === 'accepted';
+}
+
+// Protected messaging endpoint variant enforcing accepted connection (optional usage by frontend)
+app.post('/api/messages/connected', async (req, res) => {
+  const { sender_email, receiver_email, content } = req.body || {};
+  if (!sender_email || !receiver_email || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'sender_email, receiver_email and content required' });
+  }
+  try {
+    const ok = await areConnected(sender_email, receiver_email);
+    if (!ok) return res.status(403).json({ error: 'Not connected' });
+    const thread_key = buildThreadKey(sender_email, receiver_email);
+    const { iv, tag, encrypted } = encryptText(content);
+    const { rows } = await dbQuery(`
+      INSERT INTO messages (thread_key, sender_email, receiver_email, iv, auth_tag, ciphertext)
+      VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+    `, [thread_key, sender_email, receiver_email, iv, tag, encrypted]);
+    return res.status(201).json({ id: rows[0].id, created_at: rows[0].created_at, thread_key });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List users (students or alumni) with optional search & pagination
+app.get('/api/users', async (req, res) => {
+  try {
+    const { type, q, page = 1, limit = 20 } = req.query || {};
+    const p = Math.max(1, parseInt(page, 10));
+    const l = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const offset = (p - 1) * l;
+    const where = [];
+    const params = [];
+    if (type && ['student','alumni','admin'].includes(String(type))) {
+      where.push('user_type = ?');
+      params.push(type);
+    }
+    if (q) {
+      where.push('(LOWER(name) LIKE ? OR LOWER(email) LIKE ?)');
+      const like = `%${String(q).toLowerCase()}%`;
+      params.push(like, like);
+    }
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const { rows: list } = await dbQuery(`SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor FROM users ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
+    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM users ${whereSql}`, params);
+    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
+    return res.json({ users: list, page: p, limit: l, total, totalPages: Math.ceil(total / l) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Fetch user by email (public profile view)
+app.get('/api/users/by-email', async (req, res) => {
+  try {
+    const { email } = req.query || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const { rows } = await dbQuery('SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
+    return res.json({ user: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 });

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import StudentNavigation from '../StudentNavigation';
-import { User, BookOpen, Users, Trophy, Calendar, MessageSquare, Target, TrendingUp, Award, Clock, CheckCircle, AlertCircle, Briefcase, GraduationCap } from 'lucide-react';
+import { User, BookOpen, Users, Trophy, Calendar, MessageSquare, Target, TrendingUp, Award, Clock, CheckCircle, AlertCircle, Briefcase, GraduationCap, UserPlus, Check, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Interfaces
 interface StudentProfile {
@@ -34,9 +36,14 @@ interface QuickStats {
 
 export default function StudentDashboard() {
   const router = useRouter();
+  const { user: authUser } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [connections, setConnections] = useState<Array<{ id:number; pair_key:string; requester_email:string; target_email:string; status:'pending'|'accepted'|'rejected'|'removed' }>>([]);
+  const [connLoading, setConnLoading] = useState(false);
+  const API_BASE = useMemo(() => ((process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api'), []);
+  const myEmail = (authUser?.email as string) || 'student@example.com';
 
   // Mock data - replace with API calls
   const mockProfile: StudentProfile = {
@@ -83,6 +90,39 @@ export default function StudentDashboard() {
     
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    if (!myEmail) return;
+    let mounted = true;
+    const loadConns = async () => {
+      try {
+        setConnLoading(true);
+        const resp = await fetch(`${API_BASE}/connections?user_email=${encodeURIComponent(myEmail)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (mounted) setConnections(data.connections || []);
+        }
+      } finally { setConnLoading(false); }
+    };
+    loadConns();
+    const id = setInterval(loadConns, 15000);
+    return () => { mounted = false; clearInterval(id); };
+  }, [API_BASE, myEmail]);
+
+  const pendingReceived = useMemo(() => connections.filter(c => c.status==='pending' && c.target_email?.toLowerCase()===myEmail.toLowerCase()), [connections, myEmail]);
+  const pendingSent = useMemo(() => connections.filter(c => c.status==='pending' && c.requester_email?.toLowerCase()===myEmail.toLowerCase()), [connections, myEmail]);
+  const acceptedCount = useMemo(() => connections.filter(c => c.status==='accepted').length, [connections]);
+
+  async function respondTo(otherEmail:string, action:'accept'|'reject'){
+    try {
+      setConnLoading(true);
+      const resp = await fetch(`${API_BASE}/connections/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_email: myEmail, other_email: otherEmail, action }) });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConnections(prev => prev.map(c => c.pair_key===data.connection.pair_key ? data.connection : c));
+      }
+    } finally { setConnLoading(false); }
+  }
 
   if (loading) {
     return (
@@ -200,7 +240,7 @@ export default function StudentDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Network Size</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{quickStats.networkingConnections}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{acceptedCount}</p>
                 <p className="text-orange-600 text-sm mt-1">Connections</p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
@@ -298,6 +338,47 @@ export default function StudentDashboard() {
 
           {/* Recent Activity & Notifications */}
           <div className="space-y-6">
+            {/* Connection Requests */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><UserPlus className="w-5 h-5" /> Connection Requests</h2>
+                <div className="text-sm text-gray-600">Pending: <span className="font-semibold">{pendingReceived.length + pendingSent.length}</span></div>
+              </div>
+              <div className="space-y-4">
+                {pendingReceived.length===0 && pendingSent.length===0 && (
+                  <p className="text-sm text-gray-600">No pending connection requests.</p>
+                )}
+                {pendingReceived.length>0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800 mb-2">Received</h3>
+                    <ul className="space-y-2">
+                      {pendingReceived.map(req => (
+                        <li key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="text-sm text-gray-800">{req.requester_email}</div>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={()=>respondTo(req.requester_email,'accept')} disabled={connLoading}>Accept</Button>
+                            <Button size="sm" variant="destructive" onClick={()=>respondTo(req.requester_email,'reject')} disabled={connLoading}>Decline</Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {pendingSent.length>0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800 mb-2">Sent</h3>
+                    <ul className="space-y-2">
+                      {pendingSent.map(req => (
+                        <li key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="text-sm text-gray-800">To: {req.target_email}</div>
+                          <div className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Pending</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
             {/* Recent Activity */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>

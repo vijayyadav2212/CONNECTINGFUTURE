@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import StudentNavigation from '../StudentNavigation';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import { Search, Send, Paperclip, Smile, Phone, Video, MoreHorizontal, User, Clock, Check, CheckCheck } from 'lucide-react';
 
 interface Message {
@@ -23,13 +24,90 @@ interface Conversation {
   role: 'alumni' | 'student' | 'mentor';
 }
 
+interface ThreadItem { thread_key:string; other:string; last_message:string; last_at:string; unread:number }
+
+interface ConnectionRecord {
+  id: number;
+  pair_key: string;
+  requester_email: string;
+  target_email: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'removed';
+}
+
 const MessagesPage = () => {
+  const { user } = useUser();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedOtherEmail, setSelectedOtherEmail] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [connections, setConnections] = useState<ConnectionRecord[]>([]);
+  const [connLoading, setConnLoading] = useState(false);
+  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
+  const currentUserEmail = (user?.email as string | undefined) || '';
+
+  function buildPairKey(a:string,b:string) {
+    const [x,y] = [a.toLowerCase().trim(), b.toLowerCase().trim()].sort();
+    return `${x}|${y}`;
+  }
+  const currentConnection = useMemo(() => {
+    if (!currentUserEmail || !selectedOtherEmail) return undefined;
+    const pk = buildPairKey(currentUserEmail, selectedOtherEmail);
+    return connections.find(c => c.pair_key === pk);
+  }, [connections, currentUserEmail, selectedOtherEmail]);
+  const connectionStatus = currentConnection?.status;
+
+  useEffect(() => {
+    if (!currentUserEmail) return; // placeholder always true
+    (async () => {
+      try {
+        setConnLoading(true);
+        const resp = await fetch(`${API_BASE}/connections?user_email=${encodeURIComponent(currentUserEmail)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+            setConnections(data.connections || []);
+        }
+      } finally { setConnLoading(false); }
+    })();
+  }, [currentUserEmail]);
+
+  async function sendConnectionRequest() {
+    if (!currentUserEmail || !selectedOtherEmail) return;
+    setConnLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE}/connections/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ requester_email: currentUserEmail, target_email: selectedOtherEmail }) });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConnections(prev => [data.connection, ...prev.filter(c => c.pair_key !== data.connection.pair_key)]);
+      }
+    } finally { setConnLoading(false); }
+  }
+  async function respond(action:'accept'|'reject') {
+    if (!currentUserEmail || !selectedOtherEmail) return;
+    setConnLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE}/connections/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_email: currentUserEmail, other_email: selectedOtherEmail, action }) });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConnections(prev => prev.map(c => c.pair_key === data.connection.pair_key ? data.connection : c));
+      }
+    } finally { setConnLoading(false); }
+  }
+  async function removeConnection() {
+    if (!currentUserEmail || !selectedOtherEmail) return;
+    setConnLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE}/connections/remove`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_email: currentUserEmail, other_email: selectedOtherEmail }) });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.connection) {
+          setConnections(prev => prev.map(c => c.pair_key === data.connection.pair_key ? data.connection : c));
+        }
+      }
+    } finally { setConnLoading(false); }
+  }
 
   // Mock data - replace with actual API calls
   const mockConversations: Conversation[] = [
@@ -111,46 +189,109 @@ const MessagesPage = () => {
     ]
   };
 
+  // Load threads and merge with accepted connections as conversations
   useEffect(() => {
-    setTimeout(() => {
-      setConversations(mockConversations);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    let timer: any;
+    const load = async () => {
+      try {
+        if (!currentUserEmail) return;
+        const resp = await fetch(`${API_BASE}/messages/threads?user=${encodeURIComponent(currentUserEmail)}`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to load threads');
+        if (!isJson) throw new Error('Unexpected non-JSON response while loading threads');
+        const threads: ThreadItem[] = data.threads || [];
+        const mappedFromThreads: Conversation[] = threads.map(t => ({
+          id: t.thread_key,
+          name: t.other,
+          lastMessage: t.last_message,
+          lastMessageTime: new Date(t.last_at),
+          unreadCount: t.unread,
+          isOnline: false,
+          role: 'alumni'
+        }));
+        // Merge in accepted connections as conversations if not in threads
+        const accepted = connections.filter(c => c.status === 'accepted');
+        const present = new Set(mappedFromThreads.map(m => m.name.toLowerCase()));
+        const fromConnections: Conversation[] = accepted.map(c => {
+          const other = c.requester_email.toLowerCase() === currentUserEmail.toLowerCase() ? c.target_email : c.requester_email;
+          return {
+            id: `conn|${other}`,
+            name: other,
+            lastMessage: 'Connected • say hi!',
+            lastMessageTime: new Date(),
+            unreadCount: 0,
+            isOnline: false,
+            role: 'alumni'
+          } as Conversation;
+        }).filter(conv => !present.has(conv.name.toLowerCase()));
+        const merged = [...mappedFromThreads, ...fromConnections]
+          .sort((a,b) => (b.lastMessageTime?.getTime?.() || 0) - (a.lastMessageTime?.getTime?.() || 0));
+        setConversations(merged);
+        setLoading(false);
+      } catch {
+        // keep loading state minimal UI
+        setLoading(false);
+      }
+    };
+    load();
+    timer = setInterval(load, 10000);
+    return () => clearInterval(timer);
+  }, [API_BASE, currentUserEmail, connections]);
 
+  // Load messages for selected conversation from backend
   useEffect(() => {
-    if (selectedConversation && mockMessages[selectedConversation]) {
-      setMessages(mockMessages[selectedConversation]);
-    } else {
-      setMessages([]);
-    }
-  }, [selectedConversation]);
+    if (!selectedOtherEmail || !currentUserEmail) { setMessages([]); return; }
+    let timer: any;
+    const load = async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/messages?user=${encodeURIComponent(currentUserEmail)}&with=${encodeURIComponent(selectedOtherEmail)}&markRead=1`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to load messages');
+        if (!isJson) throw new Error('Unexpected non-JSON response while loading messages');
+        const msgs = (data.messages || []) as Array<{ id:number; sender_email:string; receiver_email:string; content:string; created_at:string; read_at:string|null }>;
+        const mapped: Message[] = msgs.map(m => ({
+          id: String(m.id),
+          text: m.content,
+          timestamp: new Date(m.created_at),
+          isFromMe: m.sender_email?.toLowerCase() === currentUserEmail.toLowerCase(),
+          status: m.read_at ? 'read' : 'delivered'
+        }));
+        setMessages(mapped);
+      } catch {
+        // ignore for now
+      }
+    };
+    load();
+    timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, [API_BASE, currentUserEmail, selectedOtherEmail]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const sendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) return;
-
-    const message: Message = {
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation || !selectedOtherEmail || !currentUserEmail) return;
+    if (connectionStatus !== 'accepted') return; // gate until connected
+    const optimistic: Message = {
       id: Date.now().toString(),
       text: newMessage.trim(),
       timestamp: new Date(),
       isFromMe: true,
       status: 'sent'
     };
-
-    setMessages([...messages, message]);
+    setMessages(prev => [...prev, optimistic]);
     setNewMessage('');
-
-    // Update conversation last message
-    setConversations(conversations.map(conv =>
-      conv.id === selectedConversation
-        ? { ...conv, lastMessage: message.text, lastMessageTime: message.timestamp }
-        : conv
-    ));
+    setConversations(prev => prev.map(conv => conv.id===selectedConversation ? { ...conv, lastMessage: optimistic.text, lastMessageTime: optimistic.timestamp } : conv));
+    try {
+      const resp = await fetch(`${API_BASE}/messages/connected`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sender_email: currentUserEmail, receiver_email: selectedOtherEmail, content: optimistic.text }) });
+      if (!resp.ok) {
+        // Optionally revert or mark error
+      }
+    } catch {}
   };
 
   const formatTime = (date: Date) => {
@@ -202,9 +343,9 @@ const MessagesPage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[700px]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[700px] min-h-0">
             {/* Conversations List */}
-            <div className="lg:col-span-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+            <div className="lg:col-span-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden min-h-0 flex flex-col">
               <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
                 <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
                   Conversations
@@ -221,18 +362,18 @@ const MessagesPage = () => {
                 </div>
               </div>
               <div className="p-0">
-                <div className="max-h-[580px] overflow-y-auto">
+                <div className="max-h-[580px] overflow-y-auto min-h-0">
                   {filteredConversations.map(conv => (
                     <div
                       key={conv.id}
-                      onClick={() => setSelectedConversation(conv.id)}
+                      onClick={() => { setSelectedConversation(conv.id); setSelectedOtherEmail(conv.name); }}
                       className={`p-5 border-b border-white/20 cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 hover:transform hover:scale-[1.02] ${
                         selectedConversation === conv.id 
                           ? 'bg-gradient-to-r from-blue-100/70 to-purple-100/70 border-blue-200 shadow-md' 
                           : ''
                       }`}
                     >
-                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4">
                         <div className="relative">
                           <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
                             {conv.name.split(' ').map(n => n[0]).join('')}
@@ -256,7 +397,30 @@ const MessagesPage = () => {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
+                            {selectedOtherEmail && (
+                              <div className="flex items-center gap-2">
+                                {!connectionStatus && (
+                                  <button onClick={sendConnectionRequest} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">Connect</button>
+                                )}
+                                {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
+                                  <>
+                                    <button onClick={() => respond('accept')} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">Accept</button>
+                                    <button onClick={() => respond('reject')} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                  </>
+                                )}
+                                {connectionStatus === 'pending' && currentConnection?.requester_email.toLowerCase() === currentUserEmail.toLowerCase() && (
+                                  <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700">Pending</span>
+                                )}
+                                {connectionStatus === 'accepted' && (
+                                  <button onClick={removeConnection} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50">Remove</button>
+                                )}
+                                {['rejected','removed'].includes(connectionStatus || '') && (
+                                  <button onClick={sendConnectionRequest} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">Re-connect</button>
+                                )}
+                                {connectionStatus === 'accepted' && <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Connected</span>}
+                              </div>
+                            )}
                             <span className={`text-xs px-3 py-1 rounded-full font-semibold shadow-sm ${
                               conv.role === 'alumni' 
                                 ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700'
@@ -279,9 +443,9 @@ const MessagesPage = () => {
                   </div>
                 </div>
               </div>            {/* Chat Area */}
-            <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 flex flex-col overflow-hidden">
+            <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 flex flex-col overflow-hidden min-h-0">
               {selectedConversation ? (
-                  <div>
+                  <div className="flex flex-col h-full min-h-0">
                   {/* Chat Header */}
                   <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
                     <div className="flex items-center justify-between">
@@ -291,7 +455,7 @@ const MessagesPage = () => {
                         </div>
                         <div>
                           <h3 className="font-bold text-xl text-gray-900">
-                            {conversations.find(c => c.id === selectedConversation)?.name}
+                            {selectedOtherEmail || conversations.find(c => c.id === selectedConversation)?.name}
                           </h3>
                           <p className="text-sm font-medium">
                             <span className={`inline-flex items-center gap-2 ${
@@ -324,7 +488,7 @@ const MessagesPage = () => {
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-blue-50/30">
+                  <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-blue-50/30">
                     {messages.map(message => (
                       <div
                         key={message.id}
@@ -370,8 +534,8 @@ const MessagesPage = () => {
                           placeholder="Type your message..."
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                          className="w-full px-6 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500 pr-14"
+                          onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
+                          className="w-full px-6 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-black placeholder-gray-500 pr-14"
                         />
                         <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200">
                           <Smile className="w-5 h-5 text-gray-500" />
@@ -379,9 +543,9 @@ const MessagesPage = () => {
                       </div>
                       <button 
                         onClick={sendMessage} 
-                        disabled={!newMessage.trim()}
+                        disabled={!newMessage.trim() || connectionStatus !== 'accepted'}
                         className={`p-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg ${
-                          newMessage.trim()
+                          newMessage.trim() && connectionStatus === 'accepted'
                             ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-xl hover:scale-110'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}

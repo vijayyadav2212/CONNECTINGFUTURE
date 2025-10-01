@@ -47,7 +47,8 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   const navigationItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <User className="w-5 h-5" />, route: "/alumni/dashboard" },
-    { id: "directory", label: "Directory", icon: <Users className="w-5 h-5" />, route: "/alumni/Directory" },
+    { id: "directory", label: "Directory", icon: <Users className="w-5 h-5" />, route: "/alumni/directory" },
+    { id: "network", label: "Network", icon: <Users className="w-5 h-5" />, route: "/alumni/network" },
     { id: "mentorship", label: "Mentorship", icon: <User className="w-5 h-5" />, badge: "3", route: "/alumni/mentorship" },
     { id: "jobs", label: "Jobs & Internships", icon: <Building className="w-5 h-5" />, route: "/alumni/job-posting" },
     { id: "ama", label: "AMA Sessions", icon: <MessageSquare className="w-5 h-5" />, route: "/alumni/ama" },
