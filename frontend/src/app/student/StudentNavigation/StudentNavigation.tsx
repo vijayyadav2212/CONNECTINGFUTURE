@@ -42,10 +42,10 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
 
   // Sample student data
   const studentData: StudentData = {
-    name: "Vinayak Gorivale",
+    name: "Student Name",
     year: "3rd Year",
-    department: "Information Technology",
-    rollNumber: "VU4F2223050",
+    department: "Computer Science",
+    rollNumber: "2022CS001",
     avatar: null,
     verified: true
   };
@@ -142,7 +142,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Student Portal</h1>
-                <p className="text-sm text-gray-500">Vppcoe</p>
+                <p className="text-sm text-gray-500">Central University of Punjab</p>
               </div>
             </div>
           </div>
