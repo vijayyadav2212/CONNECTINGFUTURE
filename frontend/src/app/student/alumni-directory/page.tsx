@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import StudentNavigation from '../StudentNavigation';
-import { Search, Filter, MapPin, Building, GraduationCap, Linkedin, Mail, MessageSquare, Star, Users } from 'lucide-react';
+import { Search, Filter, MapPin, Building, GraduationCap, Linkedin, Mail, MessageSquare, Star, Users, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Alumni {
   id: string;
+  email?: string;
   name: string;
   graduationYear: string;
   degree: string;
@@ -23,74 +26,140 @@ interface Alumni {
 }
 
 const AlumniDirectoryPage = () => {
+  const { user } = useUser();
+  const { toast } = useToast();
   const [alumni, setAlumni] = useState<Alumni[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterExpertise, setFilterExpertise] = useState<string>('all');
   const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API call
-  const mockAlumni: Alumni[] = [
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      graduationYear: '2019',
-      degree: 'Computer Science',
-      company: 'Google',
-      position: 'Senior Software Engineer',
-      location: 'Mountain View, CA',
-      expertise: ['Software Engineering', 'Machine Learning', 'Python'],
-      isOpenToMentoring: true,
-      rating: 4.9,
-      responseTime: '< 24 hours',
-      linkedinUrl: 'https://linkedin.com/in/sarahjohnson',
-    },
-    {
-      id: '2',
-      name: 'Michael Chen',
-      graduationYear: '2020',
-      degree: 'Business Administration',
-      company: 'McKinsey & Company',
-      position: 'Management Consultant',
-      location: 'New York, NY',
-      expertise: ['Strategy Consulting', 'Business Development', 'Analytics'],
-      isOpenToMentoring: true,
-      rating: 4.8,
-      responseTime: '< 48 hours',
-    },
-    {
-      id: '3',
-      name: 'Emily Rodriguez',
-      graduationYear: '2018',
-      degree: 'Electrical Engineering',
-      company: 'Tesla',
-      position: 'Hardware Engineer',
-      location: 'Austin, TX',
-      expertise: ['Hardware Design', 'Electronics', 'Automotive'],
-      isOpenToMentoring: false,
-      rating: 4.7,
-      responseTime: '< 1 week',
-    },
-    {
-      id: '4',
-      name: 'David Kim',
-      graduationYear: '2021',
-      degree: 'Data Science',
-      company: 'Netflix',
-      position: 'Data Scientist',
-      location: 'Los Angeles, CA',
-      expertise: ['Data Science', 'Machine Learning', 'Statistics', 'Python'],
-      isOpenToMentoring: true,
-      rating: 4.9,
-      responseTime: '< 24 hours',
-    }
-  ];
-
+  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
+  const currentUserEmail = (user?.email as string | undefined) || '';
+  const [connections, setConnections] = useState<Array<{ id:number; pair_key:string; requester_email:string; target_email:string; status:'pending'|'accepted'|'rejected'|'removed'; }>>([]);
+  const [connLoading, setConnLoading] = useState(false);
+  const [requesterProfiles, setRequesterProfiles] = useState<Record<string, { name?:string; major?:string; graduation_year?:number }>>({});
+  function buildPairKey(a:string,b:string){ const [x,y]=[a.toLowerCase().trim(), b.toLowerCase().trim()].sort(); return `${x}|${y}`; }
+  // Load alumni from backend
   useEffect(() => {
-    setTimeout(() => {
-      setAlumni(mockAlumni);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    (async () => {
+      try {
+        setLoading(true);
+        const resp = await fetch(`${API_BASE}/users?type=alumni&limit=50`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to load alumni');
+        if (!isJson) throw new Error('Unexpected non-JSON response while loading alumni');
+        const users = (data.users || []) as Array<any>;
+        const mapped: Alumni[] = users.map(u => {
+          const skills = Array.isArray(u.skills)
+            ? u.skills
+            : typeof u.skills === 'string'
+              ? String(u.skills).split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [];
+          return {
+            id: String(u.id ?? u.email ?? u.auth0_id ?? Math.random()),
+            email: u.email,
+            name: u.name || (u.email || 'Unknown'),
+            graduationYear: u.graduation_year ? String(u.graduation_year) : '',
+            degree: u.major || '',
+            company: u.company || '',
+            position: u.job_title || u.current_job || '',
+            location: u.location || '',
+            expertise: skills.length ? skills : ['General Mentoring'],
+            isOpenToMentoring: Boolean(u.is_mentor),
+            rating: 4.8,
+            responseTime: '< 48 hours',
+            linkedinUrl: undefined,
+            avatar: u.picture || undefined,
+          } as Alumni;
+        });
+        setAlumni(mapped);
+      } catch (e:any) {
+        toast({ title: 'Failed to load alumni', description: e.message || String(e), variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [API_BASE, toast]);
+
+  // Load connections for current user
+  useEffect(() => {
+    if (!currentUserEmail) return;
+    (async () => {
+      try {
+        setConnLoading(true);
+        const resp = await fetch(`${API_BASE}/connections?user_email=${encodeURIComponent(currentUserEmail)}`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (resp.ok && isJson) {
+          setConnections(data.connections || []);
+        }
+      } finally { setConnLoading(false); }
+    })();
+  }, [API_BASE, currentUserEmail]);
+
+  // Hydrate requester profiles for incoming pending requests
+  useEffect(() => {
+    if (!currentUserEmail) return;
+    const incoming = connections.filter(c => c.status==='pending' && c.target_email.toLowerCase()===currentUserEmail.toLowerCase());
+    const emails = Array.from(new Set(incoming.map(c => c.requester_email.toLowerCase())));
+    const missing = emails.filter(e => !requesterProfiles[e]);
+    if (missing.length===0) return;
+    (async () => {
+      try {
+        const results = await Promise.all(missing.map(async (email) => {
+          try {
+            const resp = await fetch(`${API_BASE}/users/by-email?email=${encodeURIComponent(email)}`);
+            if (!resp.ok) return { email } as any;
+            const data = await resp.json();
+            const u = data.user || {};
+            return { name: u.name, major: u.major, graduation_year: u.graduation_year };
+          } catch { return { email } as any; }
+        }));
+        setRequesterProfiles(prev => {
+          const next = { ...prev };
+          emails.forEach((e, idx) => { const info = results[idx]; if (info) next[e] = info; });
+          return next;
+        });
+      } catch { /* silent */ }
+    })();
+  }, [API_BASE, connections, currentUserEmail, requesterProfiles]);
+
+  async function respondRequest(otherEmail: string, action: 'accept'|'reject') {
+    if (!currentUserEmail || !otherEmail) return;
+    setConnLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE}/connections/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_email: currentUserEmail, other_email: otherEmail, action }) });
+      const isJson = resp.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await resp.json() : await resp.text();
+      if (resp.ok && isJson && data.connection) {
+        setConnections(prev => prev.map(c => c.pair_key === data.connection.pair_key ? data.connection : c));
+        toast({ title: action==='accept' ? 'Request accepted' : 'Request declined', description: otherEmail });
+      }
+    } catch (e:any) {
+      toast({ title: 'Action failed', description: e.message || String(e), variant: 'destructive' });
+    } finally { setConnLoading(false); }
+  }
+
+  async function connectToAlumni(targetEmail?: string) {
+    if (!targetEmail) return;
+    if (!currentUserEmail) {
+      toast({ title: 'Sign in required', description: 'Please sign in to send connection requests.' });
+      return;
+    }
+    try {
+      const resp = await fetch(`${API_BASE}/connections/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requester_email: currentUserEmail, target_email: targetEmail })
+      });
+      const isJson = resp.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await resp.json() : await resp.text();
+      if (!resp.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to send request');
+      toast({ title: 'Connection request sent', description: `Requested to connect with ${targetEmail}.` });
+    } catch (e:any) {
+      toast({ title: 'Request failed', description: e.message || String(e), variant: 'destructive' });
+    }
+  }
 
   const expertiseOptions = ['all', 'Software Engineering', 'Data Science', 'Machine Learning', 'Business Development', 'Strategy Consulting', 'Hardware Design'];
 
@@ -215,6 +284,48 @@ const AlumniDirectoryPage = () => {
               </div>
             </div>
           </div>
+
+          {/* My Requests (incoming pending) */}
+          {connections.length > 0 && currentUserEmail && (() => {
+            const incoming = connections.filter(c => c.status === 'pending' && c.target_email.toLowerCase() === currentUserEmail.toLowerCase());
+            if (!incoming.length) return null;
+            return (
+              <div className="mb-8">
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    My Requests
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {incoming.map(req => {
+                      const email = req.requester_email;
+                      const info = requesterProfiles[email.toLowerCase()] || {};
+                      const displayName = info.name || email;
+                      const initials = (displayName||'').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+                      return (
+                        <div key={req.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">{initials}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 truncate">{displayName}</p>
+                              <p className="text-xs text-gray-600 truncate">{email}</p>
+                              {(info.major || info.graduation_year) && (
+                                <p className="text-xs text-gray-500 truncate">{info.major || '—'}{info.graduation_year? ` • Class of ${info.graduation_year}`:''}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 flex gap-2 justify-end">
+                            <Button onClick={() => respondRequest(email, 'accept')} disabled={connLoading} className="px-3 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-semibold hover:from-green-600 hover:to-emerald-700 disabled:opacity-60">Accept</Button>
+                            <Button onClick={() => respondRequest(email, 'reject')} disabled={connLoading} className="px-3 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-semibold hover:from-red-600 hover:to-rose-700 disabled:opacity-60">Decline</Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Search and Filter Bar */}
           <div className="mb-8">
@@ -433,17 +544,59 @@ const AlumniDirectoryPage = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3">
-                      <Button 
-                        className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                          alum.isOpenToMentoring 
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-                            : 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                        }`}
-                        disabled={!alum.isOpenToMentoring}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Connect
-                      </Button>
+                      {(() => {
+                        const conn: { id:number; pair_key:string; requester_email:string; target_email:string; status:'pending'|'accepted'|'rejected'|'removed' } | undefined = alum.email ? connections.find(c => c.pair_key === buildPairKey(currentUserEmail, alum.email!)) : undefined;
+                        const status = conn?.status;
+                        const isRequester = conn && conn.requester_email.toLowerCase() === String(currentUserEmail).toLowerCase();
+                        if (!alum.email || !status) {
+                          return (
+                            <Button 
+                              className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                                alum.email
+                                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                                  : 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                              }`}
+                              disabled={!alum.email}
+                              onClick={() => alum.email && connectToAlumni(alum.email)}
+                            >
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Connect
+                            </Button>
+                          );
+                        }
+                        if (status === 'pending' && isRequester) {
+                          return (
+                            <Button disabled className="flex-1 px-4 py-3 rounded-xl font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-2 justify-center">
+                              <Clock className="w-4 h-4" />
+                              Request Sent
+                            </Button>
+                          );
+                        }
+                        if (status === 'pending' && !isRequester) {
+                          return (
+                            <div className="flex gap-2 flex-1">
+                              <Button onClick={() => alum.email && respondRequest(alum.email, 'accept')} disabled={connLoading} className="flex-1 text-sm px-3 py-3 rounded-xl font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow hover:shadow-md disabled:opacity-60">Accept</Button>
+                              <Button onClick={() => alum.email && respondRequest(alum.email, 'reject')} disabled={connLoading} className="flex-1 text-sm px-3 py-3 rounded-xl font-semibold bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow hover:shadow-md disabled:opacity-60">Decline</Button>
+                            </div>
+                          );
+                        }
+                        if (status === 'accepted') {
+                          return (
+                            <Button variant="outline" disabled className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-700">Connected</Button>
+                          );
+                        }
+                        if (status === 'rejected' || status === 'removed') {
+                          return (
+                            <Button 
+                              onClick={() => alum.email && connectToAlumni(alum.email)}
+                              className="flex-1 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-60 text-sm"
+                            >
+                              Re-connect
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })()}
                       {alum.linkedinUrl && (
                         <Button 
                           variant="outline" 

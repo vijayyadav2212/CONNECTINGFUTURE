@@ -1,105 +1,202 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import StudentNavigation from '../StudentNavigation';
 import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000/api';
 
 interface JobOpportunity {
-  id: string;
+  id: number;
   title: string;
   company: string;
   location: string;
-  type: 'Full-time' | 'Part-time' | 'Internship' | 'Contract';
+  type: 'Full-time' | 'Part-time' | 'Internship' | 'Contract' | 'Temporary' | 'Internship (Paid)' | 'Internship (Unpaid)';
   salary?: string;
   posted: string;
-  deadline: string;
+  deadline?: string;
   description: string;
   requirements: string[];
   benefits: string[];
   isBookmarked: boolean;
   applicants: number;
-  companyLogo?: string;
+  companyLogo?: string | null;
 }
 
 const JobOpportunitiesPage = () => {
+  const { user } = useUser();
+  const { toast } = useToast();
   const [jobs, setJobs] = useState<JobOpportunity[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
+  const [myApplications, setMyApplications] = useState<any[]>([]);
+  const [initializedBookmarks, setInitializedBookmarks] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyJob, setApplyJob] = useState<JobOpportunity | null>(null);
+  const [resumeUrl, setResumeUrl] = useState('');
+  const [coverLetter, setCoverLetter] = useState('');
+  const [applySubmitting, setApplySubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
-  // Mock data - replace with actual API call
-  const mockJobs: JobOpportunity[] = [
-    {
-      id: '1',
-      title: 'Software Engineering Intern',
-      company: 'Google',
-      location: 'Mountain View, CA',
-      type: 'Internship',
-      salary: '$6,000/month',
-      posted: '2 days ago',
-      deadline: '2025-10-15',
-      description: 'Join our engineering team to work on cutting-edge technologies and gain hands-on experience in software development.',
-      requirements: ['Computer Science student', 'Python/Java proficiency', 'Strong problem-solving skills'],
-      benefits: ['Competitive stipend', 'Mentorship program', 'Free meals', 'Housing assistance'],
-      isBookmarked: false,
-      applicants: 234,
-    },
-    {
-      id: '2',
-      title: 'Data Science Intern',
-      company: 'Microsoft',
-      location: 'Seattle, WA',
-      type: 'Internship',
-      salary: '$5,500/month',
-      posted: '1 week ago',
-      deadline: '2025-10-30',
-      description: 'Work with our data science team to analyze large datasets and build machine learning models.',
-      requirements: ['Statistics/Data Science background', 'Python, R, SQL', 'Machine Learning knowledge'],
-      benefits: ['Health insurance', 'Learning budget', 'Flexible hours', 'Remote work options'],
-      isBookmarked: true,
-      applicants: 189,
-    },
-    {
-      id: '3',
-      title: 'Frontend Developer',
-      company: 'Spotify',
-      location: 'New York, NY',
-      type: 'Full-time',
-      salary: '$95,000/year',
-      posted: '3 days ago',
-      deadline: '2025-11-15',
-      description: 'Build amazing user experiences and interfaces for millions of music lovers worldwide.',
-      requirements: ['React/Angular expertise', 'JavaScript/TypeScript', '2+ years experience', 'UI/UX knowledge'],
-      benefits: ['Stock options', 'Premium Spotify', 'Health insurance', 'Gym membership'],
-      isBookmarked: false,
-      applicants: 156,
-    },
-    {
-      id: '4',
-      title: 'Product Management Intern',
-      company: 'Amazon',
-      location: 'Austin, TX',
-      type: 'Internship',
-      salary: '$5,800/month',
-      posted: '5 days ago',
-      deadline: '2025-10-20',
-      description: 'Learn product strategy and work on features that impact millions of customers globally.',
-      requirements: ['Business/Engineering student', 'Analytical skills', 'Leadership experience', 'Communication skills'],
-      benefits: ['Relocation assistance', 'Networking events', 'Career mentorship', 'Employee discounts'],
-      isBookmarked: false,
-      applicants: 312,
-    }
-  ];
+  // Snapshots for notifications
+  const prevJobsRef = useRef<JobOpportunity[]>([]);
+  const prevAppStatusRef = useRef<Record<number, string>>({});
 
-  useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setJobs(mockJobs);
+  const mapJobRow = (row: any): JobOpportunity => {
+    const tags = row.tags ? String(row.tags).split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+    const requirements = tags.slice(0, 4);
+    const benefits = ['Flexible hours', 'Mentorship', 'Growth'];
+    const salary = row.salary_min && row.salary_max && row.currency ? `${row.currency} ${row.salary_min}-${row.salary_max}` : undefined;
+    return {
+      id: Number(row.id),
+      title: row.title,
+      company: row.company,
+      location: row.location,
+      type: row.job_type,
+      salary,
+      posted: (row.posted_date || row.created_at || new Date().toISOString()).toString().split('T')[0],
+      deadline: row.application_deadline || undefined,
+      description: row.description,
+      requirements,
+      benefits,
+      isBookmarked: false,
+      applicants: Number(row.applied || 0),
+      companyLogo: row.logo || null,
+    };
+  };
+
+  const fetchJobs = async () => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set('q', searchTerm);
+    if (filterType && filterType !== 'all') params.set('job_type', filterType);
+    try {
+      const res = await fetch(`${API_BASE}/jobs?${params.toString()}`);
+      const data = await res.json();
+      const list = (data.jobs || []).map(mapJobRow);
+      // apply saved bookmarks from localStorage
+      let savedIds: number[] = [];
+      try {
+        const raw = localStorage.getItem('savedJobs');
+        if (raw) savedIds = JSON.parse(raw);
+      } catch {}
+      const savedSet = new Set<number>(savedIds);
+      setJobs(list.map((j: JobOpportunity) => savedSet.has(j.id) ? { ...j, isBookmarked: true } : j));
+      setInitializedBookmarks(true);
+    } catch (e) {
+      console.warn('Failed to load jobs', e);
+      toast({ title: 'Failed to load jobs', description: 'Please check your connection and try again.' });
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  const fetchMyApplications = async () => {
+    if (!user?.email) return;
+    try {
+      const res = await fetch(`${API_BASE}/applications?applicant_email=${encodeURIComponent(user.email)}`);
+      const data = await res.json();
+      const ids = new Set<number>();
+      (data.applications || []).forEach((a: any) => ids.add(Number(a.job_id)));
+      setAppliedJobIds(ids);
+      setMyApplications(data.applications || []);
+    } catch (e) {
+      console.warn('Failed to load applications', e);
+      // don't toast on background failures repeatedly
+    }
+  };
+
+  useEffect(() => { fetchJobs(); }, []);
+  useEffect(() => { fetchJobs(); }, [searchTerm, filterType]);
+  useEffect(() => { fetchMyApplications(); }, [user?.email]);
+
+  // Poll for new jobs/internships and toast updates
+  useEffect(() => {
+    let cancelled = false;
+    const checkJobsUpdates = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (searchTerm) params.set('q', searchTerm);
+        if (filterType && filterType !== 'all') params.set('job_type', filterType);
+        const res = await fetch(`${API_BASE}/jobs?${params.toString()}`);
+        const data = await res.json();
+        const latest: JobOpportunity[] = (data.jobs || []).map(mapJobRow);
+        if (!cancelled) {
+          // Detect new jobs by id
+          const prevIds = new Set(prevJobsRef.current.map(j => j.id));
+          const newJobs = latest.filter(j => !prevIds.has(j.id));
+          if (newJobs.length > 0) {
+            const newInternships = newJobs.filter(j => String(j.type).toLowerCase().includes('internship'));
+            if (newInternships.length > 0) {
+              toast({ title: 'New internships available', description: `${newInternships.length} new internship${newInternships.length > 1 ? 's' : ''} posted.` });
+            }
+            const otherNew = newJobs.length - newInternships.length;
+            if (otherNew > 0) {
+              toast({ title: 'New jobs posted', description: `${otherNew} new job${otherNew > 1 ? 's' : ''} added.` });
+            }
+          }
+          // Update state and snapshot while preserving bookmarks
+          const savedIdsRaw = localStorage.getItem('savedJobs');
+          const savedSet = new Set<number>(savedIdsRaw ? JSON.parse(savedIdsRaw) : []);
+          const withBookmarks = latest.map(j => savedSet.has(j.id) ? { ...j, isBookmarked: true } : j);
+          setJobs(withBookmarks);
+          prevJobsRef.current = withBookmarks;
+        }
+      } catch (e) {
+        // silent on background
+      }
+    };
+    // initial snapshot
+    prevJobsRef.current = jobs;
+    checkJobsUpdates();
+    const id = setInterval(checkJobsUpdates, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [searchTerm, filterType]);
+
+  // Poll for application status updates and toast when changed
+  useEffect(() => {
+    let cancelled = false;
+    const checkAppUpdates = async () => {
+      try {
+        if (!user?.email) return;
+        const res = await fetch(`${API_BASE}/applications?applicant_email=${encodeURIComponent(user.email)}`);
+        const data = await res.json();
+        const latestApps: any[] = data.applications || [];
+        // Compare status changes by job_id
+        const prevMap = { ...prevAppStatusRef.current };
+        latestApps.forEach(app => {
+          const jid = Number(app.job_id);
+          const prevStatus = prevMap[jid];
+          const currentStatus = String(app.status || '').toLowerCase();
+          if (prevStatus && currentStatus && prevStatus !== currentStatus) {
+            const pretty = currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1);
+            toast({ title: 'Application update', description: `Your application for "${app.title || 'this role'}" is now ${pretty}.` });
+          }
+        });
+        // Update state and snapshot
+        setMyApplications(latestApps);
+        const nextMap: Record<number, string> = {};
+        latestApps.forEach(app => { nextMap[Number(app.job_id)] = String(app.status || '').toLowerCase(); });
+        prevAppStatusRef.current = nextMap;
+      } catch (e) {
+        // silent on background
+      }
+    };
+    // initialize snapshot from current myApplications
+    const initMap: Record<number, string> = {};
+    myApplications.forEach(app => { initMap[Number(app.job_id)] = String(app.status || '').toLowerCase(); });
+    prevAppStatusRef.current = initMap;
+    checkAppUpdates();
+    const id = setInterval(checkAppUpdates, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [user?.email]);
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,10 +206,85 @@ const JobOpportunitiesPage = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const toggleBookmark = (jobId: string) => {
-    setJobs(jobs.map(job => 
-      job.id === jobId ? { ...job, isBookmarked: !job.isBookmarked } : job
-    ));
+  const toggleBookmark = (jobId: number) => {
+    const updated = jobs.map(job => job.id === jobId ? { ...job, isBookmarked: !job.isBookmarked } : job);
+    setJobs(updated);
+    // persist to localStorage
+    try {
+      const savedIds = updated.filter(j => j.isBookmarked).map(j => j.id);
+      localStorage.setItem('savedJobs', JSON.stringify(savedIds));
+    } catch {}
+  };
+
+  const openApplyForm = (job: JobOpportunity) => {
+    setApplyJob(job);
+    setResumeUrl('');
+    setCoverLetter('');
+    setApplyOpen(true);
+  };
+
+  const submitApplication = async () => {
+    if (!user?.email || !applyJob) return;
+    setApplySubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/jobs/${applyJob.id}/apply`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ applicant_email: user.email, resume_url: resumeUrl || null, cover_letter: coverLetter || null })
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Apply failed (${res.status}) ${text}`);
+      }
+      const updated = new Set(appliedJobIds);
+      updated.add(applyJob.id);
+      setAppliedJobIds(updated);
+      setJobs(jobs.map(j => j.id === applyJob.id ? { ...j, applicants: j.applicants + 1 } : j));
+      setApplyOpen(false);
+      setApplyJob(null);
+      setResumeUrl('');
+      setCoverLetter('');
+      fetchMyApplications();
+      toast({ title: 'Application submitted', description: `${applyJob.title} at ${applyJob.company}` });
+    } catch (e) {
+      console.warn('Apply failed', e);
+      toast({ title: 'Application failed', description: e instanceof Error ? e.message : 'Please try again', variant: 'destructive' });
+    } finally {
+      setApplySubmitting(false);
+    }
+  };
+
+  const handleResumeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Validate type
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: 'Invalid file type', description: 'Only PDF, DOC, DOCX allowed', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum size is 10MB', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('resume', file);
+      const res = await fetch(`${API_BASE}/uploads/resume`, { method: 'POST', body: fd });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Upload failed (${res.status}) ${text}`);
+      }
+      const data = await res.json();
+      setResumeUrl(data.url);
+      setUploadedFileName(file.name);
+      toast({ title: 'Resume uploaded', description: file.name });
+    } catch (err) {
+      toast({ title: 'Upload error', description: err instanceof Error ? err.message : 'Please try again', variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const getTypeColor = (type: string) => {
@@ -280,10 +452,6 @@ const JobOpportunitiesPage = () => {
                       {jobs.filter(job => job.isBookmarked).length} Saved
                     </span>
                   </div>
-                  <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    More Filters
-                  </Button>
                 </div>
               </div>
             </div>
@@ -413,7 +581,7 @@ const JobOpportunitiesPage = () => {
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500 uppercase tracking-wide">Deadline</p>
-                                  <p className="font-semibold text-gray-900">{new Date(job.deadline).toLocaleDateString()}</p>
+                                    <p className="font-semibold text-gray-900">{job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No deadline'}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 text-sm">
@@ -429,7 +597,7 @@ const JobOpportunitiesPage = () => {
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                              <Button
+                              <Button 
                                 onClick={() => toggleBookmark(job.id)}
                                 variant="outline"
                                 className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
@@ -442,10 +610,12 @@ const JobOpportunitiesPage = () => {
                                 {job.isBookmarked ? 'Saved' : 'Save Job'}
                               </Button>
                               <Button 
-                                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                                onClick={() => openApplyForm(job)}
+                                disabled={appliedJobIds.has(job.id)}
+                                className={`px-8 py-3 rounded-xl font-semibold shadow-lg transition-all duration-200 ${appliedJobIds.has(job.id) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white hover:shadow-xl transform hover:scale-105'}`}
                               >
                                 <ExternalLink className="w-4 h-4 mr-2" />
-                                Apply Now
+                                {appliedJobIds.has(job.id) ? 'Applied' : 'Apply Now'}
                               </Button>
                             </div>
                           </div>
@@ -481,8 +651,129 @@ const JobOpportunitiesPage = () => {
               </p>
             </div>
           )}
+
+          {/* Saved Jobs */}
+          <div className="mt-10">
+            <Card className="border border-gray-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold">Saved Jobs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {jobs.filter(j => j.isBookmarked).length === 0 ? (
+                  <div className="text-gray-600">No saved jobs yet. Click "Save Job" on listings.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {jobs.filter(j => j.isBookmarked).map(job => (
+                      <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div>
+                          <div className="font-semibold text-gray-900">{job.title} — {job.company}</div>
+                          <div className="text-sm text-gray-600">{job.location}</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => toggleBookmark(job.id)}
+                            className="border-yellow-300 text-yellow-700"
+                          >
+                            Remove
+                          </Button>
+                          <Button
+                            onClick={() => openApplyForm(job)}
+                            disabled={appliedJobIds.has(job.id)}
+                            className={`px-6 py-2 rounded-xl font-semibold transition-all duration-200 ${appliedJobIds.has(job.id) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'}`}
+                          >
+                            {appliedJobIds.has(job.id) ? 'Applied' : 'Apply'}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Applied History */}
+          <div className="mt-10">
+            <Card className="border border-gray-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold">Applied History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {myApplications.length === 0 ? (
+                  <div className="text-gray-600">No applications yet.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {myApplications.map((app: any) => (
+                      <div key={app.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div>
+                          <div className="font-semibold text-gray-900">{app.title} — {app.company}</div>
+                          <div className="text-sm text-gray-600">{app.location}</div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                            {app.status || 'applied'}
+                          </span>
+                          <span className="text-sm text-gray-500">{app.applied_at ? new Date(app.applied_at).toLocaleDateString() : ''}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
+      {/* Apply Form Modal */}
+      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Apply to {applyJob?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Resume</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleResumeFileChange}
+                  disabled={uploading}
+                  className="block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              <div className="text-xs text-gray-500">PDF, DOC, DOCX up to 10MB. Or paste a URL below.</div>
+              <input
+                type="url"
+                placeholder="Or paste a public resume URL (Google Drive, etc.)"
+                value={resumeUrl}
+                onChange={(e) => setResumeUrl(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {uploadedFileName && (
+                <div className="text-sm text-green-700">Selected: {uploadedFileName}</div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cover Letter</label>
+              <textarea
+                placeholder="Optional: brief cover letter or message"
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button onClick={submitApplication} disabled={applySubmitting} className="bg-blue-600 hover:bg-blue-700 text-white">
+                {applySubmitting ? 'Submitting...' : 'Submit Application'}
+              </Button>
+              <Button variant="outline" onClick={() => setApplyOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </StudentNavigation>
   );
 };

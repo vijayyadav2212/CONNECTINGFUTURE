@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import StudentNavigation from '../StudentNavigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { Search, Send, Paperclip, Smile, Phone, Video, MoreHorizontal, User, Clock, Check, CheckCheck } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -36,6 +37,7 @@ interface ConnectionRecord {
 
 const MessagesPage = () => {
   const { user } = useUser();
+  const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [selectedOtherEmail, setSelectedOtherEmail] = useState<string | null>(null);
@@ -47,6 +49,7 @@ const MessagesPage = () => {
   const [connLoading, setConnLoading] = useState(false);
   const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
   const currentUserEmail = (user?.email as string | undefined) || '';
+  const prevUnreadRef = useRef<Record<string, number>>({});
 
   function buildPairKey(a:string,b:string) {
     const [x,y] = [a.toLowerCase().trim(), b.toLowerCase().trim()].sort();
@@ -210,6 +213,16 @@ const MessagesPage = () => {
           isOnline: false,
           role: 'alumni'
         }));
+        // Toast on new unread messages
+        const prev = prevUnreadRef.current;
+        threads.forEach(t => {
+          const prevUnread = Number(prev[t.thread_key] || 0);
+          const currUnread = Number(t.unread || 0);
+          if (currUnread > prevUnread) {
+            const delta = currUnread - prevUnread;
+            toast({ title: 'New message', description: `${delta} new message${delta>1?'s':''} from ${t.other}` });
+          }
+        });
         // Merge in accepted connections as conversations if not in threads
         const accepted = connections.filter(c => c.status === 'accepted');
         const present = new Set(mappedFromThreads.map(m => m.name.toLowerCase()));
@@ -228,6 +241,10 @@ const MessagesPage = () => {
         const merged = [...mappedFromThreads, ...fromConnections]
           .sort((a,b) => (b.lastMessageTime?.getTime?.() || 0) - (a.lastMessageTime?.getTime?.() || 0));
         setConversations(merged);
+        // snapshot unread counts
+        const snap: Record<string, number> = {};
+        threads.forEach(t => { snap[t.thread_key] = Number(t.unread || 0); });
+        prevUnreadRef.current = snap;
         setLoading(false);
       } catch {
         // keep loading state minimal UI

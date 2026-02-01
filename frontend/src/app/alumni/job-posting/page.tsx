@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type React from "react"
 
 import {
@@ -20,8 +20,80 @@ import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { useUser } from "@auth0/nextjs-auth0/client"
+import AlumniNavigation from "../AluminaNavigation/AlumniNavigation"
 
-// Mock job data
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000/api"
+
+// Backend job types and helpers
+type JobItem = {
+  id: number
+  title: string
+  company: string
+  location: string
+  postedDate: string
+  description: string
+  salary: string
+  tags: string[]
+  views: number
+  applied: number
+  status: string
+  featured: boolean
+  logo?: string | null
+  industry: string
+  jobType: string
+  isRemote: boolean
+  postedBy?: string
+}
+
+function salaryString(smin?: string | number | null, smax?: string | number | null, currency?: string | null) {
+  if (smin && smax && currency) return `${currency} ${smin}-${smax}`
+  return "Salary not specified"
+}
+
+function mapJobRow(row: any): JobItem {
+  const tagsArr = row.tags ? String(row.tags).split(',').map((t) => t.trim()).filter(Boolean) : []
+  return {
+    id: row.id,
+    title: row.title,
+    company: row.company,
+    location: row.location,
+    postedDate: (row.posted_date || row.created_at || new Date().toISOString()).toString().split('T')[0],
+    description: row.description,
+    salary: salaryString(row.salary_min, row.salary_max, row.currency),
+    tags: tagsArr,
+    views: Number(row.views || 0),
+    applied: Number(row.applied || 0),
+    status: row.status || "Pending Review",
+    featured: !!row.featured,
+    logo: row.logo || null,
+    industry: row.industry,
+    jobType: row.job_type,
+    isRemote: !!row.is_remote,
+    postedBy: row.posted_by || undefined,
+  }
+}
+
+function getTypeColor(type: string) {
+  switch (type) {
+    case 'Full-time':
+      return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-300 shadow-sm'
+    case 'Part-time':
+      return 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border-blue-300 shadow-sm'
+    case 'Internship':
+    case 'Internship (Paid)':
+    case 'Internship (Unpaid)':
+      return 'bg-gradient-to-r from-purple-100 to-violet-100 text-purple-700 border-purple-300 shadow-sm'
+    case 'Contract':
+    case 'Temporary':
+      return 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border-orange-300 shadow-sm'
+    default:
+      return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 border-gray-300 shadow-sm'
+  }
+}
+
+// Mock job data (replaced by backend fetch)
 const jobPostings = [
   {
     id: 1,
@@ -161,7 +233,6 @@ const userPostedJobs = [
 ]
 
 const industries = [
-  "All Industries",
   "Technology",
   "Finance",
   "Healthcare",
@@ -192,14 +263,8 @@ const currencies = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CNY", "INR"]
 const statusOptions = ["All Status", "Approved", "Pending Review", "Draft", "Rejected"]
 
 function AlumniJobBoard() {
-  const mockUser = {
-    name: "Sarah Johnson",
-    email: "sarah.johnson@email.com",
-  }
-
-  const user = mockUser
-  const isLoading = false
-  const error = null
+  const { user, isLoading, error } = useUser()
+  const { toast } = useToast()
 
   // Tab state
   const [activeTab, setActiveTab] = useState("Browse Jobs")
@@ -229,12 +294,59 @@ function AlumniJobBoard() {
   // Browse Jobs state
   const [searchQuery, setSearchQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
-  const [selectedJob, setSelectedJob] = useState<(typeof jobPostings)[0] | null>(null)
+  const [selectedJob, setSelectedJob] = useState<JobItem | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedIndustry, setSelectedIndustry] = useState("All Industries")
   const [selectedJobType, setSelectedJobType] = useState("All Types")
   const [locationQuery, setLocationQuery] = useState("")
   const [remoteOnly, setRemoteOnly] = useState(false)
+
+  // Backend data
+  const [jobs, setJobs] = useState<JobItem[]>([])
+  const [myJobs, setMyJobs] = useState<JobItem[]>([])
+  const [applicantsByJob, setApplicantsByJob] = useState<Record<number, any[]>>({})
+  const [expandedApplicantsJobId, setExpandedApplicantsJobId] = useState<number | null>(null)
+  const [updatingAppId, setUpdatingAppId] = useState<number | null>(null)
+
+  const fetchJobs = async () => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('q', searchQuery)
+    if (selectedIndustry && selectedIndustry !== 'All Industries') params.set('industry', selectedIndustry)
+    if (selectedJobType && selectedJobType !== 'All Types') params.set('job_type', selectedJobType)
+    if (locationQuery) params.set('location', locationQuery)
+    if (remoteOnly) params.set('remote_only', 'true')
+    try {
+      const res = await fetch(`${API_BASE}/jobs?${params.toString()}`)
+      const data = await res.json()
+      setJobs((data.jobs || []).map(mapJobRow))
+    } catch (e) {
+      console.warn('Failed to fetch jobs', e)
+      toast({ title: 'Failed to load jobs', description: 'Please try again later.', variant: 'destructive' })
+    }
+  }
+
+  const fetchMyJobs = async () => {
+    if (!user?.email) return
+    const params = new URLSearchParams()
+    params.set('posted_by', user.email)
+    if (myPostsSearchQuery) params.set('q', myPostsSearchQuery)
+    if (myPostsSelectedIndustry && myPostsSelectedIndustry !== 'All Industries') params.set('industry', myPostsSelectedIndustry)
+    if (myPostsSelectedJobType && myPostsSelectedJobType !== 'All Types') params.set('job_type', myPostsSelectedJobType)
+    if (myPostsLocationQuery) params.set('location', myPostsLocationQuery)
+    if (myPostsRemoteOnly) params.set('remote_only', 'true')
+    if (myPostsStatusFilter && myPostsStatusFilter !== 'All Status') params.set('status', myPostsStatusFilter)
+    try {
+      const res = await fetch(`${API_BASE}/jobs?${params.toString()}`)
+      const data = await res.json()
+      setMyJobs((data.jobs || []).map(mapJobRow))
+    } catch (e) {
+      console.warn('Failed to fetch my jobs', e)
+      toast({ title: 'Failed to load your posts', description: 'Please try again later.', variant: 'destructive' })
+    }
+  }
+
+  useEffect(() => { fetchJobs() }, [])
+  useEffect(() => { fetchJobs() }, [searchQuery, selectedIndustry, selectedJobType, locationQuery, remoteOnly])
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -254,6 +366,15 @@ function AlumniJobBoard() {
   const [myPostsRemoteOnly, setMyPostsRemoteOnly] = useState(false)
   const [myPostsStatusFilter, setMyPostsStatusFilter] = useState("All Status")
 
+  // Previous snapshots for notifications
+  const prevJobsRef = useRef<JobItem[]>([])
+  const prevMyJobsRef = useRef<JobItem[]>([])
+
+  // Load my posts when tab is active or filters change
+  useEffect(() => {
+    if (activeTab === 'My Posts') fetchMyJobs()
+  }, [activeTab, user?.email, myPostsSearchQuery, myPostsSelectedIndustry, myPostsSelectedJobType, myPostsLocationQuery, myPostsRemoteOnly, myPostsStatusFilter])
+
   // Load saved drafts on component mount
   useEffect(() => {
     const savedDrafts = localStorage.getItem("jobPostingDrafts")
@@ -272,6 +393,93 @@ function AlumniJobBoard() {
       }
     }
   }, [])
+
+  // Poll for new jobs/internships when Browse Jobs tab is active
+  useEffect(() => {
+    if (activeTab !== 'Browse Jobs') return
+    let cancelled = false
+    const checkJobsUpdates = async () => {
+      try {
+        const params = new URLSearchParams()
+        if (searchQuery) params.set('q', searchQuery)
+        if (selectedIndustry && selectedIndustry !== 'All Industries') params.set('industry', selectedIndustry)
+        if (selectedJobType && selectedJobType !== 'All Types') params.set('job_type', selectedJobType)
+        if (locationQuery) params.set('location', locationQuery)
+        if (remoteOnly) params.set('remote_only', 'true')
+        const res = await fetch(`${API_BASE}/jobs?${params.toString()}`)
+        const data = await res.json()
+        const latest: JobItem[] = (data.jobs || []).map(mapJobRow)
+        if (!cancelled) {
+          // Detect new jobs
+          const prevIds = new Set(prevJobsRef.current.map(j => j.id))
+          const newJobs = latest.filter(j => !prevIds.has(j.id))
+          if (newJobs.length > 0) {
+            const newInternships = newJobs.filter(j => String(j.jobType).toLowerCase().includes('internship'))
+            if (newInternships.length > 0) {
+              toast({ title: 'New internships available', description: `${newInternships.length} new internship${newInternships.length > 1 ? 's' : ''} posted.` })
+            }
+            const otherNew = newJobs.length - newInternships.length
+            if (otherNew > 0) {
+              toast({ title: 'New jobs posted', description: `${otherNew} new job${otherNew > 1 ? 's' : ''} added.` })
+            }
+          }
+          // Update state and snapshot
+          setJobs(latest)
+          prevJobsRef.current = latest
+        }
+      } catch (e) {
+        // silent on background
+      }
+    }
+    // initial snapshot
+    prevJobsRef.current = jobs
+    checkJobsUpdates()
+    const id = setInterval(checkJobsUpdates, 60000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [activeTab, searchQuery, selectedIndustry, selectedJobType, locationQuery, remoteOnly])
+
+  // Poll for new applicants on My Posts tab
+  useEffect(() => {
+    const email = String(user?.email || '')
+    if (activeTab !== 'My Posts' || !email) return
+    let cancelled = false
+    const checkMyJobsUpdates = async () => {
+      try {
+        const params = new URLSearchParams()
+        params.set('posted_by', email)
+        if (myPostsSearchQuery) params.set('q', myPostsSearchQuery)
+        if (myPostsSelectedIndustry && myPostsSelectedIndustry !== 'All Industries') params.set('industry', myPostsSelectedIndustry)
+        if (myPostsSelectedJobType && myPostsSelectedJobType !== 'All Types') params.set('job_type', myPostsSelectedJobType)
+        if (myPostsLocationQuery) params.set('location', myPostsLocationQuery)
+        if (myPostsRemoteOnly) params.set('remote_only', 'true')
+        if (myPostsStatusFilter && myPostsStatusFilter !== 'All Status') params.set('status', myPostsStatusFilter)
+        const res = await fetch(`${API_BASE}/jobs?${params.toString()}`)
+        const data = await res.json()
+        const latest: JobItem[] = (data.jobs || []).map(mapJobRow)
+        if (!cancelled) {
+          // Compare applied counts
+          const prevById: Record<number, number> = {}
+          prevMyJobsRef.current.forEach(j => { prevById[j.id] = j.applied || 0 })
+          latest.forEach(j => {
+            const prevApplied = prevById[j.id] ?? 0
+            if ((j.applied || 0) > prevApplied) {
+              const delta = (j.applied || 0) - prevApplied
+              toast({ title: 'New applicant', description: `${delta} new applicant${delta > 1 ? 's' : ''} for "${j.title}"` })
+            }
+          })
+          setMyJobs(latest)
+          prevMyJobsRef.current = latest
+        }
+      } catch (e) {
+        // silent on background
+      }
+    }
+    // initial snapshot
+    prevMyJobsRef.current = myJobs
+    checkMyJobsUpdates()
+    const id = setInterval(checkMyJobsUpdates, 60000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [activeTab, user?.email, myPostsSearchQuery, myPostsSelectedIndustry, myPostsSelectedJobType, myPostsLocationQuery, myPostsRemoteOnly, myPostsStatusFilter])
 
   if (isLoading) {
     return (
@@ -310,68 +518,63 @@ function AlumniJobBoard() {
   }
 
   const handleViewDetails = (jobId: number) => {
-    const job = jobPostings.find((j) => j.id === jobId)
+    const job = jobs.find((j) => j.id === jobId) || myJobs.find((j) => j.id === jobId)
     if (job) {
       setSelectedJob(job)
       setIsModalOpen(true)
     }
   }
 
-  // Filter jobs based on all criteria
-  const filteredJobs = jobPostings.filter((job) => {
-    // Search query filter
-    const matchesSearch =
-      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  const fetchApplicantsForJob = async (jobId: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/applications/by-job?job_id=${jobId}`)
+      const data = await res.json()
+      const list = data.applications || []
+      setApplicantsByJob(prev => ({ ...prev, [jobId]: list }))
+      toast({ title: 'Applicants loaded', description: `${list.length} applicant(s) found.` })
+    } catch (e) {
+      console.warn('Failed to fetch applicants', e)
+      setApplicantsByJob(prev => ({ ...prev, [jobId]: [] }))
+      toast({ title: 'Failed to load applicants', description: 'Please try again.', variant: 'destructive' })
+    }
+  }
 
-    // Industry filter
-    const matchesIndustry = selectedIndustry === "All Industries" || job.industry === selectedIndustry
+  const toggleApplicants = async (jobId: number) => {
+    if (expandedApplicantsJobId === jobId) {
+      setExpandedApplicantsJobId(null)
+      return
+    }
+    setExpandedApplicantsJobId(jobId)
+    if (!applicantsByJob[jobId]) await fetchApplicantsForJob(jobId)
+  }
 
-    // Job type filter
-    const matchesJobType = selectedJobType === "All Types" || job.jobType === selectedJobType
+  const updateApplicationStatus = async (appId: number, jobId: number, status: 'accepted' | 'rejected') => {
+    try {
+      setUpdatingAppId(appId)
+      const res = await fetch(`${API_BASE}/applications/${appId}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (!res.ok) throw new Error(`Failed (${res.status})`)
+      setApplicantsByJob(prev => ({
+        ...prev,
+        [jobId]: (prev[jobId] || []).map((a: any) => a.id === appId ? { ...a, status } : a)
+      }))
+      toast({ title: `Application ${status}`, description: `Marked as ${status}.` })
+    } catch (e) {
+      toast({ title: 'Update failed', description: 'Could not update application status.', variant: 'destructive' })
+    } finally {
+      setUpdatingAppId(null)
+    }
+  }
 
-    // Location filter
-    const matchesLocation = locationQuery === "" || job.location.toLowerCase().includes(locationQuery.toLowerCase())
+  const featuredJobs = jobs.filter((job) => job.featured)
+  const regularJobs = jobs.filter((job) => !job.featured)
 
-    // Remote filter
-    const matchesRemote = !remoteOnly || job.isRemote
-
-    return matchesSearch && matchesIndustry && matchesJobType && matchesLocation && matchesRemote
-  })
-
-  const featuredJobs = filteredJobs.filter((job) => job.featured)
-  const regularJobs = filteredJobs.filter((job) => !job.featured)
-
-  // Filter user's posted jobs
-  const filteredUserJobs = userPostedJobs.filter((job) => {
-    // Search query filter
-    const matchesSearch =
-      job.title.toLowerCase().includes(myPostsSearchQuery.toLowerCase()) ||
-      job.company.toLowerCase().includes(myPostsSearchQuery.toLowerCase()) ||
-      job.tags.some((tag) => tag.toLowerCase().includes(myPostsSearchQuery.toLowerCase()))
-
-    // Industry filter
-    const matchesIndustry = myPostsSelectedIndustry === "All Industries" || job.industry === myPostsSelectedIndustry
-
-    // Job type filter
-    const matchesJobType = myPostsSelectedJobType === "All Types" || job.jobType === myPostsSelectedJobType
-
-    // Location filter
-    const matchesLocation =
-      myPostsLocationQuery === "" || job.location.toLowerCase().includes(myPostsLocationQuery.toLowerCase())
-
-    // Remote filter
-    const matchesRemote = !myPostsRemoteOnly || job.isRemote
-
-    // Status filter
-    const matchesStatus = myPostsStatusFilter === "All Status" || job.status === myPostsStatusFilter
-
-    return matchesSearch && matchesIndustry && matchesJobType && matchesLocation && matchesRemote && matchesStatus
-  })
-
-  const featuredUserJobs = filteredUserJobs.filter((job) => job.featured)
-  const regularUserJobs = filteredUserJobs.filter((job) => !job.featured)
+  // Split my posts into featured and regular (server-side filtering already applied)
+  const featuredUserJobs = myJobs.filter((job) => job.featured)
+  const regularUserJobs = myJobs.filter((job) => !job.featured)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -404,46 +607,37 @@ function AlumniJobBoard() {
     }
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Create job posting object
-      const jobPosting = {
-        id: Date.now(),
+      const payload = {
         title: formData.jobTitle,
         company: formData.companyName,
-        location: formData.location + (formData.remoteAvailable ? " (Remote)" : ""),
-        postedDate: new Date().toISOString().split("T")[0],
+        location: formData.location,
         description: formData.jobDescription,
-        salary:
-          formData.salaryMin && formData.salaryMax
-            ? `${formData.currency} ${formData.salaryMin}-${formData.salaryMax}`
-            : "Salary not specified",
-        tags: formData.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter((tag) => tag),
-        views: 0,
-        applied: 0,
-        status: "Pending Review",
-        featured: false,
-        logo: "/placeholder.svg?height=40&width=40&text=" + formData.companyName.charAt(0),
-        industry: formData.industry,
-        jobType: formData.jobType,
-        isRemote: formData.remoteAvailable,
         responsibilities: formData.responsibilities,
         requirements: formData.requirements,
         benefits: formData.benefits,
-        applicationDeadline: formData.applicationDeadline,
-        contactPerson: formData.contactPerson,
-        applicationMethod: formData.applicationMethod,
-        applicationUrl: formData.applicationUrl,
+        salary_min: formData.salaryMin || null,
+        salary_max: formData.salaryMax || null,
+        currency: formData.currency || null,
+        tags: formData.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        status: 'Pending Review',
+        featured: false,
+        logo: `/placeholder.svg?height=40&width=40&text=${formData.companyName.charAt(0)}`,
+        industry: formData.industry,
+        job_type: formData.jobType,
+        is_remote: !!formData.remoteAvailable,
+        application_deadline: formData.applicationDeadline || null,
+        contact_person: formData.contactPerson || null,
+        application_method: formData.applicationMethod || null,
+        application_url: formData.applicationUrl || null,
+        posted_by: user?.email,
       }
 
-      console.log("Job posted successfully:", jobPosting)
+      const res = await fetch(`${API_BASE}/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+      if (!res.ok) throw new Error(`Failed: ${res.status}`)
 
-      setSubmitStatus("success")
-      setSuccessMessage("Job posted successfully! It will be reviewed and published within 24 hours.")
+      setSubmitStatus('success')
+      setSuccessMessage('Job posted successfully! It will be reviewed and published within 24 hours.')
+      fetchMyJobs()
 
       // Clear form after successful submission
       setTimeout(() => {
@@ -485,40 +679,38 @@ function AlumniJobBoard() {
     setSuccessMessage("")
 
     try {
-      // Simulate API call to save draft
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Create new draft object
-      const newDraft = {
-        ...formData,
-        savedAt: new Date().toISOString(),
-        id: `draft_${Date.now()}`,
-        title: formData.jobTitle || "Untitled Draft",
+      const payload = {
+        title: formData.jobTitle || 'Untitled Draft',
+        company: formData.companyName || 'Company',
+        location: formData.location || 'Location',
+        description: formData.jobDescription || 'Description',
+        responsibilities: formData.responsibilities || '',
+        requirements: formData.requirements || '',
+        benefits: formData.benefits || '',
+        salary_min: formData.salaryMin || null,
+        salary_max: formData.salaryMax || null,
+        currency: formData.currency || null,
+        tags: formData.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        status: 'Draft',
+        featured: false,
+        logo: `/placeholder.svg?height=40&width=40&text=${(formData.companyName || 'D').charAt(0)}`,
+        industry: formData.industry || 'Technology',
+        job_type: formData.jobType || 'Full-time',
+        is_remote: !!formData.remoteAvailable,
+        application_deadline: formData.applicationDeadline || null,
+        contact_person: formData.contactPerson || null,
+        application_method: formData.applicationMethod || null,
+        application_url: formData.applicationUrl || null,
+        posted_by: user?.email,
       }
-
-      // Get existing drafts
-      const existingDrafts = JSON.parse(localStorage.getItem("jobPostingDrafts") || "[]")
-
-      // Add new draft to the beginning of the array
-      const updatedDrafts = [newDraft, ...existingDrafts]
-
-      // Keep only the latest 10 drafts
-      const limitedDrafts = updatedDrafts.slice(0, 10)
-
-      // Save to localStorage
-      localStorage.setItem("jobPostingDrafts", JSON.stringify(limitedDrafts))
-      setDrafts(limitedDrafts)
-
-      console.log("Draft saved:", newDraft)
-      setSuccessMessage("Draft saved successfully!")
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage("")
-      }, 3000)
+      const res = await fetch(`${API_BASE}/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+      if (!res.ok) throw new Error(`Failed: ${res.status}`)
+      setSuccessMessage('Draft saved successfully!')
+      fetchMyJobs()
+      setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
-      console.error("Error saving draft:", error)
-      setErrorMessage("Failed to save draft. Please try again.")
+      console.error('Error saving draft:', error)
+      setErrorMessage('Failed to save draft. Please try again.')
     } finally {
       setIsDraftSaving(false)
     }
@@ -545,17 +737,14 @@ function AlumniJobBoard() {
   }
 
   return (
+    <AlumniNavigation>
     <div className="min-h-screen" style={{ backgroundColor: "#f8fafc" }}>
       {/* Navigation Header */}
       <nav className="bg-white shadow-sm" style={{ borderBottom: "1px solid #e2e8f0" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            {/* Left side: Back arrow + Navigation tabs */}
+            {/* Left side: Navigation tabs */}
             <div className="flex items-center space-x-6">
-              <Link href="/alumni/dashboard" className="flex items-center text-blue-600 hover:text-blue-800">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-
               <div className="flex items-center space-x-4">
                 <button
                   className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -630,7 +819,7 @@ function AlumniJobBoard() {
                   />
                 </div>
                 <button
-                  className="h-12 px-6 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center"
+                  className="h-12 px-6 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center text-gray-700"
                   onClick={() => setShowFilters(!showFilters)}
                 >
                   <Filter className="w-4 h-4 mr-2" />
@@ -651,6 +840,7 @@ function AlumniJobBoard() {
                         <SelectValue placeholder="All Industries" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="All Industries">All Industries</SelectItem>
                         {industries.map((industry) => (
                           <SelectItem key={industry} value={industry}>
                             {industry}
@@ -668,6 +858,7 @@ function AlumniJobBoard() {
                         <SelectValue placeholder="All Types" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="All Types">All Types</SelectItem>
                         {jobTypes.slice(1).map((type) => (
                           <SelectItem key={type} value={type}>
                             {type}
@@ -710,195 +901,257 @@ function AlumniJobBoard() {
             {/* Results Summary */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">All Opportunities</h2>
-              <p className="text-gray-600">{filteredJobs.length} opportunities found</p>
+              <p className="text-gray-600">{jobs.length} opportunities found</p>
             </div>
 
-            {/* Featured Opportunities */}
+            {/* Featured Opportunities - styled like student cards */}
             {featuredJobs.length > 0 && (
               <div className="mb-8">
                 <div className="flex items-center mb-4">
                   <Star className="w-5 h-5 text-yellow-500 mr-2" />
                   <h3 className="text-lg font-semibold text-gray-900">Featured Opportunities</h3>
                 </div>
-
-                <div className="space-y-4">
-                  {featuredJobs.map((job) => (
-                    <div
-                      key={job.id}
-                      className="bg-white rounded-lg shadow-sm border-2 border-blue-100 p-6"
-                      style={{ backgroundColor: "rgba(59, 130, 246, 0.05)" }}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-start space-x-4">
-                          <img
-                            src={job.logo || "/placeholder.svg"}
-                            alt={`${job.company} logo`}
-                            className="w-12 h-12 rounded-lg object-cover bg-gray-200"
-                          />
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Star className="w-4 h-4 text-yellow-500" />
-                              <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                <div className="space-y-6">
+                  {featuredJobs.map((job) => {
+                    const reqs = (job.tags || []).slice(0, 4)
+                    return (
+                      <div key={job.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-blue-200 group relative">
+                        <div className="p-6 lg:p-8">
+                          <div className="flex flex-col lg:flex-row lg:items-start justify-between mb-6">
+                            <div className="flex-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                                <h3 className="text-xl lg:text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                                  {job.title}
+                                </h3>
+                                <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 self-start ${getTypeColor(job.jobType)} transition-all duration-200 group-hover:scale-105`}>
+                                  {job.jobType}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                                  <div className="bg-blue-100 p-2 rounded-lg">
+                                    <Building2 className="w-4 h-4 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Company</p>
+                                    <p className="font-semibold text-gray-900">{job.company}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                                  <div className="bg-green-100 p-2 rounded-lg">
+                                    <MapPin className="w-4 h-4 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Location</p>
+                                    <p className="font-semibold text-gray-900">{job.location}</p>
+                                  </div>
+                                </div>
+                                {job.salary && (
+                                  <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                                    <div className="bg-purple-100 p-2 rounded-lg">
+                                      <DollarSign className="w-4 h-4 text-purple-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wide">Salary</p>
+                                      <p className="font-semibold text-gray-900">{job.salary}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="mb-6">
+                                <p className="text-gray-700 leading-relaxed text-base">{job.description}</p>
+                              </div>
+                              {reqs.length > 0 && (
+                                <div className="mb-6">
+                                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    Requirements
+                                  </h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {reqs.map((req, idx) => (
+                                      <div key={idx} className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                        <span className="text-blue-800 font-medium text-sm">{req}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="border-t border-gray-100 pt-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <div className="bg-gray-100 p-2 rounded-lg">
+                                      <Clock className="w-4 h-4 text-gray-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wide">Posted</p>
+                                      <p className="font-semibold text-gray-900">{job.postedDate}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <div className="bg-blue-100 p-2 rounded-lg">
+                                      <Eye className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wide">Views</p>
+                                      <p className="font-semibold text-gray-900">{job.views}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <div className="bg-purple-100 p-2 rounded-lg">
+                                      <Users className="w-4 h-4 text-purple-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wide">Applicants</p>
+                                      <p className="font-semibold text-gray-900">{job.applied}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                  <button
+                                    className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                                    onClick={() => handleViewDetails(job.id)}
+                                  >
+                                    View Details
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="absolute top-4 right-4 lg:top-6 lg:right-6">
+                              <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg">
                                 Featured
-                              </span>
-                            </div>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-1">{job.title}</h3>
-                            <div className="flex items-center text-gray-600 mb-2">
-                              <Building2 className="w-4 h-4 mr-1" />
-                              <span>{job.company}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mb-2 inline-block">
-                            {job.status}
-                          </span>
-                          <div className="flex items-center text-green-600 font-semibold">
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            <span>{job.salary}</span>
-                          </div>
-                        </div>
                       </div>
-
-                      <div className="flex items-center gap-6 text-sm text-gray-500 mb-3">
-                        <div className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          <span>{job.location}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          <span>Posted {job.postedDate}</span>
-                        </div>
-                      </div>
-
-                      <p className="text-gray-600 mb-4">{job.description}</p>
-
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {job.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className={`px-2 py-1 text-xs rounded-full border ${
-                              index === 0
-                                ? "bg-blue-100 text-blue-800 border-blue-200"
-                                : "bg-gray-100 text-gray-700 border-gray-200"
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <Eye className="w-4 h-4 mr-1" />
-                            <span>{job.views} views</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Users className="w-4 h-4 mr-1" />
-                            <span>{job.applied} applied</span>
-                          </div>
-                        </div>
-                        <button
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                          onClick={() => handleViewDetails(job.id)}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Regular Opportunities */}
+            {/* Regular Opportunities - styled like student cards */}
             {regularJobs.length > 0 && (
-              <div className="space-y-4">
-                {regularJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start space-x-4">
-                        <img
-                          src={job.logo || "/placeholder.svg"}
-                          alt={`${job.company} logo`}
-                          className="w-12 h-12 rounded-lg object-cover bg-gray-200"
-                        />
-                        <div>
-                          <h3 className="text-xl font-semibold text-gray-900 mb-1">{job.title}</h3>
-                          <div className="flex items-center text-gray-600 mb-2">
-                            <Building2 className="w-4 h-4 mr-1" />
-                            <span>{job.company}</span>
+              <div className="space-y-6">
+                {regularJobs.map((job) => {
+                  const reqs = (job.tags || []).slice(0, 4)
+                  return (
+                    <div key={job.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-blue-200 group relative">
+                      <div className="p-6 lg:p-8">
+                        <div className="flex flex-col lg:flex-row lg:items-start justify-between mb-6">
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                              <h3 className="text-xl lg:text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                                {job.title}
+                              </h3>
+                              <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 self-start ${getTypeColor(job.jobType)} transition-all duration-200 group-hover:scale-105`}>
+                                {job.jobType}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg hover:bg-blue-50 transition-colors duration-200">
+                                <div className="bg-blue-100 p-2 rounded-lg">
+                                  <Building2 className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-wide">Company</p>
+                                  <p className="font-semibold text-gray-900">{job.company}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg hover:bg-green-50 transition-colors duration-200">
+                                <div className="bg-green-100 p-2 rounded-lg">
+                                  <MapPin className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-wide">Location</p>
+                                  <p className="font-semibold text-gray-900">{job.location}</p>
+                                </div>
+                              </div>
+                              {job.salary && (
+                                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg hover:bg-purple-50 transition-colors duration-200">
+                                  <div className="bg-purple-100 p-2 rounded-lg">
+                                    <DollarSign className="w-4 h-4 text-purple-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Salary</p>
+                                    <p className="font-semibold text-gray-900">{job.salary}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mb-6">
+                              <p className="text-gray-700 leading-relaxed text-base">{job.description}</p>
+                            </div>
+
+                            {reqs.length > 0 && (
+                              <div className="mb-6">
+                                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  Requirements
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {reqs.map((req, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                      <span className="text-blue-800 font-medium text-sm">{req}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="border-t border-gray-100 pt-6">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="bg-gray-100 p-2 rounded-lg">
+                                    <Clock className="w-4 h-4 text-gray-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Posted</p>
+                                    <p className="font-semibold text-gray-900">{job.postedDate}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="bg-blue-100 p-2 rounded-lg">
+                                    <Eye className="w-4 h-4 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Views</p>
+                                    <p className="font-semibold text-gray-900">{job.views}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="bg-purple-100 p-2 rounded-lg">
+                                    <Users className="w-4 h-4 text-purple-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Applicants</p>
+                                    <p className="font-semibold text-gray-900">{job.applied}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-4 flex justify-end">
+                                <button
+                                  className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                                  onClick={() => handleViewDetails(job.id)}
+                                >
+                                  View Details
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mb-2 inline-block">
-                          {job.status}
-                        </span>
-                        <div className="flex items-center text-green-600 font-semibold">
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          <span>{job.salary}</span>
-                        </div>
-                      </div>
                     </div>
-
-                    <div className="flex items-center gap-6 text-sm text-gray-500 mb-3">
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        <span>{job.location}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        <span>Posted {job.postedDate}</span>
-                      </div>
-                    </div>
-
-                    <p className="text-gray-600 mb-4">{job.description}</p>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {job.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className={`px-2 py-1 text-xs rounded-full border ${
-                            index === 0
-                              ? "bg-blue-100 text-blue-800 border-blue-200"
-                              : "bg-gray-100 text-gray-700 border-gray-200"
-                          }`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <Eye className="w-4 h-4 mr-1" />
-                          <span>{job.views} views</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Users className="w-4 h-4 mr-1" />
-                          <span>{job.applied} applied</span>
-                        </div>
-                      </div>
-                      <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                        onClick={() => handleViewDetails(job.id)}
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )})}
               </div>
             )}
 
             {/* No Results */}
-            {filteredJobs.length === 0 && (
+            {jobs.length === 0 && (
               <div className="text-center py-12">
                 <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No opportunities found</h3>
@@ -918,15 +1171,7 @@ function AlumniJobBoard() {
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">My Job Postings</h1>
                   <p className="text-gray-600">Manage your job and internship opportunities</p>
                 </div>
-                <button
-                  onClick={() => setActiveTab("Post Job")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium flex items-center"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Post New Opportunity
-                </button>
+                {/* Post Job button removed as requested */}
               </div>
 
               {/* Statistics Cards */}
@@ -935,7 +1180,7 @@ function AlumniJobBoard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-1">Total Posts</p>
-                      <p className="text-3xl font-bold text-gray-900">{userPostedJobs.length}</p>
+                      <p className="text-3xl font-bold text-gray-900">{myJobs.length}</p>
                     </div>
                     <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                       <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -955,7 +1200,7 @@ function AlumniJobBoard() {
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-1">Active Posts</p>
                       <p className="text-3xl font-bold text-green-600">
-                        {userPostedJobs.filter((job) => job.status === "Approved").length}
+                        {myJobs.filter((job) => job.status === "Approved").length}
                       </p>
                     </div>
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -976,7 +1221,7 @@ function AlumniJobBoard() {
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-1">Total Views</p>
                       <p className="text-3xl font-bold text-purple-600">
-                        {userPostedJobs.reduce((total, job) => total + job.views, 0)}
+                        {myJobs.reduce((total, job) => total + (job.views || 0), 0)}
                       </p>
                     </div>
                     <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -990,7 +1235,7 @@ function AlumniJobBoard() {
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-1">Applications</p>
                       <p className="text-3xl font-bold text-orange-600">
-                        {userPostedJobs.reduce((total, job) => total + job.applied, 0)}
+                        {myJobs.reduce((total, job) => total + (job.applied || 0), 0)}
                       </p>
                     </div>
                     <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -1016,7 +1261,7 @@ function AlumniJobBoard() {
                   />
                 </div>
                 <button
-                  className="h-12 px-6 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center"
+                  className="h-12 px-6 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center text-gray-700"
                   onClick={() => setMyPostsShowFilters(!myPostsShowFilters)}
                 >
                   <Filter className="w-4 h-4 mr-2" />
@@ -1037,6 +1282,7 @@ function AlumniJobBoard() {
                         <SelectValue placeholder="All Industries" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="All Industries">All Industries</SelectItem>
                         {industries.map((industry) => (
                           <SelectItem key={industry} value={industry}>
                             {industry}
@@ -1113,9 +1359,9 @@ function AlumniJobBoard() {
             {/* Results Summary */}
             <div className="mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Active Postings ({filteredUserJobs.filter((job) => job.status === "Approved").length})
+                Active Postings ({myJobs.filter((job) => job.status === "Approved").length})
               </h2>
-              <p className="text-gray-600">{filteredUserJobs.length} total opportunities found</p>
+              <p className="text-gray-600">{myJobs.length} total opportunities found</p>
             </div>
 
             {/* Featured User Posts */}
@@ -1222,6 +1468,12 @@ function AlumniJobBoard() {
                             Edit
                           </button>
                           <button
+                            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                            onClick={() => toggleApplicants(job.id)}
+                          >
+                            View Applicants
+                          </button>
+                          <button
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                             onClick={() => handleViewDetails(job.id)}
                           >
@@ -1229,6 +1481,55 @@ function AlumniJobBoard() {
                           </button>
                         </div>
                       </div>
+
+                          {expandedApplicantsJobId === job.id && (
+                        <div className="mt-4 border-t border-gray-200 pt-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">Applicants</h4>
+                          {!(applicantsByJob[job.id] && applicantsByJob[job.id].length) ? (
+                            <p className="text-gray-600 text-sm">No applications yet.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {applicantsByJob[job.id].map((app: any) => (
+                                    <div key={app.id} className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                          <p className="font-medium text-gray-900">{app.applicant_email}</p>
+                                          <p className="text-xs text-gray-600">Applied {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : ''}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200 capitalize">{app.status || 'applied'}</span>
+                                          <button
+                                            disabled={updatingAppId === app.id}
+                                            onClick={() => updateApplicationStatus(app.id, job.id, 'accepted')}
+                                            className={`text-xs px-3 py-1 rounded-md text-white ${updatingAppId === app.id ? 'bg-green-300' : 'bg-green-600 hover:bg-green-700'} transition-colors`}
+                                          >
+                                            Accept
+                                          </button>
+                                          <button
+                                            disabled={updatingAppId === app.id}
+                                            onClick={() => updateApplicationStatus(app.id, job.id, 'rejected')}
+                                            className={`text-xs px-3 py-1 rounded-md text-white ${updatingAppId === app.id ? 'bg-red-300' : 'bg-red-600 hover:bg-red-700'} transition-colors`}
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 text-sm">
+                                        {app.resume_url && (
+                                          <a href={app.resume_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View Resume</a>
+                                        )}
+                                      </div>
+                                      {app.cover_letter && (
+                                        <div className="mt-2 text-xs text-gray-700">
+                                          <span className="font-semibold">Cover Letter:</span> {String(app.cover_letter).length > 240 ? String(app.cover_letter).slice(0, 240) + '…' : app.cover_letter}
+                                        </div>
+                                      )}
+                                    </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1326,6 +1627,12 @@ function AlumniJobBoard() {
                           Edit
                         </button>
                         <button
+                          className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                          onClick={() => toggleApplicants(job.id)}
+                        >
+                          View Applicants
+                        </button>
+                        <button
                           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                           onClick={() => handleViewDetails(job.id)}
                         >
@@ -1333,29 +1640,71 @@ function AlumniJobBoard() {
                         </button>
                       </div>
                     </div>
+
+                    {expandedApplicantsJobId === job.id && (
+                      <div className="mt-4 border-t border-gray-200 pt-4">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Applicants</h4>
+                        {!(applicantsByJob[job.id] && applicantsByJob[job.id].length) ? (
+                          <p className="text-gray-600 text-sm">No applications yet.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {applicantsByJob[job.id].map((app: any) => (
+                              <div key={app.id} className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{app.applicant_email}</p>
+                                    <p className="text-xs text-gray-600">Applied {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : ''}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200 capitalize">{app.status || 'applied'}</span>
+                                    <button
+                                      disabled={updatingAppId === app.id}
+                                      onClick={() => updateApplicationStatus(app.id, job.id, 'accepted')}
+                                      className={`text-xs px-3 py-1 rounded-md text-white ${updatingAppId === app.id ? 'bg-green-300' : 'bg-green-600 hover:bg-green-700'} transition-colors`}
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      disabled={updatingAppId === app.id}
+                                      onClick={() => updateApplicationStatus(app.id, job.id, 'rejected')}
+                                      className={`text-xs px-3 py-1 rounded-md text-white ${updatingAppId === app.id ? 'bg-red-300' : 'bg-red-600 hover:bg-red-700'} transition-colors`}
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="mt-2 text-sm">
+                                  {app.resume_url && (
+                                    <a href={app.resume_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View Resume</a>
+                                  )}
+                                </div>
+                                {app.cover_letter && (
+                                  <div className="mt-2 text-xs text-gray-700">
+                                    <span className="font-semibold">Cover Letter:</span> {String(app.cover_letter).length > 240 ? String(app.cover_letter).slice(0, 240) + '…' : app.cover_letter}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
 
             {/* No Results */}
-            {filteredUserJobs.length === 0 && (
+            {myJobs.length === 0 && (
               <div className="text-center py-12">
                 <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No posts found</h3>
                 <p className="text-gray-500 mb-4">
-                  {userPostedJobs.length === 0
+                  {myJobs.length === 0
                     ? "You haven't posted any jobs yet. Create your first job posting!"
                     : "Try adjusting your search criteria to find your posts."}
                 </p>
-                {userPostedJobs.length === 0 && (
-                  <button
-                    onClick={() => setActiveTab("Post Job")}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium"
-                  >
-                    Post Your First Job
-                  </button>
-                )}
+                {/* Post first job CTA removed as posting is not enabled here */}
               </div>
             )}
           </>
@@ -1803,19 +2152,13 @@ function AlumniJobBoard() {
                 <p className="text-gray-600 leading-relaxed">{selectedJob.description}</p>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium">
-                  Apply Now
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-                  Save Job
-                </button>
-              </div>
+              {/* Alumni are view-only: no apply/save actions */}
             </div>
           </DialogContent>
         </Dialog>
       )}
     </div>
+    </AlumniNavigation>
   )
 }
 

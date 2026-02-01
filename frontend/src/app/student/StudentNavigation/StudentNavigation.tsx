@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap, User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award } from 'lucide-react';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Interfaces
 interface NavItem {
@@ -31,6 +32,13 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   const router = useRouter();
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const { user } = useUser();
+  const [messageUnread, setMessageUnread] = useState<number>(0);
+  const [jobNewBadge, setJobNewBadge] = useState<number>(0);
+  const prevJobIdsRef = React.useRef<Set<number>>(new Set());
+
+  // API root
+  const API_ROOT = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
 
   // Sample student data
   const studentData: StudentData = {
@@ -50,7 +58,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
     { id: "career", label: "Career Resources", icon: <Target className="w-5 h-5" />, route: "/student/career-resources" },
     { id: "jobs", label: "Job Opportunities", icon: <Briefcase className="w-5 h-5" />, badge: "12", route: "/student/job-opportunities" },
     { id: "events", label: "Events", icon: <Calendar className="w-5 h-5" />, route: "/student/events" },
-    { id: "messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, badge: "3", route: "/student/messages" },
+    { id: "messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, route: "/student/messages" },
     { id: "profile", label: "Profile", icon: <User className="w-5 h-5" />, route: "/student/profile" },
     { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, route: "/student/settings" },
   ];
@@ -58,6 +66,67 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   const isActiveRoute = (route: string): boolean => {
     return pathname === route;
   };
+
+  // Poll threads for unread count
+  useEffect(() => {
+    let timer: any;
+    const load = async () => {
+      try {
+        const email = String(user?.email || '');
+        if (!email) return;
+        const resp = await fetch(`${API_ROOT}/messages/threads?user=${encodeURIComponent(email)}`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok || !isJson) return;
+        const threads = (data.threads || []) as Array<{ unread:number }>;
+        const total = threads.reduce((sum, t) => sum + Number(t.unread || 0), 0);
+        setMessageUnread(total);
+      } catch {
+        // silent
+      }
+    };
+    load();
+    timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [API_ROOT, user?.email]);
+
+  // Poll jobs for new postings count
+  useEffect(() => {
+    let timer: any;
+    const load = async () => {
+      try {
+        const resp = await fetch(`${API_ROOT}/jobs`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok || !isJson) return;
+        const jobs = (data.jobs || []) as Array<{ id:number }>;
+        const latestIds = new Set<number>(jobs.map(j => Number(j.id)));
+        const prevIds = prevJobIdsRef.current;
+        let newCount = 0;
+        latestIds.forEach(id => { if (!prevIds.has(id)) newCount++; });
+        // Do not count as new on first load; initialize snapshot
+        if (prevIds.size === 0) {
+          prevJobIdsRef.current = latestIds;
+          setJobNewBadge(0);
+        } else {
+          setJobNewBadge(newCount);
+          prevJobIdsRef.current = latestIds;
+        }
+      } catch {
+        // silent
+      }
+    };
+    load();
+    timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [API_ROOT]);
+
+  // Clear job badge when on jobs route
+  useEffect(() => {
+    if (isActiveRoute('/student/job-opportunities')) {
+      setJobNewBadge(0);
+    }
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -130,9 +199,9 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
                       </span>
                       <span className="font-medium">{item.label}</span>
                     </div>
-                    {item.badge && (
+                    {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
                       <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        {item.badge}
+                        {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
                       </span>
                     )}
                   </Link>

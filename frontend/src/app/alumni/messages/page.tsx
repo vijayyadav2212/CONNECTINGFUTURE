@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Search, Paperclip, Smile, Phone, Video, MoreHorizontal, User as UserIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // API root (ensure it includes '/api')
 function buildApiRoot() {
@@ -55,6 +56,7 @@ const DEMO_CONTACTS = [
 export default function MessagesPage() {
   const { user } = useUser();
   const currentUserEmail = (user?.email as string | undefined) || "";
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,13 +73,14 @@ export default function MessagesPage() {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const canSend = useMemo(() => input.trim().length > 0 && !!selectedOther, [input, selectedOther]);
+  const prevUnreadRef = useRef<Record<string, number>>({});
 
   // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load threads on mount and every 10s
+  // Load threads on mount and every 10s, toast on new unread
   useEffect(() => {
     let timer: any;
     const load = async () => {
@@ -94,7 +97,21 @@ export default function MessagesPage() {
           throw new Error(msg || "Failed to load threads");
         }
         if (!isJson) throw new Error("Unexpected non-JSON response while loading threads");
-        setThreads(data.threads || []);
+        const latest = (data.threads || []) as ThreadItem[];
+        // Toast on unread increases
+        const prev = prevUnreadRef.current;
+        latest.forEach(t => {
+          const prevUnread = Number(prev[t.thread_key] || 0);
+          const currUnread = Number(t.unread || 0);
+          if (currUnread > prevUnread) {
+            const delta = currUnread - prevUnread;
+            toast({ title: 'New message', description: `${delta} new message${delta>1?'s':''} from ${t.other}` });
+          }
+        });
+        setThreads(latest);
+        const snap: Record<string, number> = {};
+        latest.forEach(t => { snap[t.thread_key] = Number(t.unread || 0); });
+        prevUnreadRef.current = snap;
       } catch (e: any) {
         setError(e.message || "Error loading threads");
       } finally {

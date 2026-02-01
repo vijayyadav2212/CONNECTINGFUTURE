@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap, User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell } from 'lucide-react';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Interfaces
 interface NavItem {
@@ -34,6 +35,12 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   const [isAvailableForMentorship, setIsAvailableForMentorship] = useState<boolean>(true);
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const { user } = useUser();
+  const [messageUnread, setMessageUnread] = useState<number>(0);
+  const [jobNewBadge, setJobNewBadge] = useState<number>(0);
+  const prevJobIdsRef = React.useRef<Set<number>>(new Set());
+
+  const API_ROOT = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
 
   // Sample alumni data
   const alumniData: AlumniData = {
@@ -47,7 +54,6 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   const navigationItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <User className="w-5 h-5" />, route: "/alumni/dashboard" },
-    { id: "directory", label: "Directory", icon: <Users className="w-5 h-5" />, route: "/alumni/directory" },
     { id: "network", label: "Network", icon: <Users className="w-5 h-5" />, route: "/alumni/network" },
     { id: "mentorship", label: "Mentorship", icon: <User className="w-5 h-5" />, badge: "3", route: "/alumni/mentorship" },
     { id: "jobs", label: "Jobs & Internships", icon: <Building className="w-5 h-5" />, route: "/alumni/job-posting" },
@@ -57,7 +63,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     { id: "memories", label: "Memories", icon: <Camera className="w-5 h-5" />, route: "/alumni/memories" },
     { id: "blog", label: "Blog/Articles", icon: <FileText className="w-5 h-5" />, route: "/alumni/blog" },
     { id: "leaderboard", label: "Leaderboard", icon: <Trophy className="w-5 h-5" />, route: "/alumni/leaderboard" },
-    { id: "messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, badge: "5", route: "/alumni/messages" },
+    { id: "messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, route: "/alumni/messages" },
     { id: "donations", label: "Donations", icon: <Heart className="w-5 h-5" />, route: "/alumni/donation" },
     { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, route: "/alumni/settings" },
   ];
@@ -65,6 +71,66 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   const isActiveRoute = (route: string): boolean => {
     return pathname === route;
   };
+
+  // Poll threads for unread count
+  useEffect(() => {
+    let timer: any;
+    const load = async () => {
+      try {
+        const email = String(user?.email || '');
+        if (!email) return;
+        const resp = await fetch(`${API_ROOT}/messages/threads?user=${encodeURIComponent(email)}`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok || !isJson) return;
+        const threads = (data.threads || []) as Array<{ unread:number }>;
+        const total = threads.reduce((sum, t) => sum + Number(t.unread || 0), 0);
+        setMessageUnread(total);
+      } catch {
+        // silent
+      }
+    };
+    load();
+    timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [API_ROOT, user?.email]);
+
+  // Poll jobs for new postings count
+  useEffect(() => {
+    let timer: any;
+    const load = async () => {
+      try {
+        const resp = await fetch(`${API_ROOT}/jobs`);
+        const isJson = resp.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await resp.json() : await resp.text();
+        if (!resp.ok || !isJson) return;
+        const jobs = (data.jobs || []) as Array<{ id:number }>;
+        const latestIds = new Set<number>(jobs.map(j => Number(j.id)));
+        const prevIds = prevJobIdsRef.current;
+        let newCount = 0;
+        latestIds.forEach(id => { if (!prevIds.has(id)) newCount++; });
+        if (prevIds.size === 0) {
+          prevJobIdsRef.current = latestIds;
+          setJobNewBadge(0);
+        } else {
+          setJobNewBadge(newCount);
+          prevJobIdsRef.current = latestIds;
+        }
+      } catch {
+        // silent
+      }
+    };
+    load();
+    timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [API_ROOT]);
+
+  // Clear job badge when on jobs route
+  useEffect(() => {
+    if (isActiveRoute('/alumni/job-posting')) {
+      setJobNewBadge(0);
+    }
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,9 +192,9 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                   </div>
                   <span className="font-medium">{item.label}</span>
                 </div>
-                {item.badge && (
+                {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
                   <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                    {item.badge}
+                    {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
                   </span>
                 )}
               </Link>

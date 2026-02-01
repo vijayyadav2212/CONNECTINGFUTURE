@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const crypto = require('crypto');
@@ -14,12 +17,22 @@ const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
+const { createJobsSchema } = require('./database/jobs');
+const { createApplicationsSchema } = require('./database/applications');
 
 require('dotenv').config({ path: __dirname + '/.env' });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+// Serve uploaded files statically
+const uploadsRoot = path.join(__dirname, 'uploads');
+const resumesDir = path.join(uploadsRoot, 'resumes');
+try {
+  if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
+  if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
+} catch {}
+app.use('/uploads', express.static(uploadsRoot));
 
 /**
  * Auth0 Management API helpers
@@ -208,6 +221,8 @@ async function initializeTables() {
   await createDonationsSchema(dbQuery);
   await createRoadmapsSchema(dbQuery);
   await createConnectionsSchema(dbQuery);
+  await createJobsSchema(dbQuery);
+  await createApplicationsSchema(dbQuery);
 
   console.log('Tables are ready');
   } catch (e) {
@@ -261,6 +276,39 @@ app.get('/api/health', (req, res) => {
 // Protected route example
 app.get('/api/protected', checkJwt, (req, res) => {
   res.json({ message: 'You are authenticated', user: req.auth });
+});
+
+// --- File Uploads (Resume) ---
+const allowedResumeTypes = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, resumesDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
+      const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}_${base}${ext}`;
+      cb(null, fname);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    if (allowedResumeTypes.has(file.mimetype)) return cb(null, true);
+    return cb(new Error('Invalid file type. Only PDF, DOC, and DOCX are allowed.'));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+app.post('/api/uploads/resume', upload.single('resume'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Resume file is required' });
+    const url = `${req.protocol}://${req.get('host')}/uploads/resumes/${req.file.filename}`;
+    return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 });
 
 // Store user info after login (example endpoint)
@@ -769,6 +817,283 @@ app.delete('/api/roadmaps/:id', async (req, res) => {
     const { rowCount } = await dbQuery('DELETE FROM roadmaps WHERE id = ?', [id]);
     if (!rowCount) return res.status(404).json({ error: 'Not found' });
     return res.json({ message: 'Deleted' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Jobs & Internships CRUD
+ */
+
+// Create job/internship
+app.post('/api/jobs', async (req, res) => {
+  try {
+    const {
+      title,
+      company,
+      location,
+      description,
+      responsibilities,
+      requirements,
+      benefits,
+      salary_min,
+      salary_max,
+      currency,
+      tags,
+      status = 'Pending Review',
+      featured = false,
+      logo,
+      industry,
+      job_type,
+      is_remote = false,
+      application_deadline,
+      contact_person,
+      application_method,
+      application_url,
+      posted_by,
+    } = req.body || {};
+
+    if (!title || !company || !location || !description || !industry || !job_type || !posted_by) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const { rows } = await dbQuery(`
+      INSERT INTO jobs (
+        title, company, location, description, responsibilities, requirements, benefits,
+        salary_min, salary_max, currency, tags, status, featured, logo, industry, job_type,
+        is_remote, application_deadline, contact_person, application_method, application_url, posted_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `, [
+      title, company, location, description, responsibilities || null, requirements || null, benefits || null,
+      salary_min || null, salary_max || null, currency || null, Array.isArray(tags) ? tags.join(',') : (tags || null),
+      status, !!featured, logo || null, industry, job_type, !!is_remote,
+      application_deadline || null, contact_person || null, application_method || null, application_url || null,
+      posted_by
+    ]);
+    return res.status(201).json(rows && rows[0]);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List jobs with filters
+app.get('/api/jobs', async (req, res) => {
+  try {
+    const {
+      q,
+      industry,
+      job_type,
+      location,
+      remote_only,
+      status,
+      posted_by,
+      page = 1,
+      limit = 20
+    } = req.query || {};
+
+    const p = Math.max(1, parseInt(page, 10));
+    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
+    const offset = (p - 1) * l;
+
+    const where = [];
+    const params = [];
+
+    if (q) {
+      const like = `%${String(q).toLowerCase()}%`;
+      where.push('(LOWER(title) LIKE ? OR LOWER(company) LIKE ? OR LOWER(tags) LIKE ? OR LOWER(description) LIKE ?)');
+      params.push(like, like, like, like);
+    }
+    if (industry && industry !== 'All Industries') { where.push('industry = ?'); params.push(industry); }
+    if (job_type && job_type !== 'All Types') { where.push('job_type = ?'); params.push(job_type); }
+    if (location) { where.push('LOWER(location) LIKE ?'); params.push(`%${String(location).toLowerCase()}%`); }
+    if (status && status !== 'All Status') { where.push('status = ?'); params.push(status); }
+    if (posted_by) { where.push('LOWER(posted_by) = LOWER(?)'); params.push(posted_by); }
+    if (remote_only === 'true' || remote_only === '1') { where.push('is_remote = TRUE'); }
+
+    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
+    const { rows } = await dbQuery(
+      `SELECT * FROM jobs${whereSql} ORDER BY posted_date DESC LIMIT ? OFFSET ?`,
+      [...params, l, offset]
+    );
+    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM jobs${whereSql}`, params);
+    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
+    return res.json({ jobs: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Get one job
+app.get('/api/jobs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await dbQuery('SELECT * FROM jobs WHERE id = ? LIMIT 1', [id]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
+    return res.json(rows[0]);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Update a job
+app.put('/api/jobs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const allowed = [
+      'title','company','location','description','responsibilities','requirements','benefits',
+      'salary_min','salary_max','currency','tags','status','featured','logo','industry','job_type',
+      'is_remote','application_deadline','contact_person','application_method','application_url'
+    ];
+    const updates = [];
+    const values = [];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        updates.push(`${key} = ?`);
+        values.push(key === 'tags' && Array.isArray(req.body[key]) ? req.body[key].join(',') : req.body[key]);
+      }
+    }
+    if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
+    updates.push('updated_at = NOW()');
+    values.push(id);
+    await dbQuery(`UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`, values);
+    const { rows } = await dbQuery('SELECT * FROM jobs WHERE id = ? LIMIT 1', [id]);
+    return res.json(rows && rows[0]);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete a job
+app.delete('/api/jobs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rowCount } = await dbQuery('DELETE FROM jobs WHERE id = ?', [id]);
+    if (!rowCount) return res.status(404).json({ error: 'Not found' });
+    return res.json({ message: 'Deleted' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Increment view counter
+app.post('/api/jobs/:id/view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await dbQuery('UPDATE jobs SET views = COALESCE(views,0) + 1 WHERE id = ?', [id]);
+    const { rows } = await dbQuery('SELECT views FROM jobs WHERE id = ? LIMIT 1', [id]);
+    return res.json({ views: rows && rows[0] ? rows[0].views : 0 });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Applications endpoints
+ */
+
+// Apply to a job
+app.post('/api/jobs/:id/apply', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { applicant_email, resume_url, cover_letter } = req.body || {};
+    if (!applicant_email) return res.status(400).json({ error: 'applicant_email required' });
+
+    // Ensure job exists
+    const { rows: jobRows } = await dbQuery('SELECT id FROM jobs WHERE id = ? LIMIT 1', [id]);
+    if (!jobRows || !jobRows.length) return res.status(404).json({ error: 'Job not found' });
+
+    // Ensure applicant is a student (alumni cannot apply)
+    try {
+      const { rows: userRows } = await dbQuery('SELECT user_type FROM users WHERE email = ? LIMIT 1', [applicant_email]);
+      const type = userRows && userRows[0] ? String(userRows[0].user_type || '').toLowerCase() : '';
+      if (type !== 'student') {
+        return res.status(403).json({ error: 'forbidden', message: 'Only students can apply to jobs' });
+      }
+    } catch (roleErr) {
+      // If role lookup fails, deny by default to prevent alumni applying
+      return res.status(403).json({ error: 'forbidden', message: 'Only students can apply to jobs' });
+    }
+
+    // Upsert application (unique job_id + applicant_email)
+    const { rows: existing } = await dbQuery('SELECT * FROM applications WHERE job_id = ? AND applicant_email = ? LIMIT 1', [id, applicant_email]);
+    if (existing && existing.length) {
+      // If withdrawn, allow re-apply; else return existing
+      if (existing[0].status === 'withdrawn') {
+        const { rows } = await dbQuery(`
+          UPDATE applications SET status = 'applied', resume_url = COALESCE(?, resume_url), cover_letter = COALESCE(?, cover_letter), updated_at = NOW()
+          WHERE id = ? RETURNING *
+        `, [resume_url || null, cover_letter || null, existing[0].id]);
+        await dbQuery('UPDATE jobs SET applied = COALESCE(applied,0) + 1 WHERE id = ?', [id]);
+        return res.status(200).json({ application: rows[0] });
+      }
+      return res.status(200).json({ application: existing[0] });
+    }
+
+    const { rows } = await dbQuery(`
+      INSERT INTO applications (job_id, applicant_email, status, resume_url, cover_letter)
+      VALUES (?, ?, 'applied', ?, ?)
+      RETURNING *
+    `, [id, applicant_email, resume_url || null, cover_letter || null]);
+    await dbQuery('UPDATE jobs SET applied = COALESCE(applied,0) + 1 WHERE id = ?', [id]);
+    return res.status(201).json({ application: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List applications for current student (joined with job details)
+app.get('/api/applications', async (req, res) => {
+  try {
+    const { applicant_email, page = 1, limit = 50 } = req.query || {};
+    if (!applicant_email) return res.status(400).json({ error: 'applicant_email required' });
+    const p = Math.max(1, parseInt(page, 10));
+    const l = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const offset = (p - 1) * l;
+
+    const { rows } = await dbQuery(`
+      SELECT a.*, j.title, j.company, j.location, j.job_type, j.industry, j.logo
+      FROM applications a
+      JOIN jobs j ON j.id = a.job_id
+      WHERE a.applicant_email = ?
+      ORDER BY a.updated_at DESC
+      LIMIT ? OFFSET ?
+    `, [applicant_email, l, offset]);
+    return res.json({ applications: rows, page: p, limit: l });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List applicants for a job
+app.get('/api/applications/by-job', async (req, res) => {
+  try {
+    const { job_id } = req.query || {};
+    if (!job_id) return res.status(400).json({ error: 'job_id required' });
+    const { rows } = await dbQuery('SELECT * FROM applications WHERE job_id = ? ORDER BY updated_at DESC LIMIT 500', [job_id]);
+    return res.json({ applications: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Update application status (withdraw, etc.)
+app.put('/api/applications/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+    const allowed = ['applied','withdrawn','accepted','rejected'];
+    if (!allowed.includes(String(status))) return res.status(400).json({ error: 'Invalid status' });
+    // Adjust jobs.applied count only when moving to withdrawn
+    if (status === 'withdrawn') {
+      const { rows: appRows } = await dbQuery('SELECT job_id, status FROM applications WHERE id = ? LIMIT 1', [id]);
+      if (appRows && appRows.length && appRows[0].status !== 'withdrawn') {
+        await dbQuery('UPDATE jobs SET applied = GREATEST(COALESCE(applied,0) - 1, 0) WHERE id = ?', [appRows[0].job_id]);
+      }
+    }
+    const { rows } = await dbQuery('UPDATE applications SET status = ?, updated_at = NOW() WHERE id = ? RETURNING *', [status, id]);
+    return res.json({ application: rows && rows[0] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
