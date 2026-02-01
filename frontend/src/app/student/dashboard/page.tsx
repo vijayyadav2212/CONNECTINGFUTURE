@@ -47,10 +47,10 @@ export default function StudentDashboard() {
 
   // Mock data - replace with API calls
   const mockProfile: StudentProfile = {
-    name: "Student Name",
+    name: "Vinayak Gorivale",
     year: "3rd Year",
-    department: "Computer Science Engineering",
-    rollNumber: "2022CS001",
+    department: "Information Technology",
+    rollNumber: "VU4F2223050",
     gpa: 8.5,
     creditsCompleted: 120,
     totalCredits: 160

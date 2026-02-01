@@ -34,10 +34,10 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
 
   // Sample student data
   const studentData: StudentData = {
-    name: "Student Name",
+    name: "Vinayak Gorivale",
     year: "3rd Year",
-    department: "Computer Science",
-    rollNumber: "2022CS001",
+    department: "Information Technology",
+    rollNumber: "VU4F2223050",
     avatar: null,
     verified: true
   };
@@ -73,7 +73,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Student Portal</h1>
-                <p className="text-sm text-gray-500">IIT Delhi</p>
+                <p className="text-sm text-gray-500">Vppcoe</p>
               </div>
             </div>
           </div>

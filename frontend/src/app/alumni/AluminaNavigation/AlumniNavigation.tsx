@@ -37,7 +37,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   // Sample alumni data
   const alumniData: AlumniData = {
-    name: "Vinayak Gorivale",
+    name: "Vijay Yadav",
     graduationYear: "2018",
     company: "Google",
     position: "Senior Software Engineer",
@@ -80,7 +80,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Alumni Connect</h1>
-                <p className="text-sm text-gray-500">IIT Delhi</p>
+                <p className="text-sm text-gray-500">VPPCOE & VA</p>
               </div>
             </div>
           </div>
