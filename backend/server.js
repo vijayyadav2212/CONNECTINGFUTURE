@@ -1,529 +1,531 @@
-// const express = require('express');
-// const cors = require('cors');
-// const dotenv = require('dotenv');
-// const { expressjwt: jwt } = require('express-jwt');
-// const jwksRsa = require('jwks-rsa');
-// const mysql = require('mysql2');
+/* Legacy MySQL server block disabled
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const { expressjwt: jwt } = require('express-jwt');
+const jwksRsa = require('jwks-rsa');
+const mysql = require('mysql2');
 
-// require('dotenv').config({ path: __dirname + '/.env' });
+require('dotenv').config({ path: __dirname + '/.env' });
 
-// const app = express();
-// app.use(cors());
-// app.use(express.json());
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-// // MySQL connection
-// const db = mysql.createConnection({
-//   host: process.env.DB_HOST || 'localhost',
-//   user: process.env.DB_USER || 'root',
-//   password: process.env.DB_PASSWORD || '',
-//   database: process.env.DB_NAME || 'mockapp_db',
-//   port: process.env.DB_PORT || 3306,
-// });
+// MySQL connection
+const db = mysql.createConnection({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'mockapp_db',
+  port: process.env.DB_PORT || 3306,
+});
 
-// db.connect((err) => {
-//   if (err) {
-//     console.error('MySQL connection error:', err);
-//     console.log('Please check your MySQL configuration in .env file');
-//     console.log('Current config:', {
-//       host: process.env.DB_HOST || 'localhost',
-//       user: process.env.DB_USER || 'root',
-//       database: process.env.DB_NAME || 'connectingfuture',
-//       port: process.env.DB_PORT || 3306,
-//       passwordSet: !!process.env.DB_PASSWORD
-//     });
-//   } else {
-//     console.log('Connected to MySQL database');
-//     // Initialize tables if they don't exist
-//     initializeTables();
-//   }
-// });
+db.connect((err) => {
+  if (err) {
+    console.error('MySQL connection error:', err);
+    console.log('Please check your MySQL configuration in .env file');
+    console.log('Current config:', {
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      database: process.env.DB_NAME || 'connectingfuture',
+      port: process.env.DB_PORT || 3306,
+      passwordSet: !!process.env.DB_PASSWORD
+    });
+  } else {
+    console.log('Connected to MySQL database');
+    // Initialize tables if they don't exist
+    initializeTables();
+  }
+});
 
-// // Initialize database tables
-// function initializeTables() {
-//   // Check if the donations table has the right structure
-//   db.query('DESCRIBE donations', (err, results) => {
-//     if (err) {
-//       console.log('Donations table does not exist, creating new one...');
-//       createNewDonationsTable();
-//     } else {
-//       console.log('Existing donations table found with structure:', results.map(r => r.Field));
+// Initialize database tables
+function initializeTables() {
+  // Check if the donations table has the right structure
+  db.query('DESCRIBE donations', (err, results) => {
+    if (err) {
+      console.log('Donations table does not exist, creating new one...');
+      createNewDonationsTable();
+    } else {
+      console.log('Existing donations table found with structure:', results.map(r => r.Field));
       
-//       // Check if it has the columns we need
-//       const existingColumns = results.map(r => r.Field);
-//       const requiredColumns = ['donor_name', 'donor_email'];
-//       const hasRequiredColumns = requiredColumns.every(col => existingColumns.includes(col));
+      // Check if it has the columns we need
+      const existingColumns = results.map(r => r.Field);
+      const requiredColumns = ['donor_name', 'donor_email'];
+      const hasRequiredColumns = requiredColumns.every(col => existingColumns.includes(col));
       
-//       if (!hasRequiredColumns) {
-//         console.log('Existing table structure is different. Adding missing columns...');
-//         alterExistingTable();
-//       } else {
-//         console.log('Donations table structure is compatible');
-//       }
-//     }
-//   });
-// }
+      if (!hasRequiredColumns) {
+        console.log('Existing table structure is different. Adding missing columns...');
+        alterExistingTable();
+      } else {
+        console.log('Donations table structure is compatible');
+      }
+    }
+  });
+}
 
-// // Alter existing table to add missing columns
-// function alterExistingTable() {
-//   const alterQueries = [
-//     "ALTER TABLE donations ADD COLUMN donor_name VARCHAR(255) DEFAULT ''",
-//     "ALTER TABLE donations ADD COLUMN donor_email VARCHAR(255) DEFAULT ''", 
-//     "ALTER TABLE donations ADD COLUMN donor_phone VARCHAR(20)",
-//     "ALTER TABLE donations ADD COLUMN currency VARCHAR(3) DEFAULT 'INR'",
-//     "ALTER TABLE donations ADD COLUMN payment_method VARCHAR(50) DEFAULT 'razorpay'",
-//     "ALTER TABLE donations ADD COLUMN razorpay_order_id VARCHAR(255)",
-//     "ALTER TABLE donations ADD COLUMN razorpay_payment_id VARCHAR(255)",
-//     "ALTER TABLE donations ADD COLUMN razorpay_signature VARCHAR(255)",
-//     "ALTER TABLE donations ADD COLUMN transaction_status VARCHAR(20) DEFAULT 'completed'",
-//     "ALTER TABLE donations ADD COLUMN donation_type VARCHAR(20) DEFAULT 'one-time'",
-//     "ALTER TABLE donations ADD COLUMN cause_category VARCHAR(100)",
-//     "ALTER TABLE donations ADD COLUMN anonymous BOOLEAN DEFAULT FALSE",
-//     "ALTER TABLE donations ADD COLUMN message TEXT",
-//     "ALTER TABLE donations ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE"
-//   ];
+// Alter existing table to add missing columns
+function alterExistingTable() {
+  const alterQueries = [
+    "ALTER TABLE donations ADD COLUMN donor_name VARCHAR(255) DEFAULT ''",
+    "ALTER TABLE donations ADD COLUMN donor_email VARCHAR(255) DEFAULT ''", 
+    "ALTER TABLE donations ADD COLUMN donor_phone VARCHAR(20)",
+    "ALTER TABLE donations ADD COLUMN currency VARCHAR(3) DEFAULT 'INR'",
+    "ALTER TABLE donations ADD COLUMN payment_method VARCHAR(50) DEFAULT 'razorpay'",
+    "ALTER TABLE donations ADD COLUMN razorpay_order_id VARCHAR(255)",
+    "ALTER TABLE donations ADD COLUMN razorpay_payment_id VARCHAR(255)",
+    "ALTER TABLE donations ADD COLUMN razorpay_signature VARCHAR(255)",
+    "ALTER TABLE donations ADD COLUMN transaction_status VARCHAR(20) DEFAULT 'completed'",
+    "ALTER TABLE donations ADD COLUMN donation_type VARCHAR(20) DEFAULT 'one-time'",
+    "ALTER TABLE donations ADD COLUMN cause_category VARCHAR(100)",
+    "ALTER TABLE donations ADD COLUMN anonymous BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE donations ADD COLUMN message TEXT",
+    "ALTER TABLE donations ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE"
+  ];
 
-//   let completed = 0;
-//   alterQueries.forEach((query, index) => {
-//     db.query(query, (err) => {
-//       if (err && !err.message.includes('Duplicate column name')) {
-//         console.error(`Error in alter query ${index + 1}:`, err.message);
-//       } else if (!err) {
-//         console.log(`Added column ${index + 1} successfully`);
-//       }
-//       completed++;
-//       if (completed === alterQueries.length) {
-//         console.log('Table structure update completed');
-//         // Update existing records to have donor_email = user_email if empty
-//         updateExistingRecords();
-//       }
-//     });
-//   });
-// }
+  let completed = 0;
+  alterQueries.forEach((query, index) => {
+    db.query(query, (err) => {
+      if (err && !err.message.includes('Duplicate column name')) {
+        console.error(`Error in alter query ${index + 1}:`, err.message);
+      } else if (!err) {
+        console.log(`Added column ${index + 1} successfully`);
+      }
+      completed++;
+      if (completed === alterQueries.length) {
+        console.log('Table structure update completed');
+        // Update existing records to have donor_email = user_email if empty
+        updateExistingRecords();
+      }
+    });
+  });
+}
 
-// // Update existing records to map user_email to donor_email
-// function updateExistingRecords() {
-//   // First check if both columns exist
-//   db.query('DESCRIBE donations', (err, results) => {
-//     if (err) {
-//       console.error('Error checking table structure:', err.message);
-//       return;
-//     }
+// Update existing records to map user_email to donor_email
+function updateExistingRecords() {
+  // First check if both columns exist
+  db.query('DESCRIBE donations', (err, results) => {
+    if (err) {
+      console.error('Error checking table structure:', err.message);
+      return;
+    }
     
-//     const columns = results.map(r => r.Field);
-//     const hasUserEmail = columns.includes('user_email');
-//     const hasDonorEmail = columns.includes('donor_email');
+    const columns = results.map(r => r.Field);
+    const hasUserEmail = columns.includes('user_email');
+    const hasDonorEmail = columns.includes('donor_email');
     
-//     if (hasUserEmail && hasDonorEmail) {
-//       // Update donor_email from user_email where donor_email is empty
-//       db.query(`
-//         UPDATE donations 
-//         SET donor_email = user_email, 
-//             donor_name = COALESCE(NULLIF(donor_name, ''), 'Anonymous Donor'),
-//             transaction_status = CASE 
-//               WHEN status = 'completed' THEN 'completed'
-//               WHEN status = 'pending' THEN 'pending'
-//               WHEN status = 'failed' THEN 'failed'
-//               ELSE 'completed'
-//             END
-//         WHERE donor_email = '' OR donor_email IS NULL
-//       `, (err, result) => {
-//         if (err) {
-//           console.error('Error updating existing records:', err.message);
-//         } else {
-//           console.log(`Updated ${result.affectedRows} existing donation records`);
-//         }
-//       });
-//     } else {
-//       console.log('Table structure update complete - no existing records to migrate');
-//     }
-//   });
-// }
+    if (hasUserEmail && hasDonorEmail) {
+      // Update donor_email from user_email where donor_email is empty
+      db.query(`
+        UPDATE donations 
+        SET donor_email = user_email, 
+            donor_name = COALESCE(NULLIF(donor_name, ''), 'Anonymous Donor'),
+            transaction_status = CASE 
+              WHEN status = 'completed' THEN 'completed'
+              WHEN status = 'pending' THEN 'pending'
+              WHEN status = 'failed' THEN 'failed'
+              ELSE 'completed'
+            END
+        WHERE donor_email = '' OR donor_email IS NULL
+      `, (err, result) => {
+        if (err) {
+          console.error('Error updating existing records:', err.message);
+        } else {
+          console.log(`Updated ${result.affectedRows} existing donation records`);
+        }
+      });
+    } else {
+      console.log('Table structure update complete - no existing records to migrate');
+    }
+  });
+}
 
-// // Create new donations table (fallback)
-// function createNewDonationsTable() {
-//   const createDonationsTable = `
-//     CREATE TABLE IF NOT EXISTS donations (
-//       id INT AUTO_INCREMENT PRIMARY KEY,
-//       donor_name VARCHAR(255) NOT NULL,
-//       donor_email VARCHAR(255) NOT NULL,
-//       donor_phone VARCHAR(20),
-//       amount DECIMAL(10, 2) NOT NULL,
-//       currency VARCHAR(3) DEFAULT 'INR',
-//       payment_method VARCHAR(50) NOT NULL,
-//       payment_id VARCHAR(255) UNIQUE,
-//       razorpay_order_id VARCHAR(255),
-//       razorpay_payment_id VARCHAR(255),
-//       razorpay_signature VARCHAR(255),
-//       transaction_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
-//       donation_type ENUM('one-time', 'monthly', 'yearly') DEFAULT 'one-time',
-//       cause_category VARCHAR(100),
-//       anonymous BOOLEAN DEFAULT FALSE,
-//       message TEXT,
-//       receipt_sent BOOLEAN DEFAULT FALSE,
-//       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-//       INDEX idx_donor_email (donor_email),
-//       INDEX idx_payment_id (payment_id),
-//       INDEX idx_transaction_status (transaction_status),
-//       INDEX idx_created_at (created_at)
-//     )
-//   `;
+// Create new donations table (fallback)
+function createNewDonationsTable() {
+  const createDonationsTable = `
+    CREATE TABLE IF NOT EXISTS donations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      donor_name VARCHAR(255) NOT NULL,
+      donor_email VARCHAR(255) NOT NULL,
+      donor_phone VARCHAR(20),
+      amount DECIMAL(10, 2) NOT NULL,
+      currency VARCHAR(3) DEFAULT 'INR',
+      payment_method VARCHAR(50) NOT NULL,
+      payment_id VARCHAR(255) UNIQUE,
+      razorpay_order_id VARCHAR(255),
+      razorpay_payment_id VARCHAR(255),
+      razorpay_signature VARCHAR(255),
+      transaction_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+      donation_type ENUM('one-time', 'monthly', 'yearly') DEFAULT 'one-time',
+      cause_category VARCHAR(100),
+      anonymous BOOLEAN DEFAULT FALSE,
+      message TEXT,
+      receipt_sent BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_donor_email (donor_email),
+      INDEX idx_payment_id (payment_id),
+      INDEX idx_transaction_status (transaction_status),
+      INDEX idx_created_at (created_at)
+    )
+  `;
 
-//   db.query(createDonationsTable, (err) => {
-//     if (err) {
-//       console.error('Error creating donations table:', err);
-//     } else {
-//       console.log('New donations table created successfully');
-//     }
-//   });
-// }
+  db.query(createDonationsTable, (err) => {
+    if (err) {
+      console.error('Error creating donations table:', err);
+    } else {
+      console.log('New donations table created successfully');
+    }
+  });
+}
 
-// // Auth0 JWT middleware
-// const checkJwt = jwt({
-//   secret: jwksRsa.expressJwtSecret({
-//     cache: true,
-//     rateLimit: true,
-//     jwksRequestsPerMinute: 5,
-//     jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
-//   }),
-//   audience: process.env.AUTH0_AUDIENCE,
-//   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-//   algorithms: ['RS256'],
-// });
+// Auth0 JWT middleware
+const checkJwt = jwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
+  }),
+  audience: process.env.AUTH0_AUDIENCE,
+  issuer: `https://${process.env.AUTH0_DOMAIN}/`,
+  algorithms: ['RS256'],
+});
 
-// // Public routes (no authentication required)
-// app.get('/', (req, res) => {
-//   res.json({ 
-//     message: 'Alumni Portal API',
-//     status: 'running',
-//     version: '1.0.0',
-//     endpoints: {
-//       public: ['/api/health'],
-//       protected: ['/api/protected', '/api/users', '/api/users/profile', '/api/data/:table']
-//     }
-//   });
-// });
+// Public routes (no authentication required)
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Alumni Portal API',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      public: ['/api/health'],
+      protected: ['/api/protected', '/api/users', '/api/users/profile', '/api/data/:table']
+    }
+  });
+});
 
-// app.get('/api/health', (req, res) => {
-//   const dbStatus = dbHelpers ? 'connected' : 'disconnected';
-//   res.json({ 
-//     status: 'healthy',
-//     timestamp: new Date().toISOString(),
-//     database: dbStatus,
-//     auth0: {
-//       domain: process.env.AUTH0_DOMAIN ? 'configured' : 'not configured',
-//       audience: process.env.AUTH0_AUDIENCE ? 'configured' : 'not configured'
-//     }
-//   });
-// });
+app.get('/api/health', (req, res) => {
+  const dbStatus = dbHelpers ? 'connected' : 'disconnected';
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: dbStatus,
+    auth0: {
+      domain: process.env.AUTH0_DOMAIN ? 'configured' : 'not configured',
+      audience: process.env.AUTH0_AUDIENCE ? 'configured' : 'not configured'
+    }
+  });
+});
 
-// // Protected route example
-// app.get('/api/protected', checkJwt, (req, res) => {
-//   res.json({ message: 'You are authenticated', user: req.auth });
-// });
+// Protected route example
+app.get('/api/protected', checkJwt, (req, res) => {
+  res.json({ message: 'You are authenticated', user: req.auth });
+});
 
-// // Store user info after login (example endpoint)
-// app.post('/api/users', checkJwt, (req, res) => {
-//   const { sub, email } = req.body;
-//   if (!sub || !email) {
-//     return res.status(400).json({ error: 'Missing user info' });
-//   }
-//   db.query(
-//     'INSERT INTO users (auth0_id, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE email = VALUES(email)',
-//     [sub, email],
-//     (err, results) => {
-//       if (err) {
-//         return res.status(500).json({ error: 'Database error', details: err });
-//       }
-//       res.json({ message: 'User stored/updated', results });
-//     }
-//   );
-// });
+// Store user info after login (example endpoint)
+app.post('/api/users', checkJwt, (req, res) => {
+  const { sub, email } = req.body;
+  if (!sub || !email) {
+    return res.status(400).json({ error: 'Missing user info' });
+  }
+  db.query(
+    'INSERT INTO users (auth0_id, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE email = VALUES(email)',
+    [sub, email],
+    (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error', details: err });
+      }
+      res.json({ message: 'User stored/updated', results });
+    }
+  );
+});
 
-// // Donation endpoints
-// app.get('/api/donations', (req, res) => {
-//   const { page = 1, limit = 10, status, donor_email } = req.query;
-//   const offset = (page - 1) * limit;
+// Donation endpoints
+app.get('/api/donations', (req, res) => {
+  const { page = 1, limit = 10, status, donor_email } = req.query;
+  const offset = (page - 1) * limit;
   
-//   let query = 'SELECT * FROM donations';
-//   let countQuery = 'SELECT COUNT(*) as total FROM donations';
-//   let params = [];
-//   let countParams = [];
+  let query = 'SELECT * FROM donations';
+  let countQuery = 'SELECT COUNT(*) as total FROM donations';
+  let params = [];
+  let countParams = [];
   
-//   const whereConditions = [];
+  const whereConditions = [];
   
-//   if (status) {
-//     whereConditions.push('transaction_status = ?');
-//     params.push(status);
-//     countParams.push(status);
-//   }
+  if (status) {
+    whereConditions.push('transaction_status = ?');
+    params.push(status);
+    countParams.push(status);
+  }
   
-//   if (donor_email) {
-//     whereConditions.push('donor_email = ?');
-//     params.push(donor_email);
-//     countParams.push(donor_email);
-//   }
+  if (donor_email) {
+    whereConditions.push('donor_email = ?');
+    params.push(donor_email);
+    countParams.push(donor_email);
+  }
   
-//   if (whereConditions.length > 0) {
-//     const whereClause = ' WHERE ' + whereConditions.join(' AND ');
-//     query += whereClause;
-//     countQuery += whereClause;
-//   }
+  if (whereConditions.length > 0) {
+    const whereClause = ' WHERE ' + whereConditions.join(' AND ');
+    query += whereClause;
+    countQuery += whereClause;
+  }
   
-//   query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-//   params.push(parseInt(limit), parseInt(offset));
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  params.push(parseInt(limit), parseInt(offset));
   
-//   // Get total count
-//   db.query(countQuery, countParams, (err, countResult) => {
-//     if (err) {
-//       return res.status(500).json({ error: err.message });
-//     }
+  // Get total count
+  db.query(countQuery, countParams, (err, countResult) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     
-//     const total = countResult[0].total;
+    const total = countResult[0].total;
     
-//     // Get paginated results
-//     db.query(query, params, (err, results) => {
-//       if (err) {
-//         return res.status(500).json({ error: err.message });
-//       }
+    // Get paginated results
+    db.query(query, params, (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
       
-//       res.json({
-//         donations: results,
-//         pagination: {
-//           page: parseInt(page),
-//           limit: parseInt(limit),
-//           total,
-//           totalPages: Math.ceil(total / limit)
-//         }
-//       });
-//     });
-//   });
-// });
+      res.json({
+        donations: results,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+    });
+  });
+});
 
-// app.post('/api/donations', (req, res) => {
-//   const {
-//     donor_name,
-//     donor_email,
-//     donor_phone,
-//     amount,
-//     currency = 'INR',
-//     payment_method,
-//     payment_id,
-//     razorpay_order_id,
-//     razorpay_payment_id,
-//     razorpay_signature,
-//     transaction_status = 'pending',
-//     donation_type = 'one-time',
-//     cause_category,
-//     anonymous = false,
-//     message
-//   } = req.body;
+app.post('/api/donations', (req, res) => {
+  const {
+    donor_name,
+    donor_email,
+    donor_phone,
+    amount,
+    currency = 'INR',
+    payment_method,
+    payment_id,
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    transaction_status = 'pending',
+    donation_type = 'one-time',
+    cause_category,
+    anonymous = false,
+    message
+  } = req.body;
 
-//   // Validation
-//   if (!donor_name || !donor_email || !amount || !payment_method) {
-//     return res.status(400).json({ 
-//       error: 'Missing required fields: donor_name, donor_email, amount, payment_method' 
-//     });
-//   }
+  // Validation
+  if (!donor_name || !donor_email || !amount || !payment_method) {
+    return res.status(400).json({ 
+      error: 'Missing required fields: donor_name, donor_email, amount, payment_method' 
+    });
+  }
 
-//   const query = `
-//     INSERT INTO donations (
-//       donor_name, donor_email, user_email, donor_phone, amount, currency, payment_method,
-//       payment_id, order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-//       transaction_status, donation_type, cause_category, anonymous, message, description
-//     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-//   `;
+  const query = `
+    INSERT INTO donations (
+      donor_name, donor_email, user_email, donor_phone, amount, currency, payment_method,
+      payment_id, order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+      transaction_status, donation_type, cause_category, anonymous, message, description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
-//   const values = [
-//     donor_name, donor_email, donor_email, donor_phone, amount, currency, payment_method,
-//     payment_id, razorpay_order_id || payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-//     transaction_status, donation_type, cause_category, anonymous, message, message
-//   ];
+  const values = [
+    donor_name, donor_email, donor_email, donor_phone, amount, currency, payment_method,
+    payment_id, razorpay_order_id || payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+    transaction_status, donation_type, cause_category, anonymous, message, message
+  ];
 
-//   db.query(query, values, (err, result) => {
-//     if (err) {
-//       return res.status(500).json({ error: err.message });
-//     }
+  db.query(query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     
-//     res.status(201).json({
-//       id: result.insertId,
-//       donor_name,
-//       donor_email,
-//       amount,
-//       transaction_status,
-//       created_at: new Date().toISOString()
-//     });
-//   });
-// });
+    res.status(201).json({
+      id: result.insertId,
+      donor_name,
+      donor_email,
+      amount,
+      transaction_status,
+      created_at: new Date().toISOString()
+    });
+  });
+});
 
-// app.get('/api/donations/:id', (req, res) => {
-//   const { id } = req.params;
+app.get('/api/donations/:id', (req, res) => {
+  const { id } = req.params;
   
-//   db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
-//     if (err) {
-//       return res.status(500).json({ error: err.message });
-//     }
+  db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     
-//     if (results.length === 0) {
-//       return res.status(404).json({ error: 'Donation not found' });
-//     }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
     
-//     res.json(results[0]);
-//   });
-// });
+    res.json(results[0]);
+  });
+});
 
-// app.put('/api/donations/:id', (req, res) => {
-//   const { id } = req.params;
-//   const updates = req.body;
+app.put('/api/donations/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
   
-//   // Get current donation
-//   db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
-//     if (err) {
-//       return res.status(500).json({ error: err.message });
-//     }
+  // Get current donation
+  db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     
-//     if (results.length === 0) {
-//       return res.status(404).json({ error: 'Donation not found' });
-//     }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
     
-//     // Build update query
-//     const allowedFields = [
-//       'donor_name', 'donor_email', 'donor_phone', 'transaction_status',
-//       'razorpay_payment_id', 'razorpay_signature', 'receipt_sent', 'message'
-//     ];
+    // Build update query
+    const allowedFields = [
+      'donor_name', 'donor_email', 'donor_phone', 'transaction_status',
+      'razorpay_payment_id', 'razorpay_signature', 'receipt_sent', 'message'
+    ];
     
-//     const updateFields = [];
-//     const values = [];
+    const updateFields = [];
+    const values = [];
     
-//     allowedFields.forEach(field => {
-//       if (updates[field] !== undefined) {
-//         updateFields.push(`${field} = ?`);
-//         values.push(updates[field]);
-//       }
-//     });
+    allowedFields.forEach(field => {
+      if (updates[field] !== undefined) {
+        updateFields.push(`${field} = ?`);
+        values.push(updates[field]);
+      }
+    });
     
-//     if (updateFields.length === 0) {
-//       return res.status(400).json({ error: 'No valid fields to update' });
-//     }
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
     
-//     values.push(id);
-//     const query = `UPDATE donations SET ${updateFields.join(', ')} WHERE id = ?`;
+    values.push(id);
+    const query = `UPDATE donations SET ${updateFields.join(', ')} WHERE id = ?`;
     
-//     db.query(query, values, (err, result) => {
-//       if (err) {
-//         return res.status(500).json({ error: err.message });
-//       }
+    db.query(query, values, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
       
-//       res.json({ message: 'Donation updated successfully' });
-//     });
-//   });
-// });
+      res.json({ message: 'Donation updated successfully' });
+    });
+  });
+});
 
-// app.delete('/api/donations/:id', (req, res) => {
-//   const { id } = req.params;
+app.delete('/api/donations/:id', (req, res) => {
+  const { id } = req.params;
   
-//   db.query('DELETE FROM donations WHERE id = ?', [id], (err, result) => {
-//     if (err) {
-//       return res.status(500).json({ error: err.message });
-//     }
+  db.query('DELETE FROM donations WHERE id = ?', [id], (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     
-//     if (result.affectedRows === 0) {
-//       return res.status(404).json({ error: 'Donation not found' });
-//     }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
     
-//     res.json({ message: 'Donation deleted successfully' });
-//   });
-// });
+    res.json({ message: 'Donation deleted successfully' });
+  });
+});
 
-// // Analytics endpoint
-// app.get('/api/donations/analytics/summary', (req, res) => {
-//   const queries = {
-//     totalAmount: 'SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE transaction_status = "completed"',
-//     totalDonations: 'SELECT COUNT(*) as count FROM donations WHERE transaction_status = "completed"',
-//     monthlyAmount: `
-//       SELECT COALESCE(SUM(amount), 0) as total 
-//       FROM donations 
-//       WHERE transaction_status = "completed" 
-//       AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-//     `,
-//     monthlyDonations: `
-//       SELECT COUNT(*) as count 
-//       FROM donations 
-//       WHERE transaction_status = "completed" 
-//       AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-//     `
-//   };
+// Analytics endpoint
+app.get('/api/donations/analytics/summary', (req, res) => {
+  const queries = {
+    totalAmount: 'SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE transaction_status = "completed"',
+    totalDonations: 'SELECT COUNT(*) as count FROM donations WHERE transaction_status = "completed"',
+    monthlyAmount: `
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM donations 
+      WHERE transaction_status = "completed" 
+      AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+    `,
+    monthlyDonations: `
+      SELECT COUNT(*) as count 
+      FROM donations 
+      WHERE transaction_status = "completed" 
+      AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+    `
+  };
 
-//   const results = {};
-//   let completed = 0;
-//   const totalQueries = Object.keys(queries).length;
+  const results = {};
+  let completed = 0;
+  const totalQueries = Object.keys(queries).length;
 
-//   Object.entries(queries).forEach(([key, query]) => {
-//     db.query(query, (err, result) => {
-//       if (err) {
-//         return res.status(500).json({ error: err.message });
-//       }
+  Object.entries(queries).forEach(([key, query]) => {
+    db.query(query, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
       
-//       results[key] = result[0];
-//       completed++;
+      results[key] = result[0];
+      completed++;
       
-//       if (completed === totalQueries) {
-//         res.json({
-//           totalDonationAmount: results.totalAmount.total,
-//           totalDonations: results.totalDonations.count,
-//           monthlyDonationAmount: results.monthlyAmount.total,
-//           monthlyDonations: results.monthlyDonations.count
-//         });
-//       }
-//     });
-//   });
-// });
+      if (completed === totalQueries) {
+        res.json({
+          totalDonationAmount: results.totalAmount.total,
+          totalDonations: results.totalDonations.count,
+          monthlyDonationAmount: results.monthlyAmount.total,
+          monthlyDonations: results.monthlyDonations.count
+        });
+      }
+    });
+  });
+});
 
 
-// // 1. GET ALL EVENTS
-// app.get('/api/events', (req, res) => {
-//   // matches your NEW database schema names
-//   const query = "SELECT * FROM events ORDER BY event_date DESC";
+// 1. GET ALL EVENTS
+app.get('/api/events', (req, res) => {
+  // matches your NEW database schema names
+  const query = "SELECT * FROM events ORDER BY event_date DESC";
   
-//   db.query(query, (err, results) => {
-//     if (err) {
-//       console.error("Database Error:", err);
-//       return res.status(500).json({ error: "Failed to fetch events" });
-//     }
-//     res.json(results);
-//   });
-// });
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Database Error:", err);
+      return res.status(500).json({ error: "Failed to fetch events" });
+    }
+    res.json(results);
+  });
+});
 
-// // 2. CREATE EVENT
-// app.post('/api/events', (req, res) => {
-//   // We use the NEW variable names from your schema
-//   const { title, description, event_date, location, event_type, is_virtual } = req.body;
+// 2. CREATE EVENT
+app.post('/api/events', (req, res) => {
+  // We use the NEW variable names from your schema
+  const { title, description, event_date, location, event_type, is_virtual } = req.body;
   
-//   // Temporary: Use a fake Admin ID until login is finished
-//   const user_auth0_id = 'auth0|test_admin_123'; 
+  // Temporary: Use a fake Admin ID until login is finished
+  const user_auth0_id = 'auth0|test_admin_123'; 
 
-//   const sql = `
-//     INSERT INTO events 
-//     (user_auth0_id, title, description, event_date, location, event_type, is_virtual)
-//     VALUES (?, ?, ?, ?, ?, ?, ?)
-//   `;
+  const sql = `
+    INSERT INTO events 
+    (user_auth0_id, title, description, event_date, location, event_type, is_virtual)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
   
-//   const values = [user_auth0_id, title, description, event_date, location, event_type, is_virtual];
+  const values = [user_auth0_id, title, description, event_date, location, event_type, is_virtual];
 
-//   db.query(sql, values, (err, result) => {
-//     if (err) {
-//       console.error("Save Error:", err);
-//       return res.status(500).json({ error: err.message });
-//     }
-//     res.json({ message: "Success", id: result.insertId });
-//   });
-// });
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("Save Error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "Success", id: result.insertId });
+  });
+});
 
-// const PORT = process.env.PORT || 4000;
-// app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`);
-//   console.log(`Health check available at: http://localhost:${PORT}/api/health`);
-// }); 
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Health check available at: http://localhost:${PORT}/api/health`);
+}); 
+*/
 
 const express = require('express');
 const cors = require('cors');
@@ -546,6 +548,7 @@ const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
 const { createJobsSchema } = require('./database/jobs');
 const { createApplicationsSchema } = require('./database/applications');
+const { createMentorshipSchema } = require('./database/mentorship');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -750,6 +753,7 @@ async function initializeTables() {
   await createConnectionsSchema(dbQuery);
   await createJobsSchema(dbQuery);
   await createApplicationsSchema(dbQuery);
+  await createMentorshipSchema(dbQuery);
 
   console.log('Tables are ready');
   } catch (e) {
@@ -1032,47 +1036,34 @@ app.post('/api/users/sync-self', checkJwt, async (req, res) => {
 // --- DONATIONS ROUTES ---
 
 app.get('/api/donations', async (req, res) => {
-  const { limit = 10, status, donor_email } = req.query;
-  
-  let query = `SELECT donations.*, (donations.created_at AT TIME ZONE 'Asia/Kolkata') AS created_at_ist, (donations.updated_at AT TIME ZONE 'Asia/Kolkata') AS updated_at_ist FROM donations`;
-  let countQuery = 'SELECT COUNT(*) as total FROM donations';
-  let params = [];
-  let countParams = [];
-  
-  const whereConditions = [];
-  
-  if (status) {
-    conditions.push(`payment_status = $${paramCounter}`);
-    params.push(status);
-    paramCounter++;
+  try {
+    const { page = 1, limit = 10, status, donor_email } = req.query;
+    const pageNum = Math.max(1, parseInt(page));
+    const lim = Math.max(1, parseInt(limit));
+    const offset = (pageNum - 1) * lim;
+    const conditions = [];
+    const params = [];
+    const countParams = [];
+    if (status) { conditions.push('transaction_status = ?'); params.push(status); countParams.push(status); }
+    if (donor_email) { conditions.push('donor_email = ?'); params.push(donor_email); countParams.push(donor_email); }
+    let baseQuery = "SELECT donations.*, (donations.created_at AT TIME ZONE 'Asia/Kolkata') AS created_at_ist, (donations.updated_at AT TIME ZONE 'Asia/Kolkata') AS updated_at_ist FROM donations";
+    let countQuery = 'SELECT COUNT(*) as total FROM donations';
+    if (conditions.length > 0) {
+      baseQuery += ' WHERE ' + conditions.join(' AND ');
+      countQuery += ' WHERE ' + conditions.join(' AND ');
+    }
+    const query = baseQuery + ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(lim, offset);
+    const countRes = await dbQuery(countQuery, countParams);
+    const total = countRes.rows && countRes.rows[0] ? Number(countRes.rows[0].total) : 0;
+    const listRes = await dbQuery(query, params);
+    return res.json({
+      donations: listRes.rows,
+      pagination: { page: pageNum, limit: lim, total, totalPages: Math.ceil(total / lim) }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-  
-  // Combine conditions
-  if (conditions.length > 0) {
-    queryText += ' WHERE ' + conditions.join(' AND ');
-  }
-  
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-  params.push(parseInt(limit), parseInt(offset));
-  
-  // Get total count
-  dbQuery(countQuery, countParams)
-    .then(({ rows }) => {
-      const total = rows && rows[0] ? Number(rows[0].total) : 0;
-      return dbQuery(query, params).then(({ rows: results }) => ({ total, results }));
-    })
-    .then(({ total, results }) => {
-      res.json({
-        donations: results,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      });
-    })
-    .catch(err => res.status(500).json({ error: err.message }));
 });
 
 app.post('/api/donations', (req, res) => {
@@ -1668,6 +1659,10 @@ app.post('/api/messages', async (req, res) => {
 
   try {
     const thread_key = buildThreadKey(sender_email, receiver_email);
+    const gate = await canSendMentorshipMessage(sender_email, receiver_email);
+    if (!gate.allowed) {
+      return res.status(402).json({ error: gate.reason || 'Chat locked. Purchase a session to continue.' });
+    }
     const { iv, tag, encrypted } = encryptText(content);
     const sql = `
       INSERT INTO messages (thread_key, sender_email, receiver_email, iv, auth_tag, ciphertext)
@@ -1901,6 +1896,32 @@ async function areConnected(emailA, emailB) {
   return rows[0].status === 'accepted';
 }
 
+// Helper: determine roles for mentorship gating
+async function getUserRoleByEmail(email) {
+  const { rows } = await dbQuery('SELECT user_type FROM users WHERE email = ? LIMIT 1', [email]);
+  return rows && rows[0] ? (rows[0].user_type || 'alumni') : 'alumni';
+}
+
+// Mentorship chat gating: allow first 20 messages for student↔alumni pairs; beyond that require paid/scheduled session
+async function canSendMentorshipMessage(aEmail, bEmail) {
+  try {
+    const aRole = await getUserRoleByEmail(aEmail);
+    const bRole = await getUserRoleByEmail(bEmail);
+    const isMentorshipPair = (aRole === 'student' && bRole === 'alumni') || (aRole === 'alumni' && bRole === 'student');
+    if (!isMentorshipPair) return { allowed: true };
+    const thread_key = buildThreadKey(aEmail, bEmail);
+    const { rows } = await dbQuery('SELECT COUNT(*) AS cnt FROM messages WHERE thread_key = ?', [thread_key]);
+    const count = rows && rows[0] ? Number(rows[0].cnt) : 0;
+    if (count < 20) return { allowed: true };
+    const pair_key = buildPairKey(aEmail, bEmail);
+    const { rows: sess } = await dbQuery("SELECT id, status FROM mentorship_sessions WHERE pair_key = ? AND status IN ('paid','scheduled','completed') ORDER BY created_at DESC LIMIT 1", [pair_key]);
+    if (sess && sess.length) return { allowed: true };
+    return { allowed: false, reason: 'Free chat limit reached (20 messages). Please purchase a mentorship session.' };
+  } catch (e) {
+    return { allowed: true };
+  }
+}
+
 // Protected messaging endpoint variant enforcing accepted connection (optional usage by frontend)
 app.post('/api/messages/connected', async (req, res) => {
   const { sender_email, receiver_email, content } = req.body || {};
@@ -1910,6 +1931,10 @@ app.post('/api/messages/connected', async (req, res) => {
   try {
     const ok = await areConnected(sender_email, receiver_email);
     if (!ok) return res.status(403).json({ error: 'Not connected' });
+    const gate = await canSendMentorshipMessage(sender_email, receiver_email);
+    if (!gate.allowed) {
+      return res.status(402).json({ error: gate.reason || 'Chat locked. Purchase a session to continue.' });
+    }
     const thread_key = buildThreadKey(sender_email, receiver_email);
     const { iv, tag, encrypted } = encryptText(content);
     const { rows } = await dbQuery(`
@@ -1958,6 +1983,203 @@ app.get('/api/users/by-email', async (req, res) => {
     const { rows } = await dbQuery('SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
     if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
     return res.json({ user: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Mentorship: mentor profiles, discovery, requests, sessions, ratings
+ */
+
+// Create or update mentor profile (alumni)
+app.post('/api/mentors/profile', checkJwt, async (req, res) => {
+  try {
+    const email = req.body.email || (req.auth && (req.auth["https://schemas.quickstart/email"] || req.auth.email));
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const { skills, experience_years = 0, topics, availability, price = 0 } = req.body || {};
+    const existing = await dbQuery('SELECT * FROM mentors WHERE mentor_email = ? LIMIT 1', [email]);
+    if (existing.rows && existing.rows.length) {
+      const { rows } = await dbQuery(
+        'UPDATE mentors SET skills = ?, experience_years = ?, topics = ?, availability = ?, price = ?, updated_at = NOW() WHERE mentor_email = ? RETURNING *',
+        [skills || null, Number(experience_years) || 0, topics || null, availability || null, Number(price) || 0, email]
+      );
+      return res.json({ mentor: rows[0] });
+    }
+    const { rows } = await dbQuery(
+      'INSERT INTO mentors (mentor_email, skills, experience_years, topics, availability, price) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
+      [email, skills || null, Number(experience_years) || 0, topics || null, availability || null, Number(price) || 0]
+    );
+    return res.status(201).json({ mentor: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Get mentor profile by email
+app.get('/api/mentors/profile', async (req, res) => {
+  try {
+    const { email } = req.query || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const { rows } = await dbQuery('SELECT * FROM mentors WHERE mentor_email = ? LIMIT 1', [email]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
+    return res.json({ mentor: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mentor discovery list with filters
+app.get('/api/mentors', async (req, res) => {
+  try {
+    const { q, min_experience, max_price, min_rating, page = 1, limit = 20 } = req.query || {};
+    const p = Math.max(1, parseInt(page));
+    const l = Math.min(100, Math.max(1, parseInt(limit)));
+    const offset = (p - 1) * l;
+    const conditions = [];
+    const params = [];
+    if (q) {
+      conditions.push('(COALESCE(skills,\'\') ILIKE ? OR COALESCE(topics,\'\') ILIKE ?)');
+      params.push(`%${q}%`, `%${q}%`);
+    }
+    if (min_experience) { conditions.push('experience_years >= ?'); params.push(Number(min_experience)); }
+    if (max_price) { conditions.push('price <= ?'); params.push(Number(max_price)); }
+    if (min_rating) { conditions.push('rating_avg >= ?'); params.push(Number(min_rating)); }
+    let sql = 'SELECT * FROM mentors';
+    let countSql = 'SELECT COUNT(*) AS total FROM mentors';
+    if (conditions.length) {
+      const where = ' WHERE ' + conditions.join(' AND ');
+      sql += where; countSql += where;
+    }
+    sql += ' ORDER BY rating_avg DESC NULLS LAST, price ASC NULLS LAST LIMIT ? OFFSET ?';
+    params.push(l, offset);
+    const countRes = await dbQuery(countSql, params.slice(0, -2));
+    const total = countRes.rows && countRes.rows[0] ? Number(countRes.rows[0].total) : 0;
+    const listRes = await dbQuery(sql, params);
+    return res.json({ mentors: listRes.rows, pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) } });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mentorship request from student to mentor
+app.post('/api/mentorship/request', async (req, res) => {
+  try {
+    const { student_email, mentor_email, message } = req.body || {};
+    if (!student_email || !mentor_email) return res.status(400).json({ error: 'student_email and mentor_email required' });
+    const pair_key = buildPairKey(student_email, mentor_email);
+    const existing = await dbQuery('SELECT * FROM mentorship_requests WHERE pair_key = ? LIMIT 1', [pair_key]);
+    if (existing.rows && existing.rows.length) {
+      const row = existing.rows[0];
+      if (row.status === 'pending') return res.json({ request: row });
+      const { rows } = await dbQuery('UPDATE mentorship_requests SET status = ?, message = ?, updated_at = NOW() WHERE id = ? RETURNING *', ['pending', message || null, row.id]);
+      return res.status(201).json({ request: rows[0] });
+    }
+    const { rows } = await dbQuery('INSERT INTO mentorship_requests (pair_key, student_email, mentor_email, status, message) VALUES (?, ?, ?, \'pending\', ?) RETURNING *', [pair_key, student_email, mentor_email, message || null]);
+    return res.status(201).json({ request: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mentor responds to mentorship request (accept/reject)
+app.post('/api/mentorship/respond', async (req, res) => {
+  try {
+    const { mentor_email, student_email, action } = req.body || {};
+    if (!mentor_email || !student_email || !['accept','reject'].includes(action)) return res.status(400).json({ error: 'mentor_email, student_email and action required' });
+    const pair_key = buildPairKey(student_email, mentor_email);
+    const { rows } = await dbQuery('SELECT * FROM mentorship_requests WHERE pair_key = ? LIMIT 1', [pair_key]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Request not found' });
+    const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+    const { rows: updated } = await dbQuery('UPDATE mentorship_requests SET status = ?, accepted_at = CASE WHEN ? = \'accepted\' THEN NOW() ELSE NULL END, updated_at = NOW() WHERE id = ? RETURNING *', [newStatus, newStatus, rows[0].id]);
+    // On accept, upsert a general connection as well
+    if (newStatus === 'accepted') {
+      const conn = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
+      if (conn.rows && conn.rows.length) {
+        if (conn.rows[0].status !== 'accepted') {
+          await dbQuery('UPDATE connections SET status = \'accepted\', accepted_at = NOW(), updated_at = NOW() WHERE id = ?', [conn.rows[0].id]);
+        }
+      } else {
+        await dbQuery('INSERT INTO connections (pair_key, requester_email, target_email, status, accepted_at) VALUES (?, ?, ?, \'accepted\', NOW())', [pair_key, student_email, mentor_email]);
+      }
+    }
+    return res.json({ request: updated[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List mentorship requests for a user
+app.get('/api/mentorship/requests', async (req, res) => {
+  try {
+    const { user_email, role } = req.query || {};
+    if (!user_email) return res.status(400).json({ error: 'user_email required' });
+    let sql = 'SELECT * FROM mentorship_requests WHERE ';
+    let params = [];
+    if (role === 'mentor') { sql += 'mentor_email = ?'; params = [user_email]; }
+    else if (role === 'student') { sql += 'student_email = ?'; params = [user_email]; }
+    else { sql += 'mentor_email = ? OR student_email = ?'; params = [user_email, user_email]; }
+    sql += ' ORDER BY updated_at DESC LIMIT 200';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ requests: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Purchase a mentorship session (unlock chat)
+app.post('/api/mentorship/sessions/purchase', async (req, res) => {
+  try {
+    const { student_email, mentor_email, amount, currency = 'INR', payment_id, order_id } = req.body || {};
+    if (!student_email || !mentor_email || !amount || !payment_id) return res.status(400).json({ error: 'student_email, mentor_email, amount, payment_id required' });
+    const pair_key = buildPairKey(student_email, mentor_email);
+    const { rows } = await dbQuery('INSERT INTO mentorship_sessions (pair_key, student_email, mentor_email, status, amount, currency, payment_id, order_id) VALUES (?, ?, ?, \'paid\', ?, ?, ?, ?) RETURNING *', [pair_key, student_email, mentor_email, Number(amount), currency, payment_id, order_id || payment_id]);
+    return res.status(201).json({ session: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Schedule a mentorship session
+app.post('/api/mentorship/sessions/schedule', async (req, res) => {
+  try {
+    const { session_id, scheduled_at, duration_minutes = 60, notes } = req.body || {};
+    if (!session_id || !scheduled_at) return res.status(400).json({ error: 'session_id and scheduled_at required' });
+    const { rows } = await dbQuery('UPDATE mentorship_sessions SET scheduled_at = ?, duration_minutes = ?, notes = ?, status = \'scheduled\', updated_at = NOW() WHERE id = ? RETURNING *', [scheduled_at, Number(duration_minutes) || 60, notes || null, session_id]);
+    return res.json({ session: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List mentorship sessions for a user
+app.get('/api/mentorship/sessions', async (req, res) => {
+  try {
+    const { user_email, role } = req.query || {};
+    if (!user_email) return res.status(400).json({ error: 'user_email required' });
+    let sql = 'SELECT * FROM mentorship_sessions WHERE ';
+    let params = [];
+    if (role === 'mentor') { sql += 'mentor_email = ?'; params = [user_email]; }
+    else if (role === 'student') { sql += 'student_email = ?'; params = [user_email]; }
+    else { sql += 'mentor_email = ? OR student_email = ?'; params = [user_email, user_email]; }
+    sql += ' ORDER BY updated_at DESC LIMIT 200';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ sessions: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Submit rating/feedback for a mentor after session completion
+app.post('/api/mentorship/ratings', async (req, res) => {
+  try {
+    const { session_id, student_email, mentor_email, rating, feedback } = req.body || {};
+    if (!session_id || !student_email || !mentor_email || !rating) return res.status(400).json({ error: 'session_id, student_email, mentor_email, rating required' });
+    const { rows } = await dbQuery('INSERT INTO mentor_ratings (session_id, student_email, mentor_email, rating, feedback) VALUES (?, ?, ?, ?, ?) RETURNING *', [session_id, student_email, mentor_email, Number(rating), feedback || null]);
+    // Update mentor aggregate
+    const agg = await dbQuery('SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM mentor_ratings WHERE mentor_email = ?', [mentor_email]);
+    await dbQuery('UPDATE mentors SET rating_avg = ?, rating_count = ?, updated_at = NOW() WHERE mentor_email = ?', [Number(agg.rows[0].avg), Number(agg.rows[0].cnt), mentor_email]);
+    return res.status(201).json({ rating: rows[0] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

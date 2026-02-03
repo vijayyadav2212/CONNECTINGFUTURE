@@ -1,395 +1,679 @@
 "use client";
 
-import React, { useState } from 'react';
-import StudentNavigation from '../StudentNavigation';
-import { Search, Filter, Plus, MessageCircle, Calendar, Star, MapPin, Clock, Users, Briefcase, GraduationCap, Check, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import StudentNavigation from "../StudentNavigation";
+import { useUser } from "@auth0/nextjs-auth0/client";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import StarRating from "@/components/ui/star-rating";
+import RazorpayPayment from "@/components/payment/RazorpayPayment";
+import { useToast } from "@/hooks/use-toast";
 
-interface Mentor {
-  id: string;
-  name: string;
-  title: string;
-  company: string;
-  expertise: string[];
-  experience: string;
-  rating: number;
-  location: string;
-  avatar: string;
-  bio: string;
-  available: boolean;
-  responseTime: string;
-  totalMentees: number;
-}
+type Mentor = {
+  mentor_email: string;
+  skills?: string | null;
+  topics?: string | null;
+  availability?: string | null;
+  price?: number | null;
+  experience_years?: number | null;
+  rating_avg?: number | null;
+  rating_count?: number | null;
+};
 
-interface MentorshipRequest {
-  id: string;
-  mentorId: string;
-  mentorName: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  requestDate: string;
-  topic: string;
-  description: string;
-  sessionType: 'one-time' | 'ongoing';
-}
+type UserProfile = {
+  email: string;
+  name?: string | null;
+  picture?: string | null;
+  job_title?: string | null;
+  company?: string | null;
+  location?: string | null;
+  skills?: string | null;
+};
+
+type Request = {
+  id: number;
+  student_email: string;
+  mentor_email: string;
+  status: string;
+  message?: string | null;
+  updated_at?: string;
+};
+
+type Session = {
+  id: number;
+  student_email: string;
+  mentor_email: string;
+  status: string;
+  amount?: number;
+  currency?: string;
+  scheduled_at?: string | null;
+  duration_minutes?: number;
+  meeting_link?: string | null;
+};
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
 export default function MentorshipRequests() {
-  const [activeTab, setActiveTab] = useState<'find' | 'requests'>('find');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedExpertise, setSelectedExpertise] = useState('all');
+  const { user } = useUser();
+  const [q, setQ] = useState("");
+  const [minExp, setMinExp] = useState<number | "">("");
+  const [maxPrice, setMaxPrice] = useState<number | "">("");
+  const [minRating, setMinRating] = useState<number | "">("");
+  const [loading, setLoading] = useState(false);
+  const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
+  const [requesting, setRequesting] = useState<string | null>(null);
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [purchaseFor, setPurchaseFor] = useState<{ mentor_email: string; amount: number } | null>(null);
+  const [scheduleForm, setScheduleForm] = useState<{ session_id: number; scheduled_at: string; duration_minutes: number; meeting_link: string } | null>(null);
+  const { toast } = useToast();
+  const [prevRequestStatuses, setPrevRequestStatuses] = useState<Record<number, string>>({});
+  const [prevSessions, setPrevSessions] = useState<Record<number, string>>({});
+  const [removedMentors, setRemovedMentors] = useState<string[]>([]);
+  const [ratingForm, setRatingForm] = useState<{ session_id: number; rating: number; feedback: string } | null>(null);
 
-  const expertiseAreas = [
-    { value: 'all', label: 'All Areas' },
-    { value: 'software-engineering', label: 'Software Engineering' },
-    { value: 'data-science', label: 'Data Science' },
-    { value: 'product-management', label: 'Product Management' },
-    { value: 'design', label: 'Design' },
-    { value: 'entrepreneurship', label: 'Entrepreneurship' },
-    { value: 'career-guidance', label: 'Career Guidance' }
-  ];
+  const queryParams = useMemo(() => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (minExp !== "") p.set("min_experience", String(minExp));
+    if (maxPrice !== "") p.set("max_price", String(maxPrice));
+    if (minRating !== "") p.set("min_rating", String(minRating));
+    return p.toString();
+  }, [q, minExp, maxPrice, minRating]);
 
-  const mentors: Mentor[] = [
-    {
-      id: '1',
-      name: 'Sarah Chen',
-      title: 'Senior Software Engineer',
-      company: 'Google',
-      expertise: ['software-engineering', 'career-guidance'],
-      experience: '8 years',
-      rating: 4.9,
-      location: 'San Francisco, CA',
-      avatar: '/placeholder-user.jpg',
-      bio: 'Passionate about helping students transition into tech careers. Specializing in full-stack development and system design.',
-      available: true,
-      responseTime: '< 2 hours',
-      totalMentees: 25
-    },
-    {
-      id: '2',
-      name: 'David Rodriguez',
-      title: 'Data Science Manager',
-      company: 'Microsoft',
-      expertise: ['data-science', 'career-guidance'],
-      experience: '10 years',
-      rating: 4.8,
-      location: 'Seattle, WA',
-      avatar: '/placeholder-user.jpg',
-      bio: 'Leading data science teams and helping students master machine learning concepts and career development.',
-      available: true,
-      responseTime: '< 4 hours',
-      totalMentees: 18
-    },
-    {
-      id: '3',
-      name: 'Emily Johnson',
-      title: 'Product Manager',
-      company: 'Meta',
-      expertise: ['product-management', 'entrepreneurship'],
-      experience: '6 years',
-      rating: 4.7,
-      location: 'Menlo Park, CA',
-      avatar: '/placeholder-user.jpg',
-      bio: 'Product strategy expert with experience in consumer products. Happy to guide students in product thinking.',
-      available: false,
-      responseTime: '< 1 day',
-      totalMentees: 12
-    },
-    {
-      id: '4',
-      name: 'Alex Kumar',
-      title: 'UX Design Lead',
-      company: 'Adobe',
-      expertise: ['design', 'career-guidance'],
-      experience: '7 years',
-      rating: 4.8,
-      location: 'San Jose, CA',
-      avatar: '/placeholder-user.jpg',
-      bio: 'Design systems expert passionate about creating inclusive user experiences and mentoring upcoming designers.',
-      available: true,
-      responseTime: '< 3 hours',
-      totalMentees: 20
+  const appliedFilters = useMemo(() => {
+    const chips: { label: string; key: string }[] = [];
+    if (q) chips.push({ label: `Search: ${q}`, key: "q" });
+    if (minExp !== "") chips.push({ label: `Min Exp: ${minExp}y`, key: "minExp" });
+    if (maxPrice !== "") chips.push({ label: `Max Price: ₹${maxPrice}`, key: "maxPrice" });
+    if (minRating !== "") chips.push({ label: `Min Rating: ${minRating}+`, key: "minRating" });
+    return chips;
+  }, [q, minExp, maxPrice, minRating]);
+
+  function clearFilters() {
+    setQ("");
+    setMinExp("");
+    setMaxPrice("");
+    setMinRating("");
+  }
+  async function loadMentors() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/mentors?${queryParams}`);
+      const data = await res.json();
+      const list: Mentor[] = data.mentors || [];
+      setMentors(list);
+      // Hydrate mentor user profiles
+      const entries = await Promise.all(
+        list.map(async (m) => {
+          try {
+            const r = await fetch(`${API_BASE}/api/users/by-email?email=${encodeURIComponent(m.mentor_email)}`);
+            const j = await r.json();
+            return [m.mentor_email, j.user] as const;
+          } catch {
+            return [m.mentor_email, { email: m.mentor_email } as UserProfile] as const;
+          }
+        })
+      );
+      const map: Record<string, UserProfile> = {};
+      entries.forEach(([email, prof]) => { if (email) map[email] = prof as UserProfile; });
+      setProfiles(map);
+    } catch (e) {
+      // noop
+    } finally {
+      setLoading(false);
     }
-  ];
+  }
 
-  const mentorshipRequests: MentorshipRequest[] = [
-    {
-      id: '1',
-      mentorId: '1',
-      mentorName: 'Sarah Chen',
-      status: 'accepted',
-      requestDate: '2024-01-15',
-      topic: 'Career Transition to Tech',
-      description: 'Looking for guidance on transitioning from academia to software engineering role',
-      sessionType: 'ongoing'
-    },
-    {
-      id: '2',
-      mentorId: '2',
-      mentorName: 'David Rodriguez',
-      status: 'pending',
-      requestDate: '2024-01-18',
-      topic: 'Machine Learning Project Review',
-      description: 'Need feedback on my capstone ML project and career advice',
-      sessionType: 'one-time'
-    },
-    {
-      id: '3',
-      mentorId: '4',
-      mentorName: 'Alex Kumar',
-      status: 'rejected',
-      requestDate: '2024-01-10',
-      topic: 'UX Portfolio Review',
-      description: 'Would like feedback on my UX design portfolio',
-      sessionType: 'one-time'
+  async function loadRequestsAndSessions() {
+    if (!user?.email) return;
+    try {
+      const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
+      const rj = await rq.json();
+      setRequests(rj.requests || []);
+    } catch {}
+    try {
+      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
+      const sj = await sq.json();
+      setSessions(sj.sessions || []);
+    } catch {}
+  }
+
+  useEffect(() => {
+    loadMentors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    loadRequestsAndSessions();
+  }, [user?.email]);
+
+  // Poll for notifications: request status changes and upcoming sessions
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!user?.email) return;
+      try {
+        const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
+        const rj = await rq.json();
+        const newRequests: Request[] = rj.requests || [];
+        // Detect status changes
+        newRequests.forEach((r) => {
+          const prev = prevRequestStatuses[r.id];
+          if (prev && prev !== r.status) {
+            if (r.status === 'accepted') {
+              toast({ title: 'Request Accepted', description: `Mentor ${r.mentor_email} accepted your request.` });
+            } else if (r.status === 'rejected') {
+              toast({ title: 'Request Declined', description: `Mentor ${r.mentor_email} declined your request.`, variant: 'destructive' });
+            }
+          }
+        });
+        const statusMap: Record<number, string> = {};
+        newRequests.forEach((r) => { statusMap[r.id] = r.status; });
+        setPrevRequestStatuses(statusMap);
+        setRequests(newRequests);
+      } catch {}
+
+      try {
+        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
+        const sj = await sq.json();
+        const newSessions: Session[] = sj.sessions || [];
+        // Reminders: first time we see a scheduled session in <24h
+        newSessions.forEach((s) => {
+          const prev = prevSessions[s.id];
+          if ((prev || '') !== s.status && s.status === 'scheduled' && s.scheduled_at) {
+            const when = new Date(s.scheduled_at);
+            const diff = when.getTime() - Date.now();
+            if (diff > 0 && diff <= 24 * 60 * 60 * 1000) {
+              toast({ title: 'Upcoming Session', description: `${when.toLocaleString()} with ${s.mentor_email}` });
+            }
+          }
+        });
+        const sessMap: Record<number, string> = {};
+        newSessions.forEach((s) => { sessMap[s.id] = s.status; });
+        setPrevSessions(sessMap);
+        setSessions(newSessions);
+      } catch {}
+    }, 15000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email, prevRequestStatuses, prevSessions]);
+
+  async function sendRequest(mentor_email: string) {
+    if (!user?.email) return;
+    setRequesting(mentor_email);
+    try {
+      const res = await fetch(`${API_BASE}/api/mentorship/request`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ student_email: user.email, mentor_email })
+      });
+      if (!res.ok) throw new Error("Request failed");
+      toast({ title: "Request Sent", description: `Mentorship request sent to ${mentor_email}.` });
+      await loadRequestsAndSessions();
+    } catch {}
+    setRequesting(null);
+  }
+
+  async function recordPurchase(paymentId: string, orderId: string, mentor_email: string, amount: number) {
+    if (!user?.email) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/mentorship/sessions/purchase`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          student_email: user.email,
+          mentor_email,
+          amount,
+          currency: "INR",
+          payment_id: paymentId,
+          order_id: orderId,
+        })
+      });
+      if (!res.ok) throw new Error("Purchase record failed");
+      toast({ title: "Payment Successful", description: "Session unlocked. You can schedule now." });
+      await loadRequestsAndSessions();
+    } catch (e) {
+      toast({ title: "Payment Error", description: "Could not record session purchase.", variant: "destructive" });
     }
-  ];
+  }
 
-  const filteredMentors = mentors.filter(mentor => {
-    const matchesSearch = mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mentor.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mentor.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesExpertise = selectedExpertise === 'all' || mentor.expertise.includes(selectedExpertise);
-    
-    return matchesSearch && matchesExpertise;
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'bg-green-100 text-green-600';
-      case 'pending': return 'bg-yellow-100 text-yellow-600';
-      case 'rejected': return 'bg-red-100 text-red-600';
-      case 'completed': return 'bg-blue-100 text-blue-600';
-      default: return 'bg-gray-100 text-gray-600';
+  async function scheduleSession(session_id: number, scheduled_at: string, duration_minutes: number, meeting_link?: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/mentorship/sessions/schedule`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session_id, scheduled_at, duration_minutes, meeting_link })
+      });
+      if (!res.ok) throw new Error("Schedule failed");
+      toast({ title: "Session Scheduled", description: new Date(scheduled_at).toLocaleString() });
+      setScheduleForm(null);
+      await loadRequestsAndSessions();
+    } catch (e) {
+      toast({ title: "Scheduling Error", description: "Please try again.", variant: "destructive" });
     }
-  };
+  }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'accepted': return <Check className="w-4 h-4" />;
-      case 'pending': return <Clock className="w-4 h-4" />;
-      case 'rejected': return <X className="w-4 h-4" />;
-      case 'completed': return <Check className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
+  async function removeConnectionWithMentor(mentor_email: string) {
+    if (!user?.email) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/connections/remove`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_email: user.email, other_email: mentor_email }),
+      });
+      if (!res.ok) throw new Error('Remove failed');
+      toast({ title: 'Connection Removed', description: `You removed ${mentor_email}.` });
+      setRemovedMentors((prev) => [...prev, mentor_email]);
+    } catch (e) {
+      toast({ title: 'Remove Failed', description: 'Please try again.', variant: 'destructive' });
     }
-  };
+  }
+
+  async function submitRating(session_id: number, mentor_email: string, rating: number, feedback: string) {
+    if (!user?.email) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/mentorship/ratings`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ session_id, student_email: user.email, mentor_email, rating, feedback }),
+      });
+      if (!res.ok) throw new Error('Rating failed');
+      toast({ title: 'Thanks for your feedback', description: 'Your rating has been submitted.' });
+      setRatingForm(null);
+      await loadRequestsAndSessions();
+      await loadMentors();
+    } catch (e) {
+      toast({ title: 'Rating Error', description: 'Please try again.', variant: 'destructive' });
+    }
+  }
 
   return (
     <StudentNavigation>
-      <div className="p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Mentorship</h1>
-          <p className="text-gray-600">Connect with industry professionals for guidance and career advice</p>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('find')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'find'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Find Mentors
-              </button>
-              <button
-                onClick={() => setActiveTab('requests')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'requests'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                My Requests ({mentorshipRequests.length})
-              </button>
-            </nav>
+      <div className="p-8 bg-gradient-to-br from-slate-50/50 to-blue-50/50 min-h-screen">
+        {/* Hero Header */}
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 md:p-10 text-white relative overflow-hidden shadow-2xl mb-8">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <div className="flex items-center space-x-3 mb-3">
+                <span className="text-4xl">🎯</span>
+                <h1 className="text-3xl md:text-4xl font-black">Find Your Mentor</h1>
+              </div>
+              <p className="text-blue-100 text-sm md:text-base">Discover mentors, request guidance, purchase sessions, and track progress</p>
+            </div>
+            <div className="hidden md:block">
+              <div className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-2xl font-bold border border-white/20">Student Hub</div>
+            </div>
           </div>
         </div>
 
-        {activeTab === 'find' && (
-          <>
-            {/* Search and Filters */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search mentors by name, title, or company..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <select 
-                  value={selectedExpertise}
-                  onChange={(e) => setSelectedExpertise(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {expertiseAreas.map(area => (
-                    <option key={area.value} value={area.value}>
-                      {area.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* Filters */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/20 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} />
+            <Input placeholder="Max price (INR)" type="number" value={maxPrice as any} onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")} />
+            <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={clearFilters} disabled={loading}>Clear</Button>
+              <Button onClick={loadMentors} disabled={loading}>{loading ? "Searching..." : "Search"}</Button>
             </div>
-
-            {/* Mentors Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredMentors.map(mentor => (
-                <div key={mentor.id} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-4 mb-4">
-                    <img 
-                      src={mentor.avatar} 
-                      alt={mentor.name}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-lg font-bold text-gray-900">{mentor.name}</h3>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                          <span className="text-sm font-medium text-gray-700">{mentor.rating}</span>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-1">{mentor.title}</p>
-                      <p className="text-blue-600 text-sm font-medium">{mentor.company}</p>
-                    </div>
-                  </div>
-
-                  <p className="text-gray-600 text-sm mb-4">{mentor.bio}</p>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {mentor.expertise.map(skill => (
-                      <span key={skill} className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
-                        {skill.replace('-', ' ')}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      {mentor.location}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      {mentor.responseTime}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-4 h-4" />
-                      {mentor.experience}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      {mentor.totalMentees} mentees
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button 
-                      className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
-                        mentor.available 
-                          ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      }`}
-                      disabled={!mentor.available}
-                    >
-                      {mentor.available ? 'Request Mentorship' : 'Unavailable'}
-                    </button>
-                    <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                      <MessageCircle className="w-5 h-5 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
+          </div>
+          {appliedFilters.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {appliedFilters.map((f) => (
+                <Badge key={f.key} className="bg-blue-50 text-blue-700 border border-blue-200">{f.label}</Badge>
               ))}
             </div>
+          ) : null}
+        </div>
 
-            {filteredMentors.length === 0 && (
-              <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No mentors found</h3>
-                <p className="text-gray-600">Try adjusting your search criteria</p>
-              </div>
-            )}
-          </>
-        )}
+        {/* Available Mentors */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-black text-slate-900">Available Mentors</h2>
+          <div className="text-sm text-slate-600">{mentors.length} found</div>
+        </div>
 
-        {activeTab === 'requests' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">My Mentorship Requests</h2>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  New Request
-                </button>
+        {/* Mentors Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
+          {mentors.length === 0 ? (
+            <div className="md:col-span-2 lg:col-span-3">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+                <div className="text-4xl mb-2">🧭</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No mentors found</h3>
+                <p className="text-gray-600">Try adjusting filters or searching different skills/topics.</p>
               </div>
             </div>
-
-            <div className="p-6">
-              {mentorshipRequests.length > 0 ? (
-                <div className="space-y-4">
-                  {mentorshipRequests.map(request => (
-                    <div key={request.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-bold text-gray-900">{request.topic}</h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(request.status)}`}>
-                              {getStatusIcon(request.status)}
-                              {request.status}
-                            </span>
-                          </div>
-                          <p className="text-blue-600 font-medium mb-1">Mentor: {request.mentorName}</p>
-                          <p className="text-gray-600 text-sm">Requested on {new Date(request.requestDate).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                            {request.sessionType.replace('-', ' ')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-gray-700 mb-4">{request.description}</p>
-
-                      <div className="flex items-center gap-3">
-                        {request.status === 'accepted' && (
-                          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            Schedule Session
-                          </button>
-                        )}
-                        {request.status === 'pending' && (
-                          <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium">
-                            Cancel Request
-                          </button>
-                        )}
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2">
-                          <MessageCircle className="w-4 h-4" />
-                          Message Mentor
-                        </button>
-                      </div>
+          ) : null}
+          {mentors.map((m) => {
+            const prof = profiles[m.mentor_email];
+            const name = prof?.name || m.mentor_email;
+            const initials = String(name).split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+            const available = true; // treat listed mentors as available
+            const skillChips = (m.skills || '')
+              .split(/[,\n]/)
+              .map(s => s.trim())
+              .filter(Boolean)
+              .slice(0, 6);
+            const reqForMentor = requests.find((r) => r.mentor_email === m.mentor_email);
+            const reqStatus = reqForMentor?.status;
+            const isPending = reqStatus === 'pending';
+            const isAccepted = reqStatus === 'accepted';
+            const btnDisabled = !user?.email || requesting === m.mentor_email || isPending || isAccepted;
+            const btnText = requesting === m.mentor_email
+              ? 'Requesting...'
+              : isPending
+              ? 'Request Sent'
+              : isAccepted
+              ? 'Connected'
+              : 'Request Mentorship';
+            return (
+              <div key={m.mentor_email} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-blue-200 group relative overflow-hidden h-full flex flex-col min-h-[420px] md:min-h-[460px]">
+                {available && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg border border-white/20">
+                      Available 🟢
                     </div>
-                  ))}
+                  </div>
+                )}
+                <div className="p-6 lg:p-8 flex flex-col h-full">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative">
+                      <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg lg:text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        {prof?.picture ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={prof.picture} alt={name} className="w-full h-full rounded-full object-cover" />
+                        ) : initials}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900 text-lg lg:text-xl group-hover:text-blue-600 transition-colors duration-200 mb-1">
+                        {name}
+                      </h3>
+                      {prof?.job_title || prof?.company ? (
+                        <p className="text-gray-700 text-sm">{prof?.job_title} {prof?.company ? `• ${prof.company}` : ''}</p>
+                      ) : null}
+                      {m.experience_years ? <p className="text-xs text-gray-500 font-medium">Experience: {m.experience_years}+ years</p> : null}
+                      {m.availability ? <p className="text-xs text-gray-500 font-medium">Availability: {m.availability}</p> : null}
+                      {prof?.location ? (
+                        <div className="mt-2"><Badge className="bg-slate-50 text-slate-700 border border-slate-200">{prof.location}</Badge></div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl mb-4 border border-gray-100">
+                    {skillChips.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {skillChips.map((s) => (
+                          <Badge key={s} className="bg-white text-slate-700 border border-slate-200">{s}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      m.skills ? <p className="text-sm"><span className="font-medium">Skills:</span> {m.skills}</p> : null
+                    )}
+                    {m.topics ? <p className="text-sm mt-2"><span className="font-medium">Topics:</span> {m.topics}</p> : null}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <StarRating value={Number(m.rating_avg || 0)} readOnly size={16} />
+                        <span className="font-bold text-yellow-800 text-sm">{m.rating_avg ?? '—'}</span>
+                      </div>
+                      <p className="text-xs text-yellow-700 font-medium">Avg Rating ({m.rating_count || 0})</p>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <div className="mb-1">
+                        <span className="font-bold text-blue-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
+                      </div>
+                      <p className="text-xs text-blue-700 font-medium">Session Price</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-auto pt-4 border-t border-gray-100">
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-70" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                      {btnText}
+                    </Button>
+                    {m.price ? ( 
+                      <Button variant="outline" className="w-full border-2 hover:border-blue-300" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number(m.price) })}>
+                        Purchase Session
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No mentorship requests yet</h3>
-                  <p className="text-gray-600 mb-6">Start by requesting mentorship from experienced professionals</p>
-                  <button 
-                    onClick={() => setActiveTab('find')}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    Find Mentors
-                  </button>
-                </div>
-              )}
+              </div>
+             );
+          })}
+        </div>
+
+        {purchaseFor ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8">
+            <RazorpayPayment
+              paymentDetails={{ amount: purchaseFor.amount, currency: "INR", description: `Mentorship session with ${purchaseFor.mentor_email}`, email: user?.email || undefined }}
+              onSuccess={(paymentId, orderId) => {
+                recordPurchase(paymentId, orderId, purchaseFor.mentor_email, purchaseFor.amount);
+                setPurchaseFor(null);
+              }}
+              onFailure={() => {
+                toast({ title: "Payment Cancelled", description: "You can try purchasing again." });
+                setPurchaseFor(null);
+              }}
+            />
+          </div>
+        ) : null}
+
+        {/* My Mentors */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-slate-900">My Mentors</h2>
+            <div className="text-sm text-slate-600">
+              {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length} connected
             </div>
           </div>
-        )}
+          <div>
+            {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length > 0 ? (
+              <div className="space-y-4">
+                {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).map((r) => {
+                  const prof = profiles[r.mentor_email];
+                  const name = prof?.name || r.mentor_email;
+                  return (
+                    <div key={`conn-${r.id}`} className="flex items-center justify-between p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-xl">{name}</p>
+                          <div className="flex items-center mt-2 space-x-4">
+                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Connected</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-red-400 to-rose-500 text-white hover:from-red-500 hover:to-rose-600 transition-all">Remove Mentor</Button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-slate-600">No connected mentors yet.</div>
+            )}
+          </div>
+        </div>
+
+        {/* My Requests */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-slate-900">My Mentorship Requests</h2>
+          </div>
+          <div>
+            {requests.length > 0 ? (
+              <div className="space-y-4">
+                {requests.map((r) => {
+                  const prof = profiles[r.mentor_email];
+                  const name = prof?.name || r.mentor_email;
+                  return (
+                    <div key={r.id} className="flex items-center justify-between p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-xl">{name}</p>
+                          <div className="flex items-center mt-2 space-x-4">
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{r.status}</span>
+                          </div>
+                          <div className="text-sm text-slate-600 mt-1">Updated: {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</div>
+                          {r.message ? <div className="mt-2 text-sm text-slate-700">{r.message}</div> : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-slate-600">No requests yet.</div>
+            )}
+          </div>
+        </div>
+
+        {/* My Sessions */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-slate-900">My Sessions</h2>
+          </div>
+          <div>
+            {sessions.length > 0 ? (
+              <div className="space-y-4">
+                {sessions.map((s) => {
+                  const prof = profiles[s.mentor_email];
+                  const name = prof?.name || s.mentor_email;
+                  return (
+                    <div key={s.id} className="p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center">
+                            <span className="text-white font-bold">{String(name).charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">Mentor: {name}</p>
+                            <p className="text-slate-600 text-sm">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                      </div>
+                      <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
+                      {s.meeting_link ? (
+                        <div className="mt-1 text-sm">
+                          <a href={s.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Join Meeting</a>
+                        </div>
+                      ) : null}
+                      {(() => {
+                        const start = s.scheduled_at ? new Date(s.scheduled_at).getTime() : null;
+                        const durMs = (s.duration_minutes || 60) * 60 * 1000;
+                        const ended = start ? (Date.now() >= start + durMs) : false;
+                        return s.status === 'completed' || ended;
+                      })() ? (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div className="flex items-center gap-2">
+                            <StarRating
+                              value={ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}
+                              onChange={(val) => setRatingForm({ session_id: s.id, rating: val, feedback: ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : '' })}
+                              size={18}
+                            />
+                            <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
+                          </div>
+                          <Input
+                            placeholder="Optional feedback"
+                            value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
+                            onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
+                          />
+                          <Button
+                            onClick={() => {
+                              if (!ratingForm || ratingForm.session_id !== s.id) return;
+                              const r = ratingForm.rating;
+                              if (r < 1 || r > 5) { toast({ title: 'Invalid rating', description: 'Pick 1-5 stars.', variant: 'destructive' }); return; }
+                              submitRating(s.id, s.mentor_email, r, ratingForm.feedback);
+                            }}
+                            disabled={!ratingForm || ratingForm.session_id !== s.id || (ratingForm.rating < 1 || ratingForm.rating > 5)}
+                          >
+                            Submit Rating
+                          </Button>
+                        </div>
+                      ) : null}
+                      {s.status === 'paid' ? (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <Input
+                            type="datetime-local"
+                            value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : ''}
+                            onChange={(e) => setScheduleForm({
+                              session_id: s.id,
+                              scheduled_at: e.target.value,
+                              duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
+                              meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
+                            })}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Duration (mins)"
+                            value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.duration_minutes as number) : (60 as number)}
+                            onChange={(e) => setScheduleForm({
+                              session_id: s.id,
+                              scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
+                              duration_minutes: Number(e.target.value) || 60,
+                              meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
+                            })}
+                          />
+                          <Input
+                            type="url"
+                            placeholder="Google Meet link (https://meet.google.com/...)"
+                            value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : ''}
+                            onChange={(e) => setScheduleForm({
+                              session_id: s.id,
+                              scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
+                              duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
+                              meeting_link: e.target.value,
+                            })}
+                          />
+                          <Button
+                            onClick={() => {
+                              if (!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at)) return;
+                              const when = new Date(scheduleForm.scheduled_at);
+                              const validFuture = when.getTime() > Date.now();
+                              const dur = Number(scheduleForm.duration_minutes) || 60;
+                              const link = scheduleForm.meeting_link || '';
+                              const isUrl = /^https?:\/\//.test(link);
+                              const isMeet = link.includes('meet.google.com');
+                              if (!validFuture) {
+                                toast({ title: 'Invalid time', description: 'Pick a future date/time.', variant: 'destructive' });
+                                return;
+                              }
+                              if (dur < 15 || dur > 240) {
+                                toast({ title: 'Invalid duration', description: 'Duration must be 15-240 minutes.', variant: 'destructive' });
+                                return;
+                              }
+                              if (!isUrl || !isMeet) {
+                                toast({ title: 'Invalid meeting link', description: 'Provide a valid Google Meet URL.', variant: 'destructive' });
+                                return;
+                              }
+                              scheduleSession(scheduleForm.session_id, scheduleForm.scheduled_at, dur, link);
+                            }}
+                            disabled={!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at && scheduleForm.meeting_link)}
+                          >
+                            Schedule
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-gray-600">No sessions yet.</div>
+            )}
+          </div>
+        </div>
       </div>
     </StudentNavigation>
   );
