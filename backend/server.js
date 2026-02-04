@@ -546,10 +546,10 @@ const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
-const { createJobsSchema } = require('./database/jobs');
-const { createApplicationsSchema } = require('./database/applications');
-const { createMentorshipSchema } = require('./database/mentorship');
-const { createAcademicProgressSchema } = require('./database/academicProgress');
+  const { createJobsSchema } = require('./database/jobs');
+  const { createApplicationsSchema } = require('./database/applications');
+  const { createMentorshipSchema } = require('./database/mentorship');
+  const { createAcademicProgressSchema } = require('./database/academicProgress');
 
 dotenv.config({ path: __dirname + '/.env' });
 
