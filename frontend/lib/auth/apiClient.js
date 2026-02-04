@@ -4,7 +4,9 @@ import tokenManager from './tokenManager';
 class ApiClient {
   constructor() {
     const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
-    this.baseURL = raw.endsWith('/api') ? raw : `${raw.replace(/\/$/, '')}/api`;
+    // Normalize trailing slashes so values like "http://localhost:4000/api/" don't become "/api/api"
+    const normalized = String(raw).replace(/\/+$/, '');
+    this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized}/api`;
   }
 
   // Get headers with authentication
@@ -23,7 +25,8 @@ class ApiClient {
 
   // Generic API call method
   async apiCall(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    const endpointPath = String(endpoint || '').startsWith('/') ? String(endpoint || '') : `/${endpoint}`;
+    const url = `${this.baseURL}${endpointPath}`;
     const config = {
       headers: this.getHeaders(),
       ...options,

@@ -19,6 +19,11 @@ model users {
   picture                String?
   bio                    String?
   user_type              String    @default("alumni")
+  role                   String    @default("user") // user, admin, moderator
+  approval_status        String    @default("pending") // pending, approved, rejected
+  approved_by            Int?
+  approved_at            DateTime? @db.Timestamptz(6)
+  rejection_reason       String?
   graduation_year        Int?
   major                  String?
   current_job            String?
@@ -37,6 +42,8 @@ model users {
   @@index([auth0_id], map: "idx_auth0_id")
   @@index([email], map: "idx_email")
   @@index([user_type], map: "idx_user_type")
+  @@index([role], map: "idx_role")
+  @@index([approval_status], map: "idx_approval_status")
 }
 
 model messages {
@@ -84,4 +91,79 @@ model donations {
   @@index([payment_id], map: "idx_payment_id")
   @@index([transaction_status], map: "idx_transaction_status")
   @@index([created_at], map: "idx_donations_created_at")
+}
+
+model job_postings {
+  id                  Int       @id @default(autoincrement())
+  title               String
+  company             String
+  location            String?
+  job_type            String? // full-time, part-time, contract, internship
+  experience_level    String? // entry, mid, senior
+  description         String?
+  requirements        String?
+  salary_range        String?
+  application_url     String?
+  application_email   String?
+  posted_by_email     String
+  posted_by_name      String?
+  approval_status     String    @default("pending") // pending, approved, rejected
+  approved_by         Int?
+  approved_at         DateTime? @db.Timestamptz(6)
+  rejection_reason    String?
+  is_active           Boolean   @default(true)
+  expires_at          DateTime? @db.Timestamptz(6)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([posted_by_email], map: "idx_job_posted_by")
+  @@index([approval_status], map: "idx_job_approval_status")
+  @@index([is_active], map: "idx_job_active")
+  @@index([created_at], map: "idx_job_created_at")
+}
+
+model events {
+  id                  Int       @id @default(autoincrement())
+  title               String
+  description         String?
+  event_type          String? // webinar, workshop, networking, meetup, conference
+  location            String?
+  is_virtual          Boolean   @default(false)
+  virtual_link        String?
+  start_date          DateTime  @db.Timestamptz(6)
+  end_date            DateTime? @db.Timestamptz(6)
+  registration_url    String?
+  max_attendees       Int?
+  banner_image        String?
+  posted_by_email     String
+  posted_by_name      String?
+  approval_status     String    @default("pending") // pending, approved, rejected
+  approved_by         Int?
+  approved_at         DateTime? @db.Timestamptz(6)
+  rejection_reason    String?
+  is_active           Boolean   @default(true)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([posted_by_email], map: "idx_event_posted_by")
+  @@index([approval_status], map: "idx_event_approval_status")
+  @@index([is_active], map: "idx_event_active")
+  @@index([start_date], map: "idx_event_start_date")
+}
+
+model notifications {
+  id              Int       @id @default(autoincrement())
+  user_email      String
+  notification_type String  // approval, rejection, new_job, new_event, message
+  title           String
+  message         String?
+  related_id      Int? // ID of related job/event/user
+  related_type    String? // job, event, user
+  is_read         Boolean   @default(false)
+  action_url      String?
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([user_email], map: "idx_notification_user")
+  @@index([is_read], map: "idx_notification_read")
+  @@index([created_at], map: "idx_notification_created_at")
 }
