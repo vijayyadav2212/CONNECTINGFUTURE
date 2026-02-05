@@ -11,9 +11,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, MessageCircle, Share2, Calendar, MapPin, Camera, Plus, Search, Filter, Grid, List, ImageIcon, Video, Users, Trophy, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Calendar, MapPin, Camera, Plus, Search, Filter, Grid, List, ImageIcon, Video, Users, Trophy, BookOpen, Upload, X, Eye, Bookmark, TrendingUp, Clock, Sparkles, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
-// Static data for memories
+// Static data for memories (fallback only)
 const staticMemories = [
   {
     id: 1,
@@ -33,7 +34,9 @@ const staticMemories = [
     comments: 12,
     isLiked: false,
     category: "achievement",
-    type: "photo"
+    type: "photo",
+    views: 234,
+    saved: false
   },
   {
     id: 2,
@@ -53,7 +56,9 @@ const staticMemories = [
     comments: 8,
     isLiked: true,
     category: "competition",
-    type: "photo"
+    type: "photo",
+    views: 189,
+    saved: false
   },
   {
     id: 3,
@@ -73,7 +78,9 @@ const staticMemories = [
     comments: 15,
     isLiked: false,
     category: "friendship",
-    type: "photo"
+    type: "photo",
+    views: 312,
+    saved: true
   },
   {
     id: 4,
@@ -93,7 +100,9 @@ const staticMemories = [
     comments: 6,
     isLiked: true,
     category: "academic",
-    type: "photo"
+    type: "photo",
+    views: 145,
+    saved: false
   },
   {
     id: 5,
@@ -187,8 +196,8 @@ const categoryIcons = {
 };
 
 export default function MemoriesPage() {
-  const [memories, setMemories] = useState(staticMemories);
-  const [filteredMemories, setFilteredMemories] = useState(staticMemories);
+  const [memories, setMemories] = useState<any[]>([]);
+  const [filteredMemories, setFilteredMemories] = useState<any[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -196,15 +205,53 @@ export default function MemoriesPage() {
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('recent');
   const [showComments, setShowComments] = useState<{[key: number]: boolean}>({});
+  const [newComment, setNewComment] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(new Set());
   const [comments, setComments] = useState<{[key: number]: any[]}>({
     1: [
-      { id: 1, author: 'John Doe', text: 'Congratulations! So proud of you! 🎉', time: '2 hours ago' },
-      { id: 2, author: 'Jane Smith', text: 'Amazing achievement! 👏', time: '3 hours ago' }
+      { id: 1, author: 'John Doe', text: 'Congratulations! So proud of you! 🎉', time: '2 hours ago', likes: 5 },
+      { id: 2, author: 'Jane Smith', text: 'Amazing achievement! 👏', time: '3 hours ago', likes: 3 }
     ],
     2: [
-      { id: 1, author: 'Team Member', text: 'Great teamwork everyone! 🚀', time: '1 day ago' }
+      { id: 1, author: 'Team Member', text: 'Great teamwork everyone! 🚀', time: '1 day ago', likes: 8 }
     ]
   });
+
+  // Normalize a memory returned from backend to the UI shape used here
+  const normalizeMemory = (m: any) => {
+    if (!m) return m;
+    if (m.author && m.author.name) return m; // already in UI shape
+    return {
+      id: m.id,
+      author: {
+        name: m.author_name || 'Alumni',
+        avatar: m.author_avatar || '',
+        batch: m.author_batch || '',
+        department: m.author_department || ''
+      },
+      title: m.title,
+      description: m.description,
+      image: m.image || m.image_url || '',
+      date: m.date || m.created_at || new Date().toISOString().split('T')[0],
+      location: m.location || '',
+      tags: Array.isArray(m.tags)
+        ? m.tags
+        : (typeof m.tags === 'string' && m.tags.length
+            ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+            : []),
+      likes: m.likes ?? 0,
+      comments: m.comments ?? m.comments_count ?? 0,
+      isLiked: m.isLiked ?? m.is_liked ?? false,
+      category: m.category || 'friendship',
+      type: m.type || 'photo',
+      views: m.views ?? 0,
+      shareCount: m.share_count ?? 0,
+      saved: m.saved ?? false,
+    };
+  };
   
   const [newMemory, setNewMemory] = useState({
     title: '',
@@ -214,248 +261,351 @@ export default function MemoriesPage() {
     category: 'friendship'
   });
 
-  // Filter and search functionality
+  // Fetch memories from backend when filters change
   useEffect(() => {
-    let filtered = memories;
-    
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(memory => memory.category === selectedCategory);
-    }
-    
-    // Search functionality
-    if (searchQuery) {
-      filtered = filtered.filter(memory =>
-        memory.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        memory.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        memory.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        memory.author.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    // Sort by tab selection
-    if (activeTab === 'popular') {
-      filtered = [...filtered].sort((a, b) => b.likes - a.likes);
-    } else if (activeTab === 'recent') {
-      filtered = [...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-    
-    setFilteredMemories(filtered);
-  }, [memories, selectedCategory, searchQuery, activeTab]);
+    const fetchMemories = async () => {
+      try {
+        const q = encodeURIComponent(searchQuery || '');
+        const cat = selectedCategory || 'all';
+        const sort = activeTab; // recent | trending | popular
+        const resp = await apiClient.get(`/memories?q=${q}&category=${cat}&sort=${sort}&page=1&limit=50`);
+        const rawList = resp?.memories || resp || [];
+        const list = rawList.map((m: any) => normalizeMemory(m));
+        setMemories(list);
+        setFilteredMemories(list);
+      } catch (e) {
+        // Fallback to static if backend not ready
+        setMemories(staticMemories);
+        setFilteredMemories(staticMemories);
+      }
+    };
+    fetchMemories();
+    // Subscribe to real-time updates via SSE
+    try {
+      const streamUrl = (apiClient as any).baseURL.replace(/\/+$/, '') + '/memories/stream';
+      const es = new EventSource(streamUrl);
+      es.addEventListener('memory-like', (e: any) => {
+        try {
+          const data = JSON.parse(e.data);
+          const id = data.id;
+          setMemories(prev => prev.map(m => m.id === id ? { ...m, likes: data.likes ?? m.likes, isLiked: data.is_liked ?? m.isLiked } : m));
+        } catch {}
+      });
+      es.addEventListener('memory-view', (e: any) => {
+        try { const d = JSON.parse(e.data); const id = d.id; setMemories(prev => prev.map(m => m.id === id ? { ...m, views: d.views ?? m.views } : m)); } catch {}
+      });
+      es.addEventListener('memory-comment', (e: any) => {
+        try {
+          const d = JSON.parse(e.data);
+          const id = d.id;
+          const c = d.comment;
+          const mapped = { id: c.id, author: c.author_name || 'Alumni', text: c.text, time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now', likes: c.likes || 0 };
+          setComments(prev => ({ ...prev, [id]: [...(prev[id] || []), mapped] }));
+          setMemories(prev => prev.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m));
+        } catch {}
+      });
+      es.addEventListener('memory-create', (e: any) => {
+        try { const d = JSON.parse(e.data); const nm = normalizeMemory(d); setMemories(prev => [nm, ...prev]); setFilteredMemories(prev => [nm, ...prev]); } catch {}
+      });
+      es.addEventListener('memory-share', (e: any) => {
+        try { const d = JSON.parse(e.data); const id = d.id; setMemories(prev => prev.map(m => m.id === id ? { ...m, shareCount: d.share_count ?? m.shareCount } : m)); } catch {}
+      });
+    } catch {}
+  }, [selectedCategory, searchQuery, activeTab]);
 
-  const handleLike = (memoryId: number) => {
-    setMemories(memories.map(memory => 
-      memory.id === memoryId 
-        ? { 
-            ...memory, 
-            isLiked: !memory.isLiked,
-            likes: memory.isLiked ? memory.likes - 1 : memory.likes + 1
-          }
-        : memory
-    ));
+  const handleLike = async (memoryId: number) => {
+    try {
+      const m = memories.find(m => m.id === memoryId);
+      const action = m?.isLiked ? 'unlike' : 'like';
+      setPendingLikeIds(prev => new Set(prev).add(memoryId));
+      const resp = await apiClient.post(`/memories/${memoryId}/like`, { action });
+      setMemories(memories.map(memory => 
+        memory.id === memoryId 
+          ? { ...memory, isLiked: resp?.is_liked ?? !m?.isLiked, likes: resp?.likes ?? (m?.isLiked ? (m.likes - 1) : (m.likes + 1)) }
+          : memory
+      ));
+    } catch {}
+    finally {
+      setPendingLikeIds(prev => { const next = new Set(prev); next.delete(memoryId); return next; });
+    }
   };
 
-  const toggleComments = (memoryId: number) => {
-    setShowComments(prev => ({
-      ...prev,
-      [memoryId]: !prev[memoryId]
-    }));
+  const toggleComments = async (memoryId: number) => {
+    const open = !showComments[memoryId];
+    setShowComments(prev => ({ ...prev, [memoryId]: open }));
+    if (open) {
+      try {
+        const resp = await apiClient.get(`/memories/${memoryId}/comments`);
+        const mapped = (resp?.comments || []).map((c: any) => ({
+          id: c.id,
+          author: c.author_name || 'Alumni',
+          text: c.text,
+          time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now',
+          likes: c.likes || 0,
+        }));
+        setComments(prev => ({ ...prev, [memoryId]: mapped }));
+      } catch {}
+    }
   };
 
-  const handleAddMemory = () => {
-    if (newMemory.title && newMemory.description) {
-      const memory = {
-        id: memories.length + 1,
-        author: {
-          name: "You",
-          avatar: "/placeholder-user.jpg",
-          batch: "2020-2024",
-          department: "Your Department"
-        },
-        title: newMemory.title,
-        description: newMemory.description,
-        image: "/placeholder.jpg",
-        date: new Date().toISOString().split('T')[0],
-        location: newMemory.location || "Campus",
-        tags: newMemory.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        likes: 0,
-        comments: 0,
-        isLiked: false,
-        category: newMemory.category,
-        type: 'photo'
+  const handleAddComment = async (memoryId: number) => {
+    if (newComment.trim()) {
+      try {
+        const resp = await apiClient.post(`/memories/${memoryId}/comments`, { author_name: 'You', text: newComment });
+        setComments({
+          ...comments,
+          [memoryId]: [...(comments[memoryId] || []), { id: resp?.id, author: resp?.author_name || 'You', text: resp?.text || newComment, time: 'Just now', likes: resp?.likes || 0 }]
+        });
+        setMemories(memories.map(m => 
+          m.id === memoryId ? { ...m, comments: (m.comments || m.comments_count || 0) + 1 } : m
+        ));
+        setNewComment('');
+      } catch {}
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
       };
-      
-      setMemories([memory, ...memories]);
-      setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
-      setShowAddForm(false);
+      setImageFile(file);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddMemory = async () => {
+    if (newMemory.title && newMemory.description) {
+      try {
+        let image_url: string | null = null;
+        if (imageFile) {
+          const fd = new FormData();
+          fd.append('image', imageFile);
+          const up = await apiClient.postFormData('/uploads/memory-image', fd);
+          image_url = up?.url || null;
+        }
+        const payload = {
+          author_name: 'You',
+          author_avatar: null,
+          author_batch: '2020-2024',
+          author_department: 'Your Department',
+          title: newMemory.title,
+          description: newMemory.description,
+          image_url,
+          date: new Date().toISOString().split('T')[0],
+          location: newMemory.location || 'Campus',
+          tags: newMemory.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          category: newMemory.category,
+          type: 'photo'
+        };
+        await apiClient.post('/memories', payload);
+        setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
+        setImagePreview(null);
+        setImageFile(null);
+        setShowAddForm(false);
+        // Refresh list
+        const resp = await apiClient.get(`/memories?q=&category=all&sort=recent&page=1&limit=50`);
+        const rawList = resp?.memories || resp || [];
+        const list = rawList.map((m: any) => normalizeMemory(m));
+        setMemories(list);
+        setFilteredMemories(list);
+      } catch {}
     }
   };
 
   const MemoryCard = ({ memory, isGridView }: { memory: any, isGridView: boolean }) => {
     const CategoryIcon = categoryIcons[memory.category as keyof typeof categoryIcons] || Users;
+    const author = memory.author || { name: 'Alumni', avatar: '', batch: '', department: '' };
     
     return (
       <Card 
-        className={`overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${
-          isGridView ? 'h-fit' : 'flex flex-col sm:flex-row'
-        } cursor-pointer group relative bg-white border border-slate-200 shadow-md`}
-        onClick={() => setSelectedMemory(memory)}
+        className={`group overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 ${
+          isGridView ? 'h-full' : 'flex flex-col sm:flex-row'
+        } cursor-pointer relative bg-white border-0 shadow-lg hover:shadow-2xl`}
+        onClick={async () => {
+          setSelectedMemory(memory);
+          try {
+            const v = await apiClient.post(`/memories/${memory.id}/view`, {});
+            setMemories(memories.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m));
+          } catch {}
+        }}
+        onMouseEnter={() => setHoveredCard(memory.id)}
+        onMouseLeave={() => setHoveredCard(null)}
       >
+        {/* Gradient Overlay on Hover */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
         
-        <div className={`${isGridView ? '' : 'w-full sm:w-48 flex-shrink-0'}`}>
+        <div className={`${isGridView ? '' : 'w-full sm:w-56 flex-shrink-0'} relative`}>
           <div className="relative overflow-hidden">
             <img 
               src={memory.image} 
               alt={memory.title}
               className={`${
-                isGridView ? 'w-full h-48 sm:h-52 lg:h-48' : 'w-full h-48 sm:h-full'
-              } object-cover group-hover:scale-105 transition-transform duration-300`}
+                isGridView ? 'w-full h-56 sm:h-64' : 'w-full h-48 sm:h-full'
+              } object-cover group-hover:scale-110 transition-transform duration-700`}
             />
             
-            {/* Enhanced badges with better visibility */}
-            <div className="absolute top-3 left-3 flex gap-2">
+            {/* Modern Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            
+            {/* Category Badge - Floating */}
+            <div className="absolute top-3 left-3 z-20">
               <Badge 
-                variant="secondary" 
-                className="bg-white/95 backdrop-blur-sm text-xs flex items-center gap-1 shadow-md border-0 font-medium text-slate-700"
+                className="bg-white/95 backdrop-blur-sm text-gray-800 hover:bg-white transition-all shadow-lg border-0 px-3 py-1.5"
               >
-                <CategoryIcon className="w-3 h-3" />
+                <CategoryIcon className="w-3.5 h-3.5 mr-1.5" />
                 {memory.category}
               </Badge>
-              {memory.type === 'video' && (
-                <Badge 
-                  variant="secondary" 
-                  className="bg-red-500 text-white backdrop-blur-sm text-xs flex items-center gap-1 shadow-md border-0 font-medium"
-                >
-                  <Video className="w-3 h-3" />
-                  Video
-                </Badge>
-              )}
             </div>
+            {/* Media Type Indicator */}
+            {memory.type === 'video' && (
+              <div className="absolute top-3 right-3 bg-red-500 text-white rounded-full p-2 shadow-xl animate-pulse z-20">
+                <Video className="w-4 h-4" />
+              </div>
+            )}
             
-            {/* Enhanced like button */}
-            <div className="absolute top-3 right-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLike(memory.id);
-                }}
-                className={`bg-white/95 backdrop-blur-sm hover:bg-white shadow-md border-0 rounded-full w-9 h-9 p-0 transition-all duration-300 ${
-                  memory.isLiked 
-                    ? 'text-red-500 hover:text-red-600' 
-                    : 'text-slate-600 hover:text-red-500'
-                }`}
-              >
-                <Heart className={`w-4 h-4 ${memory.isLiked ? 'fill-current' : ''}`} />
-              </Button>
-            </div>
-
-            {/* View count with better visibility */}
-            <div className="absolute bottom-3 right-3">
-              <div className="bg-black/70 backdrop-blur-sm rounded-full px-2 py-1 text-white text-xs flex items-center gap-1 font-medium">
-                <span>👁️</span>
-                {Math.floor(Math.random() * 500) + 100}
+            {/* Engagement Stats on Image */}
+            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between z-20">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleLike(memory.id); }}
+                  className="flex items-center gap-1.5 text-white text-sm font-semibold bg-black/40 backdrop-blur-sm px-2.5 py-1.5 rounded-full hover:bg-black/50 transition-colors"
+                >
+                  <Heart className={`w-4 h-4 ${memory.isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                  {memory.likes}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleComments(memory.id); }}
+                  className="flex items-center gap-1.5 text-white text-sm font-semibold bg-black/40 backdrop-blur-sm px-2.5 py-1.5 rounded-full hover:bg-black/50 transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  {memory.comments}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-white text-xs font-medium bg-black/40 backdrop-blur-sm px-2.5 py-1.5 rounded-full">
+                  <Eye className="w-3.5 h-3.5" />
+                  {memory.views || 0}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); apiClient.post(`/memories/${memory.id}/share`, {}).catch(()=>{}); }}
+                  className="flex items-center gap-1.5 text-white text-xs font-medium bg-black/40 backdrop-blur-sm px-2.5 py-1.5 rounded-full hover:bg-black/50 transition-colors"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  {memory.shareCount || 0}
+                </button>
               </div>
             </div>
           </div>
         </div>
         
-        <div className={`${isGridView ? 'p-4 sm:p-5' : 'flex-1 p-4 sm:p-5'} relative`}>
+        <div className={`${isGridView ? 'p-5' : 'flex-1 p-5'} relative z-20`}>
           {/* Author section with better contrast */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Avatar className="w-10 h-10 sm:w-11 sm:h-11 ring-2 ring-slate-200 shadow-sm">
-                  <AvatarImage src={memory.author.avatar} className="object-cover" />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold text-xs sm:text-sm">
-                    {memory.author.name.charAt(0)}
+                <Avatar className="w-11 h-11 ring-2 ring-blue-500/20 shadow-md">
+                  <AvatarImage src={author.avatar || undefined} className="object-cover" />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold text-sm">
+                    {(author.name || 'A').charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 {/* Online indicator */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-slate-900 text-sm sm:text-base hover:text-blue-600 transition-colors duration-200 truncate">
-                  {memory.author.name}
+                <h3 className="font-bold text-gray-900 text-sm hover:text-blue-600 transition-colors duration-200 truncate">
+                  {author.name}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-700 flex items-center gap-1 font-medium">
-                  <span className="w-1 h-1 bg-blue-500 rounded-full"></span>
-                  {memory.author.batch}
+                <p className="text-xs text-gray-600 font-medium">
+                  {author.batch} • {author.department}
                 </p>
-                <p className="text-xs sm:text-sm text-slate-600 font-medium truncate">{memory.author.department}</p>
               </div>
             </div>
             
-            {/* Enhanced date display with better visibility */}
+            {/* Date with Modern Design */}
             <div className="text-right flex-shrink-0">
-              <div className="flex items-center gap-1 text-xs sm:text-sm text-slate-800 bg-slate-200 rounded-full px-2 sm:px-3 py-1 sm:py-2 font-bold shadow-sm">
-                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
-                <span className="hidden sm:inline">{new Date(memory.date).toLocaleDateString()}</span>
-                <span className="sm:hidden">{new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium bg-gray-50 px-2.5 py-1.5 rounded-lg">
+                <Clock className="w-3.5 h-3.5" />
+                {new Date(memory.date).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
               </div>
             </div>
           </div>
 
-          {/* Title with enhanced visibility */}
-          <h4 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-2 sm:mb-3 line-clamp-2 hover:text-blue-600 transition-colors duration-200 leading-tight">
-            {memory.title}
-          </h4>
-          
-          {/* Description with enhanced contrast */}
-          <p className={`text-slate-800 font-medium leading-relaxed mb-3 sm:mb-4 ${isGridView ? 'line-clamp-3' : 'line-clamp-2'} text-sm sm:text-base`}>
-            {memory.description}
-          </p>
-
-          {/* Enhanced tags with better visibility */}
-          <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-            {memory.tags.slice(0, isGridView ? 2 : 3).map((tag: string, index: number) => (
-              <Badge 
-                key={index} 
-                variant="outline" 
-                className="text-xs sm:text-sm font-semibold text-slate-800 border-slate-400 bg-slate-50 hover:bg-blue-100 hover:border-blue-500 hover:text-blue-800 transition-all duration-200 cursor-pointer px-2 sm:px-3 py-1"
-              >
-                #{tag}
-              </Badge>
-            ))}
-            {memory.tags.length > (isGridView ? 2 : 3) && (
-              <Badge 
-                variant="outline" 
-                className="text-xs sm:text-sm font-semibold bg-slate-100 border-slate-400 text-slate-800 hover:bg-slate-200 transition-all duration-200 cursor-pointer px-2 sm:px-3 py-1"
-              >
-                +{memory.tags.length - (isGridView ? 2 : 3)} more
-              </Badge>
-            )}
-          </div>
-
-          {/* Enhanced interaction bar with better visibility */}
-          <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-slate-300">
-            <div className="flex items-center gap-4 sm:gap-6">
-              <div className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base text-slate-800 hover:text-red-600 transition-colors duration-200 font-semibold">
-                <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{memory.likes}</span>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleComments(memory.id);
-                }}
-                className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base text-slate-800 hover:text-blue-600 transition-colors duration-200 font-semibold"
-              >
-                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{memory.comments}</span>
-              </button>
-              <button className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base text-slate-800 hover:text-green-600 transition-colors duration-200 font-semibold">
-                <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden lg:inline">Share</span>
-              </button>
+          {/* Memory Content */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2">
+              {memory.title}
+            </h3>
+            <p className={`text-gray-700 leading-relaxed ${isGridView ? 'line-clamp-3' : 'line-clamp-2'} text-sm`}>
+              {memory.description}
+            </p>
+            
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {(Array.isArray(memory.tags) ? memory.tags.slice(0, 3) : []).map((tag: string, idx: number) => (
+                <Badge 
+                  key={idx} 
+                  variant="secondary"
+                  className="text-xs font-medium bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-blue-200 hover:from-blue-100 hover:to-purple-100 transition-all cursor-pointer"
+                >
+                  #{tag}
+                </Badge>
+              ))}
             </div>
             
-            {/* Enhanced location indicator with better visibility */}
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-800 bg-slate-200 rounded-full px-2 sm:px-3 py-1 sm:py-2 font-bold shadow-sm flex-shrink-0">
-              <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
-              <span className="truncate max-w-20 sm:max-w-none">{memory.location}</span>
+            {/* Location */}
+            <div className="flex items-center gap-2 text-xs text-gray-600 pt-2 border-t border-gray-100">
+              <MapPin className="w-3.5 h-3.5 text-red-500" />
+              <span className="font-medium">{memory.location}</span>
             </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between gap-3 pt-4 mt-4 border-t border-gray-100">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLike(memory.id);
+              }}
+              className={`flex-1 transition-all duration-300 ${
+                memory.isLiked 
+                  ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+                  : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
+              } ${pendingLikeIds.has(memory.id) ? 'opacity-70 pointer-events-none' : ''}`}
+            >
+              <Heart className={`w-4 h-4 mr-1.5 ${memory.isLiked ? 'fill-current' : ''}`} />
+              Like
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleComments(memory.id);
+              }}
+              className="flex-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+            >
+              <MessageCircle className="w-4 h-4 mr-1.5" />
+              Comment
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1 text-gray-600 hover:text-green-600 hover:bg-green-50 transition-all duration-300"
+              onClick={(e) => { e.stopPropagation(); apiClient.post(`/memories/${memory.id}/share`, {}).catch(()=>{}); }}
+            >
+              <Share2 className="w-4 h-4 mr-1.5" />
+              Share {memory.shareCount ? `(${memory.shareCount})` : ''}
+            </Button>
           </div>
         </div>
       </Card>
@@ -464,355 +614,404 @@ export default function MemoriesPage() {
 
   return (
     <AlumniNavigation>
-      {/* Clean background matching your UI */}
-      <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Clean Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 flex items-center gap-3">
-                📸 Memories Wall
-              </h1>
-              <p className="text-slate-600 mt-2 text-lg">
-                Share and relive your favorite college moments
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Memory
-                <Camera className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Clean Search and Filter Bar */}
-          <Card className="p-4 bg-white shadow-md border border-slate-200">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Enhanced Search */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <Input
-                  placeholder="🔍 Search memories, tags, or names..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-11 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 rounded-full hover:bg-slate-100 text-slate-500"
-                  >
-                    ✕
-                  </Button>
-                )}
-              </div>
-              
-              {/* Enhanced Category Filter */}
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full lg:w-56 h-11 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                  <SelectValue placeholder="🎯 All Categories" />
-                </SelectTrigger>
-                <SelectContent className="border-slate-200 shadow-lg">
-                  <SelectItem value="all">🌟 All Categories</SelectItem>
-                  <SelectItem value="achievement">🏆 Achievement</SelectItem>
-                  <SelectItem value="friendship">👥 Friendship</SelectItem>
-                  <SelectItem value="academic">📚 Academic</SelectItem>
-                  <SelectItem value="sports">⚽ Sports</SelectItem>
-                  <SelectItem value="event">🎉 Events</SelectItem>
-                  <SelectItem value="competition">🏅 Competition</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Enhanced View Toggle */}
-              <div className="flex rounded-lg border border-slate-300 bg-white p-1">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className={`rounded-md transition-all duration-200 ${
-                    viewMode === 'grid' 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
-                      : 'hover:bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  <Grid className="w-4 h-4 mr-1" />
-                  Grid
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className={`rounded-md transition-all duration-200 ${
-                    viewMode === 'list' 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
-                      : 'hover:bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  <List className="w-4 h-4 mr-1" />
-                  List
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          {/* Clean Tabs for sorting */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full lg:w-auto grid-cols-2 bg-white border border-slate-200 shadow-sm">
-              <TabsTrigger 
-                value="recent" 
-                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-200"
-              >
-                <Calendar className="w-4 h-4" />
-                <span className="hidden sm:inline">Recent</span>
-                <span className="sm:hidden">📅</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="popular" 
-                className="flex items-center gap-2 data-[state=active]:bg-red-500 data-[state=active]:text-white transition-all duration-200"
-              >
-                <Heart className="w-4 h-4" />
-                <span className="hidden sm:inline">Popular</span>
-                <span className="sm:hidden">❤️</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="recent" className="mt-4">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <p className="text-sm text-slate-600 font-medium">
-                  {filteredMemories.length} memories found
-                </p>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="popular" className="mt-4">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <p className="text-sm text-slate-600 font-medium">
-                  Showing most liked memories ({filteredMemories.length} total)
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Clean Add Memory Form */}
-          {showAddForm && (
-            <Card className="border border-blue-200 bg-blue-50/50 shadow-lg animate-in slide-in-from-top-2 duration-300">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-3 font-bold text-slate-900">
-                  <div className="p-2 bg-blue-600 rounded-lg text-white">
-                    <Camera className="w-5 h-5" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
+        <div className="p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Hero Header with Stats */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-8 lg:p-12 shadow-2xl">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20" />
+              <div className="relative z-10">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
+                        <Camera className="w-8 h-8 text-white" />
+                      </div>
+                      <h1 className="text-4xl lg:text-5xl font-bold text-white flex items-center gap-3">
+                        Memories Wall
+                        <Sparkles className="w-8 h-8 text-yellow-300 animate-pulse" />
+                      </h1>
+                    </div>
+                    <p className="text-white/90 text-lg max-w-2xl font-medium">
+                      Relive, share, and celebrate the moments that defined your journey. Every memory tells a story. 📸✨
+                    </p>
                   </div>
-                  Share a Memory
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Input
-                  placeholder="✨ Memory title..."
-                  value={newMemory.title}
-                  onChange={(e) => setNewMemory({...newMemory, title: e.target.value})}
-                  className="h-11 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                />
-                <Textarea
-                  placeholder="📝 Tell us about this memory..."
-                  value={newMemory.description}
-                  onChange={(e) => setNewMemory({...newMemory, description: e.target.value})}
-                  rows={4}
-                  className="border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none"
-                />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <Input
-                    placeholder="📍 Location (optional)"
-                    value={newMemory.location}
-                    onChange={(e) => setNewMemory({...newMemory, location: e.target.value})}
-                    className="h-11 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                  <Input
-                    placeholder="🏷️ Tags (comma separated)"
-                    value={newMemory.tags}
-                    onChange={(e) => setNewMemory({...newMemory, tags: e.target.value})}
-                    className="h-11 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                  <Select value={newMemory.category} onValueChange={(value) => setNewMemory({...newMemory, category: value})}>
-                    <SelectTrigger className="h-11 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-slate-200 shadow-lg">
-                      <SelectItem value="friendship">👥 Friendship</SelectItem>
-                      <SelectItem value="achievement">🏆 Achievement</SelectItem>
-                      <SelectItem value="academic">📚 Academic</SelectItem>
-                      <SelectItem value="sports">⚽ Sports</SelectItem>
-                      <SelectItem value="event">🎉 Events</SelectItem>
-                      <SelectItem value="competition">🏅 Competition</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={handleAddMemory} 
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
-                  >
-                    Share Memory ✨
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowAddForm(false)}
-                    className="border-slate-300 hover:bg-slate-50 transition-all duration-200"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Enhanced Memory Feed */}
-          {filteredMemories.length === 0 ? (
-            <Card className="p-16 text-center bg-white shadow-md border border-slate-200">
-              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="w-10 h-10 text-slate-400" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">No memories found 🔍</h3>
-              <p className="text-slate-600 mb-4">Try adjusting your search or filter criteria</p>
-              <Button
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('all');
-                }}
-                variant="outline"
-                className="border-slate-300 hover:bg-slate-50"
-              >
-                Clear Filters ✨
-              </Button>
-            </Card>
-          ) : (
-            <div className={`${
-              viewMode === 'grid' 
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6' 
-                : 'space-y-4 sm:space-y-6'
-            }`}>
-              {filteredMemories.map((memory, index) => (
-                <div 
-                  key={memory.id} 
-                  className="animate-in fade-in-50 duration-300"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <MemoryCard memory={memory} isGridView={viewMode === 'grid'} />
                   
-                  {/* Enhanced Comments Section */}
-                  {showComments[memory.id] && (
-                    <Card className="mt-4 ml-4 border-l-4 border-blue-500 bg-blue-50/50 shadow-md animate-in slide-in-from-left-2 duration-300">
-                      <CardContent className="p-4">
-                        <h4 className="font-bold mb-4 flex items-center gap-2 text-slate-900 text-lg">
-                          <MessageCircle className="w-5 h-5 text-blue-600" />
-                          <span className="font-extrabold">Comments ({comments[memory.id]?.length || 0})</span>
-                        </h4>
-                        <div className="space-y-3">
-                          {comments[memory.id]?.map((comment: any) => (
-                            <div key={comment.id} className="flex gap-3">
-                              <Avatar className="w-9 h-9 ring-2 ring-white shadow-sm">
-                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-semibold">
-                                  {comment.author.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <div className="bg-white rounded-lg p-4 shadow-md border border-slate-200">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="font-bold text-base text-slate-900">{comment.author}</span>
-                                    <span className="text-sm text-slate-700 bg-slate-200 rounded-full px-3 py-1 font-semibold">{comment.time}</span>
+                  {/* Stats Cards */}
+                  <div className="flex gap-4">
+                    <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/30 shadow-xl">
+                      <div className="text-3xl font-bold text-white">{memories.length}</div>
+                      <div className="text-white/80 text-sm font-medium">Total Memories</div>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/30 shadow-xl">
+                      <div className="text-3xl font-bold text-white">{memories.reduce((sum, m) => sum + m.likes, 0)}</div>
+                      <div className="text-white/80 text-sm font-medium">Total Likes</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Controls Bar */}
+            <Card className="p-5 bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Input
+                    placeholder="Search memories, people, tags..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-12 h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-500"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full hover:bg-gray-100"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Category Filter */}
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full lg:w-56 h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl bg-white text-gray-900">
+                    <Filter className="w-4 h-4 mr-2 text-gray-600" />
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="border-gray-200 shadow-2xl">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="achievement">🏆 Achievement</SelectItem>
+                    <SelectItem value="friendship">👥 Friendship</SelectItem>
+                    <SelectItem value="academic">📚 Academic</SelectItem>
+                    <SelectItem value="sports">⚽ Sports</SelectItem>
+                    <SelectItem value="event">🎉 Events</SelectItem>
+                    <SelectItem value="competition">🏅 Competition</SelectItem>
+                  </SelectContent>
+                </Select>
+              
+                {/* View Mode Toggle */}
+                <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className={`rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-md text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    <Grid className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className={`rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-md text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    <List className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                {/* Add Memory Button */}
+                <Button 
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 px-6 rounded-xl"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Share Memory
+                </Button>
+              </div>
+
+              {/* Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-5">
+                <TabsList className="bg-gray-100 p-1.5 rounded-xl w-full lg:w-auto">
+                  <TabsTrigger value="recent" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 text-gray-700 font-medium">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Recent
+                  </TabsTrigger>
+                  <TabsTrigger value="trending" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 text-gray-700 font-medium">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Trending
+                  </TabsTrigger>
+                  <TabsTrigger value="popular" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 text-gray-700 font-medium">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Popular
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </Card>
+
+            {/* Add Memory Form */}
+            {showAddForm && (
+              <Card className="p-6 bg-white border-0 shadow-xl animate-in slide-in-from-top-4 duration-500">
+                <CardHeader className="px-0 pt-0 pb-4">
+                  <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    Create a New Memory
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-0 space-y-5">
+                  {/* Image Upload */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Photo</label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all"
+                      >
+                        {imagePreview ? (
+                          <div className="relative w-full h-full">
+                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setImagePreview(null);
+                              }}
+                              className="absolute top-2 right-2 bg-white/90 hover:bg-white shadow-lg rounded-full"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="w-12 h-12 text-gray-400 mb-2" />
+                            <p className="text-sm text-gray-600 font-medium">Click to upload image</p>
+                            <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB</p>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  <Input
+                    placeholder="Memory Title"
+                    value={newMemory.title}
+                    onChange={(e) => setNewMemory({...newMemory, title: e.target.value})}
+                    className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                  />
+                  <Textarea
+                    placeholder="Describe this wonderful memory..."
+                    value={newMemory.description}
+                    onChange={(e) => setNewMemory({...newMemory, description: e.target.value})}
+                    rows={4}
+                    className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none rounded-xl"
+                  />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <Input
+                      placeholder="Location"
+                      value={newMemory.location}
+                      onChange={(e) => setNewMemory({...newMemory, location: e.target.value})}
+                      className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                    />
+                    <Input
+                      placeholder="Tags (comma separated)"
+                      value={newMemory.tags}
+                      onChange={(e) => setNewMemory({...newMemory, tags: e.target.value})}
+                      className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                    />
+                    <Select value={newMemory.category} onValueChange={(value) => setNewMemory({...newMemory, category: value})}>
+                      <SelectTrigger className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl">
+                        <SelectValue placeholder="Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="friendship">👥 Friendship</SelectItem>
+                        <SelectItem value="achievement">🏆 Achievement</SelectItem>
+                        <SelectItem value="academic">📚 Academic</SelectItem>
+                        <SelectItem value="sports">⚽ Sports</SelectItem>
+                        <SelectItem value="event">🎉 Event</SelectItem>
+                        <SelectItem value="competition">🏅 Competition</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button 
+                      onClick={handleAddMemory} 
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 rounded-xl"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Share Memory
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setImagePreview(null);
+                      }}
+                      className="h-12 border-gray-300 hover:bg-gray-50 transition-all duration-200 rounded-xl"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Memories Feed */}
+            {filteredMemories.length === 0 ? (
+              <Card className="p-16 text-center bg-white border-0 shadow-xl">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Search className="w-12 h-12 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">No memories found</h3>
+                <p className="text-gray-600 mb-6">Try adjusting your search or filter criteria</p>
+                <Button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('all');
+                  }}
+                  variant="outline"
+                  className="border-gray-300 hover:bg-gray-50 rounded-xl"
+                >
+                  Clear Filters
+                </Button>
+              </Card>
+            ) : (
+              <div className={`${
+                viewMode === 'grid' 
+                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' 
+                  : 'space-y-6'
+              }`}>
+                {filteredMemories.map((memory, index) => (
+                  <div 
+                    key={memory.id} 
+                    className="animate-in fade-in-50 duration-500"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                  <MemoryCard memory={memory} isGridView={viewMode === 'grid'} />
+                    
+                    {/* Comments Section */}
+                    {showComments[memory.id] && (
+                      <Card className="mt-4 ml-0 lg:ml-4 border-l-4 border-blue-500 bg-gradient-to-br from-blue-50/50 to-purple-50/30 shadow-xl animate-in slide-in-from-left-2 duration-300">
+                        <CardContent className="p-5">
+                          <h4 className="font-bold mb-5 flex items-center gap-3 text-gray-900 text-lg">
+                            <div className="p-2 bg-blue-500 rounded-xl">
+                              <MessageCircle className="w-5 h-5 text-white" />
+                            </div>
+                            Comments ({comments[memory.id]?.length || 0})
+                          </h4>
+                          <div className="space-y-4 mb-5 max-h-96 overflow-y-auto pr-2">
+                            {comments[memory.id]?.map((comment: any) => (
+                              <div key={comment.id} className="flex gap-3 animate-in fade-in-50">
+                                <Avatar className="w-10 h-10 ring-2 ring-white shadow-md flex-shrink-0">
+                                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white text-xs font-bold">
+                                    {comment.author.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="font-bold text-sm text-gray-900">{comment.author}</span>
+                                      <span className="text-xs text-gray-500 font-medium">{comment.time}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-700 leading-relaxed">{comment.text}</p>
+                                    <div className="flex items-center gap-4 mt-3 text-xs">
+                                      <button className="text-gray-600 hover:text-red-600 transition-colors font-semibold flex items-center gap-1">
+                                        <Heart className="w-3.5 h-3.5" />
+                                        {comment.likes > 0 && comment.likes}
+                                      </button>
+                                      <button className="text-gray-600 hover:text-blue-600 transition-colors font-semibold">
+                                        Reply
+                                      </button>
+                                    </div>
                                   </div>
-                                  <p className="text-base text-slate-800 font-medium leading-relaxed">{comment.text}</p>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                           
-                          {/* Enhanced Add Comment */}
-                          <div className="flex gap-3 pt-3 border-t border-slate-200">
-                            <Avatar className="w-9 h-9 ring-2 ring-white shadow-sm">
-                              <AvatarFallback className="bg-gradient-to-br from-green-500 to-teal-600 text-white text-xs font-semibold">
+                          {/* Add Comment */}
+                          <div className="flex gap-3 pt-4 border-t border-gray-200">
+                            <Avatar className="w-10 h-10 ring-2 ring-white shadow-md flex-shrink-0">
+                              <AvatarFallback className="bg-gradient-to-br from-green-500 to-teal-600 text-white text-xs font-bold">
                                 You
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 flex gap-2">
                               <Input 
-                                placeholder="💬 Write a comment..." 
-                                className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" 
+                                placeholder="Write a comment..." 
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleAddComment(memory.id);
+                                  }
+                                }}
+                                className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
                               />
                               <Button 
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                                onClick={() => handleAddComment(memory.id)}
+                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-5"
                               >
-                                Post
+                                <Send className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Enhanced Load More */}
-          {filteredMemories.length > 0 && (
-            <div className="text-center pt-6">
-              <Button 
-                variant="outline" 
-                className="px-8 py-3 border-slate-300 hover:bg-slate-50 hover:border-slate-400 shadow-md hover:shadow-lg transition-all duration-200 font-medium"
-              >
-                Load More Memories
-              </Button>
-            </div>
-          )}
+            {/* Load More */}
+            {filteredMemories.length > 0 && (
+              <div className="text-center pt-6">
+                <Button 
+                  variant="outline" 
+                  className="px-8 py-6 border-gray-300 hover:bg-gray-50 hover:border-gray-400 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold rounded-xl"
+                >
+                  Load More Memories
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Enhanced Interactive Memory Detail Modal */}
+      {/* Enhanced Memory Detail Modal */}
       <Dialog open={!!selectedMemory} onOpenChange={() => setSelectedMemory(null)}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden p-0 bg-white border-0 shadow-2xl">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 bg-white border-0 shadow-2xl rounded-3xl">
           {selectedMemory && (
-            <div className="flex flex-col h-full">
-              {/* Enhanced Header */}
-              <DialogHeader className="p-6 pb-4 border-b border-slate-200 bg-slate-50/50">
+            <div className="flex flex-col h-full max-h-[95vh]">
+              {/* Header */}
+              <DialogHeader className="p-6 pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
                 <DialogTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <Avatar className="w-12 h-12 ring-2 ring-white shadow-lg">
-                        <AvatarImage src={selectedMemory.author.avatar} className="object-cover" />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">
-                          {selectedMemory.author.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-                    </div>
+                    <Avatar className="w-14 h-14 ring-4 ring-white shadow-xl">
+                      <AvatarImage src={selectedMemory.author.avatar} className="object-cover" />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold text-lg">
+                        {selectedMemory.author.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
-                      <h3 className="font-extrabold text-xl text-slate-900">{selectedMemory.author.name}</h3>
-                      <p className="text-base text-slate-800 flex items-center gap-2 font-semibold">
-                        <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                      <h3 className="font-bold text-xl text-gray-900">{selectedMemory.author.name}</h3>
+                      <p className="text-sm text-gray-600 font-medium">
                         {selectedMemory.author.batch} • {selectedMemory.author.department}
                       </p>
                     </div>
                   </div>
                   
-                  {/* Category Badge */}
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant="secondary" 
-                      className="bg-blue-100 text-blue-800 border-blue-200 font-medium"
-                    >
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 px-4 py-2">
                       {selectedMemory.category}
                     </Badge>
                     {selectedMemory.type === 'video' && (
-                      <Badge className="bg-red-500 text-white">
+                      <Badge className="bg-red-500 text-white border-0">
                         <Video className="w-3 h-3 mr-1" />
                         Video
                       </Badge>
@@ -821,239 +1020,178 @@ export default function MemoriesPage() {
                 </DialogTitle>
               </DialogHeader>
               
-              {/* Enhanced Content Area */}
+              {/* Content */}
               <div className="flex-1 overflow-auto">
-                <div className="grid lg:grid-cols-3 h-full">
-                  {/* Image Section - Responsive */}
-                  <div className="lg:col-span-2 relative bg-black">
+                <div className="grid lg:grid-cols-2 gap-6 p-6">
+                  {/* Image */}
+                  <div className="relative bg-black rounded-2xl overflow-hidden">
                     <img 
                       src={selectedMemory.image} 
                       alt={selectedMemory.title}
-                      className="w-full h-64 lg:h-full object-cover hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />
-                    
-                    {/* Image overlay with stats */}
-                    <div className="absolute bottom-4 left-4 flex gap-3">
-                      <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-sm flex items-center gap-2">
-                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                        {Math.floor(Math.random() * 1000) + 200} views
+                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                      <div className="flex gap-2">
+                        <div className="bg-black/70 backdrop-blur-sm rounded-xl px-3 py-2 text-white text-sm flex items-center gap-2">
+                          <Eye className="w-4 h-4" />
+                          {selectedMemory.views || 0} views
+                        </div>
                       </div>
-                      <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-sm flex items-center gap-2">
-                        📅 {new Date(selectedMemory.date).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric' 
-                        })}
-                      </div>
-                    </div>
-                    
-                    {/* Navigation arrows for multiple images */}
-                    <div className="absolute inset-y-0 left-0 flex items-center">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="ml-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full w-10 h-10 p-0"
-                      >
-                        ←
-                      </Button>
-                    </div>
-                    <div className="absolute inset-y-0 right-0 flex items-center">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="mr-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full w-10 h-10 p-0"
-                      >
-                        →
-                      </Button>
                     </div>
                   </div>
                   
-                  {/* Enhanced Content Panel */}
-                  <div className="p-6 bg-slate-50/30 flex flex-col">
-                    {/* Title and Description with enhanced visibility */}
-                    <div className="flex-1">
-                      <h2 className="text-3xl lg:text-4xl font-black text-slate-900 mb-6 leading-tight">
-                        {selectedMemory.title}
-                      </h2>
-                      
-                      <div className="prose prose-slate max-w-none mb-8">
-                        <p className="text-slate-800 leading-relaxed text-lg lg:text-xl font-medium">
-                          {selectedMemory.description}
-                        </p>
-                      </div>
-                      
-                      {/* Enhanced Tags with better visibility */}
-                      <div className="flex flex-wrap gap-3 mb-8">
-                        {selectedMemory.tags.map((tag: string, index: number) => (
-                          <Badge 
-                            key={index} 
-                            variant="outline" 
-                            className="text-base font-bold text-slate-800 border-slate-400 bg-slate-100 hover:bg-blue-100 hover:border-blue-500 hover:text-blue-800 transition-all duration-200 cursor-pointer px-4 py-2"
-                          >
-                            #{tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      
-                      {/* Location and Date Info with enhanced visibility */}
-                      <div className="space-y-4 mb-8">
-                        <div className="flex items-center gap-4 text-slate-800">
-                          <div className="p-3 bg-blue-200 rounded-xl shadow-sm">
-                            <Calendar className="w-6 h-6 text-blue-700" />
+                  {/* Details */}
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-3xl font-bold text-gray-900 mb-3">{selectedMemory.title}</h2>
+                      <p className="text-gray-700 leading-relaxed text-lg">{selectedMemory.description}</p>
+                    </div>
+                    
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-2">
+                      {selectedMemory.tags.map((tag: string, idx: number) => (
+                        <Badge 
+                          key={idx} 
+                          className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-blue-200 px-4 py-2 text-sm font-semibold hover:from-blue-200 hover:to-purple-200 transition-all cursor-pointer"
+                        >
+                          #{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    {/* Info Cards */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 border border-blue-200">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-blue-500 rounded-xl shadow-lg">
+                            <Calendar className="w-6 h-6 text-white" />
                           </div>
                           <div>
-                            <p className="font-bold text-base text-slate-900">Date</p>
-                            <p className="text-base font-semibold text-slate-800">{new Date(selectedMemory.date).toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}</p>
+                            <p className="text-xs font-semibold text-blue-600">Date</p>
+                            <p className="text-sm font-bold text-gray-900">
+                              {new Date(selectedMemory.date).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center gap-4 text-slate-800">
-                          <div className="p-3 bg-red-200 rounded-xl shadow-sm">
-                            <MapPin className="w-6 h-6 text-red-700" />
+                      </div>
+                      
+                      <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-4 border border-red-200">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-red-500 rounded-xl shadow-lg">
+                            <MapPin className="w-6 h-6 text-white" />
                           </div>
                           <div>
-                            <p className="font-bold text-base text-slate-900">Location</p>
-                            <p className="text-base font-semibold text-slate-800">{selectedMemory.location}</p>
+                            <p className="text-xs font-semibold text-red-600">Location</p>
+                            <p className="text-sm font-bold text-gray-900">{selectedMemory.location}</p>
                           </div>
                         </div>
                       </div>
                     </div>
                     
-                    {/* Enhanced Interactive Actions */}
-                    <div className="border-t border-slate-200 pt-6 mt-auto">
-                      <div className="grid grid-cols-3 gap-3 mb-4">
+                    {/* Actions */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <div className="grid grid-cols-3 gap-3">
                         <Button
                           variant={selectedMemory.isLiked ? "default" : "outline"}
-                          size="sm"
                           onClick={() => handleLike(selectedMemory.id)}
-                          className={`transition-all duration-300 ${
+                          className={`transition-all duration-300 h-12 rounded-xl ${
                             selectedMemory.isLiked 
-                              ? 'bg-red-500 hover:bg-red-600 text-white' 
+                              ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white' 
                               : 'hover:bg-red-50 hover:border-red-300 hover:text-red-600'
                           }`}
                         >
-                          <Heart className={`w-4 h-4 mr-2 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />
+                          <Heart className={`w-5 h-5 mr-2 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />
                           {selectedMemory.likes}
                         </Button>
                         
                         <Button
                           variant="outline"
-                          size="sm"
                           onClick={() => toggleComments(selectedMemory.id)}
-                          className="hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-300"
+                          className="hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-300 h-12 rounded-xl"
                         >
-                          <MessageCircle className="w-4 h-4 mr-2" />
+                          <MessageCircle className="w-5 h-5 mr-2" />
                           {comments[selectedMemory.id]?.length || selectedMemory.comments}
                         </Button>
                         
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-all duration-300"
+                          className="hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-all duration-300 h-12 rounded-xl"
                         >
-                          <Share2 className="w-4 h-4 mr-2" />
+                          <Share2 className="w-5 h-5 mr-2" />
                           Share
-                        </Button>
-                      </div>
-                      
-                      {/* Quick Actions */}
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" className="flex-1 text-xs">
-                          📥 Save
-                        </Button>
-                        <Button variant="ghost" size="sm" className="flex-1 text-xs">
-                          🔗 Copy Link
-                        </Button>
-                        <Button variant="ghost" size="sm" className="flex-1 text-xs">
-                          📋 Report
                         </Button>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Enhanced Comments Section in Modal */}
+                {/* Comments in Modal */}
                 {showComments[selectedMemory.id] && (
-                  <div className="border-t border-slate-200 bg-white">
-                    <div className="p-6">
-                      <h4 className="font-extrabold text-2xl mb-6 flex items-center gap-4 text-slate-900">
-                        <div className="p-3 bg-blue-200 rounded-xl shadow-sm">
-                          <MessageCircle className="w-6 h-6 text-blue-700" />
-                        </div>
-                        Comments ({comments[selectedMemory.id]?.length || 0})
-                      </h4>
-                      
-                      {/* Comments List */}
-                      <div className="space-y-4 max-h-64 overflow-y-auto mb-4">
-                        {comments[selectedMemory.id]?.map((comment: any) => (
-                          <div key={comment.id} className="flex gap-3 animate-in fade-in-50 duration-300">
-                            <Avatar className="w-10 h-10 ring-2 ring-white shadow-sm flex-shrink-0">
-                              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white text-xs font-semibold">
-                                {comment.author.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="bg-slate-100 rounded-xl p-5 hover:bg-slate-200 transition-colors duration-200 border border-slate-300">
-                                <div className="flex items-center justify-between mb-3">
-                                  <span className="font-bold text-base text-slate-900">{comment.author}</span>
-                                  <span className="text-sm text-slate-800 bg-white rounded-full px-3 py-2 shadow-sm font-bold">
-                                    {comment.time}
-                                  </span>
-                                </div>
-                                <p className="text-base text-slate-800 leading-relaxed font-medium">{comment.text}</p>
-                                
-                                {/* Comment Actions with enhanced visibility */}
-                                <div className="flex items-center gap-6 mt-4 text-sm text-slate-700 font-semibold">
-                                  <button className="hover:text-red-600 transition-colors font-bold">
-                                    ❤️ Like
-                                  </button>
-                                  <button className="hover:text-blue-600 transition-colors font-bold">
-                                    💬 Reply
-                                  </button>
-                                  <button className="hover:text-slate-900 transition-colors font-bold">
-                                    📤 Share
-                                  </button>
-                                </div>
+                  <div className="border-t border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6">
+                    <h4 className="font-bold text-2xl mb-6 flex items-center gap-3 text-gray-900">
+                      <div className="p-2 bg-blue-500 rounded-xl">
+                        <MessageCircle className="w-6 h-6 text-white" />
+                      </div>
+                      Comments ({comments[selectedMemory.id]?.length || 0})
+                    </h4>
+                    
+                    <div className="space-y-4 max-h-64 overflow-y-auto mb-6 pr-2">
+                      {comments[selectedMemory.id]?.map((comment: any) => (
+                        <div key={comment.id} className="flex gap-3 animate-in fade-in-50">
+                          <Avatar className="w-11 h-11 ring-2 ring-white shadow-md flex-shrink-0">
+                            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white text-sm font-bold">
+                              {comment.author.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-100">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-bold text-gray-900">{comment.author}</span>
+                                <span className="text-sm text-gray-500 font-medium">{comment.time}</span>
+                              </div>
+                              <p className="text-gray-700 leading-relaxed">{comment.text}</p>
+                              <div className="flex items-center gap-4 mt-3 text-sm">
+                                <button className="text-gray-600 hover:text-red-600 transition-colors font-semibold flex items-center gap-1">
+                                  <Heart className="w-4 h-4" />
+                                  {comment.likes > 0 && comment.likes}
+                                </button>
+                                <button className="text-gray-600 hover:text-blue-600 transition-colors font-semibold">
+                                  Reply
+                                </button>
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                      
-                      {/* Enhanced Add Comment */}
-                      <div className="flex gap-3 pt-4 border-t border-slate-200">
-                        <Avatar className="w-10 h-10 ring-2 ring-white shadow-sm flex-shrink-0">
-                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-teal-600 text-white text-xs font-semibold">
-                            You
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-3">
-                          <Textarea 
-                            placeholder="💬 Write a thoughtful comment..." 
-                            className="min-h-[80px] border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none" 
-                            rows={3}
-                          />
-                          <div className="flex justify-between items-center">
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-slate-700">
-                                😀 Emoji
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-slate-700">
-                                📷 Photo
-                              </Button>
-                            </div>
-                            <Button 
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
-                            >
-                              Post Comment ✨
-                            </Button>
-                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Add Comment */}
+                    <div className="flex gap-3 pt-4 border-t border-gray-200">
+                      <Avatar className="w-11 h-11 ring-2 ring-white shadow-md flex-shrink-0">
+                        <AvatarFallback className="bg-gradient-to-br from-green-500 to-teal-600 text-white font-bold">
+                          You
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-3">
+                        <Textarea 
+                          placeholder="Write a thoughtful comment..." 
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          className="min-h-[80px] border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none rounded-xl" 
+                          rows={3}
+                        />
+                        <div className="flex justify-end">
+                          <Button 
+                            onClick={() => handleAddComment(selectedMemory.id)}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Post Comment
+                          </Button>
                         </div>
                       </div>
                     </div>
