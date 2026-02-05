@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAccessToken } from '@auth0/nextjs-auth0';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+
+export async function GET(req: NextRequest) {
+  try {
+    const url = new URL(req.url);
+    const email = url.searchParams.get('email');
+    const target = `${API_BASE}/api/mentors/profile${email ? `?email=${encodeURIComponent(email)}` : ''}`;
+    const res = await fetch(target);
+    const data = await res.text();
+    return new NextResponse(data, { status: res.status, headers: { 'content-type': res.headers.get('content-type') || 'application/json' } });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { accessToken } = await getAccessToken();
+    if (!accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json();
+    const res = await fetch(`${API_BASE}/api/mentors/profile`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': `Bearer ${accessToken}` },
+      body: JSON.stringify(body)
+    });
+    const data = await res.text();
+    return new NextResponse(data, { status: res.status, headers: { 'content-type': res.headers.get('content-type') || 'application/json' } });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
