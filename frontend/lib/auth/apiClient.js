@@ -108,6 +108,29 @@ class ApiClient {
     return this.apiCall(endpoint, { method: 'DELETE' });
   }
 
+  // POST FormData (for file uploads)
+  async postFormData(endpoint, formData) {
+    const endpointPath = String(endpoint || '').startsWith('/') ? String(endpoint || '') : `/${endpoint}`;
+    const url = `${this.baseURL}${endpointPath}`;
+    const token = tokenManager.getToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => 'Upload failed');
+      throw new Error(text || `HTTP error ${response.status}`);
+    }
+    const ct = response.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      return await response.json();
+    }
+    return null;
+  }
+
   // GET request that returns null on 404 or 204
   async getOrNull(endpoint) {
     return this.apiCall(endpoint, { method: 'GET', acceptNotFound: true });

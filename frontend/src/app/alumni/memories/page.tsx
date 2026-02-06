@@ -11,8 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, MessageCircle, Share2, Calendar, MapPin, Camera, Plus, Search, Filter, Grid, List, ImageIcon, Video, Users, Trophy, BookOpen, Upload, X, Eye, Bookmark, TrendingUp, Clock, Sparkles, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, MapPin, Camera, Plus, Search, Filter, Grid, List, ImageIcon, Video, Users, Trophy, BookOpen, Upload, X, Eye, Bookmark, TrendingUp, Clock, Sparkles, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
+import { useToast } from '@/hooks/use-toast';
 
 // Static data for memories (fallback only)
 const staticMemories = [
@@ -196,6 +197,7 @@ const categoryIcons = {
 };
 
 export default function MemoriesPage() {
+  const { toast } = useToast();
   const [memories, setMemories] = useState<any[]>([]);
   const [filteredMemories, setFilteredMemories] = useState<any[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -210,6 +212,7 @@ export default function MemoriesPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(new Set());
+  const [isSharing, setIsSharing] = useState(false);
   const [comments, setComments] = useState<{[key: number]: any[]}>({
     1: [
       { id: 1, author: 'John Doe', text: 'Congratulations! So proud of you! 🎉', time: '2 hours ago', likes: 5 },
@@ -300,16 +303,27 @@ export default function MemoriesPage() {
           const id = d.id;
           const c = d.comment;
           const mapped = { id: c.id, author: c.author_name || 'Alumni', text: c.text, time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now', likes: c.likes || 0 };
-          setComments(prev => ({ ...prev, [id]: [...(prev[id] || []), mapped] }));
-          setMemories(prev => prev.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m));
+          setComments(prev => {
+            const list = prev[id] || [];
+            const exists = list.some((x: any) => x.id === mapped.id);
+            const next = exists ? list.map((x: any) => (x.id === mapped.id ? mapped : x)) : [...list, mapped];
+            // Only bump count if it's a new comment
+            if (!exists) {
+              try { setMemories(p => p.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m)); } catch {}
+            }
+            return { ...prev, [id]: next };
+          });
         } catch {}
       });
       es.addEventListener('memory-create', (e: any) => {
-        try { const d = JSON.parse(e.data); const nm = normalizeMemory(d); setMemories(prev => [nm, ...prev]); setFilteredMemories(prev => [nm, ...prev]); } catch {}
+        try {
+          const d = JSON.parse(e.data);
+          const nm = normalizeMemory(d);
+          setMemories(prev => [nm, ...prev.filter(m => m.id !== nm.id)]);
+          setFilteredMemories(prev => [nm, ...prev.filter(m => m.id !== nm.id)]);
+        } catch {}
       });
-      es.addEventListener('memory-share', (e: any) => {
-        try { const d = JSON.parse(e.data); const id = d.id; setMemories(prev => prev.map(m => m.id === id ? { ...m, shareCount: d.share_count ?? m.shareCount } : m)); } catch {}
-      });
+      // share events not used in UI anymore
     } catch {}
   }, [selectedCategory, searchQuery, activeTab]);
 
@@ -352,13 +366,16 @@ export default function MemoriesPage() {
     if (newComment.trim()) {
       try {
         const resp = await apiClient.post(`/memories/${memoryId}/comments`, { author_name: 'You', text: newComment });
-        setComments({
-          ...comments,
-          [memoryId]: [...(comments[memoryId] || []), { id: resp?.id, author: resp?.author_name || 'You', text: resp?.text || newComment, time: 'Just now', likes: resp?.likes || 0 }]
+        const newItem = { id: resp?.id, author: resp?.author_name || 'You', text: resp?.text || newComment, time: 'Just now', likes: resp?.likes || 0 };
+        setComments(prev => {
+          const list = prev[memoryId] || [];
+          const exists = list.some((x: any) => x.id === newItem.id);
+          const next = exists ? list.map((x: any) => (x.id === newItem.id ? newItem : x)) : [...list, newItem];
+          if (!exists) {
+            try { setMemories(m => m.map(mm => mm.id === memoryId ? { ...mm, comments: (mm.comments || mm.comments_count || 0) + 1 } : mm)); } catch {}
+          }
+          return { ...prev, [memoryId]: next };
         });
-        setMemories(memories.map(m => 
-          m.id === memoryId ? { ...m, comments: (m.comments || m.comments_count || 0) + 1 } : m
-        ));
         setNewComment('');
       } catch {}
     }
@@ -377,14 +394,29 @@ export default function MemoriesPage() {
   };
 
   const handleAddMemory = async () => {
-    if (newMemory.title && newMemory.description) {
-      try {
+    // Require only title; description optional
+    if (!newMemory.title || !newMemory.title.trim()) {
+      toast({ title: 'Title required', description: 'Please add a title to share your memory.' });
+      return;
+    }
+    try {
+        setIsSharing(true);
         let image_url: string | null = null;
         if (imageFile) {
           const fd = new FormData();
           fd.append('image', imageFile);
-          const up = await apiClient.postFormData('/uploads/memory-image', fd);
-          image_url = up?.url || null;
+          try {
+            const up = await apiClient.postFormData('/uploads/memory-image', fd);
+            image_url = up?.url || null;
+            if (image_url) {
+              toast({ title: 'Image uploaded', description: 'Your photo was uploaded successfully.' });
+            } else {
+              toast({ title: 'Upload incomplete', description: 'No image URL returned.', });
+            }
+          } catch (err: any) {
+            toast({ title: 'Upload failed', description: (err?.message || 'Unable to upload image'), });
+            // Proceed without image if upload fails
+          }
         }
         const payload = {
           author_name: 'You',
@@ -392,7 +424,7 @@ export default function MemoriesPage() {
           author_batch: '2020-2024',
           author_department: 'Your Department',
           title: newMemory.title,
-          description: newMemory.description,
+          description: newMemory.description || '',
           image_url,
           date: new Date().toISOString().split('T')[0],
           location: newMemory.location || 'Campus',
@@ -401,6 +433,7 @@ export default function MemoriesPage() {
           type: 'photo'
         };
         await apiClient.post('/memories', payload);
+        toast({ title: 'Memory shared', description: 'Your memory has been posted.' });
         setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
         setImagePreview(null);
         setImageFile(null);
@@ -411,8 +444,12 @@ export default function MemoriesPage() {
         const list = rawList.map((m: any) => normalizeMemory(m));
         setMemories(list);
         setFilteredMemories(list);
-      } catch {}
-    }
+      } catch (e: any) {
+        toast({ title: 'Unable to share memory', description: (e?.message || 'Please try again later') });
+      }
+      finally {
+        setIsSharing(false);
+      }
   };
 
   const MemoryCard = ({ memory, isGridView }: { memory: any, isGridView: boolean }) => {
@@ -489,13 +526,6 @@ export default function MemoriesPage() {
                   <Eye className="w-3.5 h-3.5" />
                   {memory.views || 0}
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); apiClient.post(`/memories/${memory.id}/share`, {}).catch(()=>{}); }}
-                  className="flex items-center gap-1.5 text-white text-xs font-medium bg-black/40 backdrop-blur-sm px-2.5 py-1.5 rounded-full hover:bg-black/50 transition-colors"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  {memory.shareCount || 0}
-                </button>
               </div>
             </div>
           </div>
@@ -597,15 +627,7 @@ export default function MemoriesPage() {
               <MessageCircle className="w-4 h-4 mr-1.5" />
               Comment
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 text-gray-600 hover:text-green-600 hover:bg-green-50 transition-all duration-300"
-              onClick={(e) => { e.stopPropagation(); apiClient.post(`/memories/${memory.id}/share`, {}).catch(()=>{}); }}
-            >
-              <Share2 className="w-4 h-4 mr-1.5" />
-              Share {memory.shareCount ? `(${memory.shareCount})` : ''}
-            </Button>
+            {/* Share action removed */}
           </div>
         </div>
       </Card>
@@ -838,10 +860,11 @@ export default function MemoriesPage() {
                   <div className="flex gap-3 pt-2">
                     <Button 
                       onClick={handleAddMemory} 
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 rounded-xl"
+                      disabled={isSharing}
+                      className={`flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 rounded-xl ${isSharing ? 'opacity-70 pointer-events-none' : ''}`}
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Share Memory
+                      {isSharing ? 'Sharing…' : 'Share Memory'}
                     </Button>
                     <Button 
                       variant="outline" 
@@ -885,7 +908,7 @@ export default function MemoriesPage() {
               }`}>
                 {filteredMemories.map((memory, index) => (
                   <div 
-                    key={memory.id} 
+                    key={`${memory.id}-${index}`} 
                     className="animate-in fade-in-50 duration-500"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
@@ -902,8 +925,8 @@ export default function MemoriesPage() {
                             Comments ({comments[memory.id]?.length || 0})
                           </h4>
                           <div className="space-y-4 mb-5 max-h-96 overflow-y-auto pr-2">
-                            {comments[memory.id]?.map((comment: any) => (
-                              <div key={comment.id} className="flex gap-3 animate-in fade-in-50">
+                            {comments[memory.id]?.map((comment: any, idx: number) => (
+                              <div key={`${memory.id}-${comment.id}-${idx}`} className="flex gap-3 animate-in fade-in-50">
                                 <Avatar className="w-10 h-10 ring-2 ring-white shadow-md flex-shrink-0">
                                   <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white text-xs font-bold">
                                     {comment.author.charAt(0)}
@@ -1117,13 +1140,7 @@ export default function MemoriesPage() {
                           {comments[selectedMemory.id]?.length || selectedMemory.comments}
                         </Button>
                         
-                        <Button
-                          variant="outline"
-                          className="hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-all duration-300 h-12 rounded-xl"
-                        >
-                          <Share2 className="w-5 h-5 mr-2" />
-                          Share
-                        </Button>
+                        {/* Share icon removed from modal */}
                       </div>
                     </div>
                   </div>

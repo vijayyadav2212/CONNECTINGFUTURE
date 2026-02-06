@@ -17,6 +17,7 @@ const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
+const { createMemoriesSchema } = require('./database/memories');
   const { createJobsSchema } = require('./database/jobs');
   const { createApplicationsSchema } = require('./database/applications');
   const { createMentorshipSchema } = require('./database/mentorship');
@@ -30,9 +31,11 @@ app.use(express.json());
 // Serve uploaded files statically
 const uploadsRoot = path.join(__dirname, 'uploads');
 const resumesDir = path.join(uploadsRoot, 'resumes');
+const memoriesDir = path.join(uploadsRoot, 'memories');
 try {
   if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
   if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
+  if (!fs.existsSync(memoriesDir)) fs.mkdirSync(memoriesDir);
 } catch {}
 app.use('/uploads', express.static(uploadsRoot));
 
@@ -225,6 +228,7 @@ async function initializeTables() {
   await createConnectionsSchema(dbQuery);
   await createMentorshipSchema(dbQuery);
   await createAcademicProgressSchema(dbQuery);
+  await createMemoriesSchema(dbQuery);
 
   console.log('Tables are ready');
   } catch (e) {
@@ -1816,6 +1820,213 @@ app.post('/api/mentorship/ratings', async (req, res) => {
     const cnt = agg && agg[0] ? parseInt(agg[0].cnt || 0, 10) : 0;
     await dbQuery('UPDATE mentors SET rating_avg = ?, rating_count = ?, updated_at = NOW() WHERE mentor_email = ?', [avg, cnt, mentor_email]);
     return res.status(201).json({ rating: rows[0], ratingSummary: { rating_avg: Number(avg), rating_count: cnt } });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// --- File Uploads (Memory Image) ---
+const allowedImageTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif'
+]);
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, memoriesDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
+      const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}_${base}${ext}`;
+      cb(null, fname);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    if (allowedImageTypes.has(file.mimetype)) return cb(null, true);
+    return cb(new Error('Invalid image type. Only JPG, PNG, WEBP, GIF are allowed.'));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+app.post('/api/uploads/memory-image', imageUpload.single('image'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Image file is required' });
+    const url = `${req.protocol}://${req.get('host')}/uploads/memories/${req.file.filename}`;
+    return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Memories SSE Stream ---
+const sseClients = new Set();
+function broadcastSse(event, data) {
+  const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
+  for (const res of sseClients) {
+    try { res.write(payload); } catch {}
+  }
+}
+
+app.get('/api/memories/stream', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Connection', 'keep-alive');
+  if (res.flushHeaders) res.flushHeaders();
+  res.write(':\n\n'); // initial comment to establish the stream
+  sseClients.add(res);
+  req.on('close', () => { sseClients.delete(res); });
+});
+
+// --- Memories CRUD ---
+// Create a memory
+app.post('/api/memories', async (req, res) => {
+  try {
+    const {
+      author_name,
+      author_avatar,
+      author_batch,
+      author_department,
+      title,
+      description,
+      image_url,
+      date,
+      location,
+      tags,
+      category,
+      type = 'photo',
+    } = req.body || {};
+
+    if (!title) return res.status(400).json({ error: 'Title is required' });
+    const tagsStr = Array.isArray(tags) ? tags.join(',') : (tags || null);
+    const { rows } = await dbQuery(`
+      INSERT INTO memories (
+        author_name, author_avatar, author_batch, author_department,
+        title, description, image_url, date, location, tags, category, type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `, [
+      author_name || null, author_avatar || null, author_batch || null, author_department || null,
+      title, description || null, image_url || null, date || null, location || null, tagsStr, category || null, type
+    ]);
+    const created = rows && rows[0];
+    try { broadcastSse('memory-create', created); } catch {}
+    return res.status(201).json(created);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List memories with filters
+app.get('/api/memories', async (req, res) => {
+  try {
+    const {
+      q,
+      category,
+      sort = 'recent',
+      page = 1,
+      limit = 20
+    } = req.query || {};
+
+    const p = Math.max(1, parseInt(page, 10));
+    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
+    const offset = (p - 1) * l;
+
+    const where = [];
+    const params = [];
+    if (q) {
+      const like = `%${String(q).toLowerCase()}%`;
+      where.push('(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(tags) LIKE ? OR LOWER(author_name) LIKE ?)');
+      params.push(like, like, like, like);
+    }
+    if (category && category !== 'all') { where.push('category = ?'); params.push(category); }
+
+    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
+    let orderBy = 'created_at DESC';
+    if (sort === 'trending') orderBy = 'likes DESC, created_at DESC';
+    else if (sort === 'popular') orderBy = 'views DESC, created_at DESC';
+
+    const { rows } = await dbQuery(
+      `SELECT * FROM memories${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      [...params, l, offset]
+    );
+    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) AS total FROM memories${whereSql}`, params);
+    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
+    return res.json({ memories: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Increment view counter
+app.post('/api/memories/:id/view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await dbQuery('UPDATE memories SET views = COALESCE(views,0) + 1 WHERE id = ?', [id]);
+    const { rows } = await dbQuery('SELECT views FROM memories WHERE id = ? LIMIT 1', [id]);
+    const views = rows && rows[0] ? rows[0].views : 0;
+    try { broadcastSse('memory-view', { id: Number(id), views }); } catch {}
+    return res.json({ views });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Like / Unlike a memory
+app.post('/api/memories/:id/like', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action = 'like' } = req.body || {};
+    const inc = action === 'unlike' ? -1 : 1;
+    await dbQuery('UPDATE memories SET likes = GREATEST(0, COALESCE(likes,0) + ?), is_liked = ? WHERE id = ?', [inc, inc > 0, id]);
+    const { rows } = await dbQuery('SELECT likes, is_liked FROM memories WHERE id = ? LIMIT 1', [id]);
+    const payload = { id: Number(id), likes: rows && rows[0] ? rows[0].likes : 0, is_liked: rows && rows[0] ? rows[0].is_liked : false };
+    try { broadcastSse('memory-like', payload); } catch {}
+    return res.json(payload);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Share count
+app.post('/api/memories/:id/share', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await dbQuery('UPDATE memories SET share_count = COALESCE(share_count,0) + 1 WHERE id = ?', [id]);
+    const { rows } = await dbQuery('SELECT share_count FROM memories WHERE id = ? LIMIT 1', [id]);
+    const share_count = rows && rows[0] ? rows[0].share_count : 0;
+    try { broadcastSse('memory-share', { id: Number(id), share_count }); } catch {}
+    return res.json({ share_count });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Comments
+app.get('/api/memories/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await dbQuery('SELECT * FROM memory_comments WHERE memory_id = ? ORDER BY created_at ASC', [id]);
+    return res.json({ comments: rows || [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/memories/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { author_name, author_email, author_avatar, text } = req.body || {};
+    if (!text) return res.status(400).json({ error: 'Comment text is required' });
+    const { rows } = await dbQuery(`
+      INSERT INTO memory_comments (memory_id, author_name, author_email, author_avatar, text)
+      VALUES (?, ?, ?, ?, ?)
+      RETURNING *
+    `, [id, author_name || null, author_email || null, author_avatar || null, text]);
+    await dbQuery('UPDATE memories SET comments_count = COALESCE(comments_count,0) + 1 WHERE id = ?', [id]);
+    const created = rows && rows[0];
+    try { broadcastSse('memory-comment', { id: Number(id), comment: created }); } catch {}
+    return res.status(201).json(created);
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
