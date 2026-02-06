@@ -13,6 +13,7 @@ async function createRoadmapsSchema(dbQuery) {
       level VARCHAR(50) NOT NULL,
       duration VARCHAR(50) NOT NULL,
       phases INT NOT NULL,
+      modules_link VARCHAR(500),
       tags TEXT,
       followers INT DEFAULT 0,
       is_published BOOLEAN DEFAULT FALSE,
@@ -20,6 +21,14 @@ async function createRoadmapsSchema(dbQuery) {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  // Migration: Add modules_link if it doesn't exist
+  try {
+    await dbQuery('ALTER TABLE roadmaps ADD COLUMN IF NOT EXISTS modules_link VARCHAR(500)');
+  } catch (e) {
+    // Ignore error if column already exists (though IF NOT EXISTS should handle it in newer PG versions, safe fallback)
+    console.log('Migration note: modules_link column might already exist');
+  }
 
   // Indexes
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_roadmaps_owner_email ON roadmaps(owner_email)');

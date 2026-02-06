@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -9,7 +10,7 @@ const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const crypto = require('crypto');
 // Use global fetch if available (Node >= 18); otherwise lazy-load node-fetch
-const fetchFn = (global.fetch ? global.fetch : ((...args) => import('node-fetch').then(({default: f}) => f(...args))));
+const fetchFn = (global.fetch ? global.fetch : ((...args) => import('node-fetch').then(({ default: f }) => f(...args))));
 const fetch = (...args) => fetchFn(...args);
 
 // Modularized DB schema creators
@@ -18,10 +19,10 @@ const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
 const { createMemoriesSchema } = require('./database/memories');
-  const { createJobsSchema } = require('./database/jobs');
-  const { createApplicationsSchema } = require('./database/applications');
-  const { createMentorshipSchema } = require('./database/mentorship');
-  const { createAcademicProgressSchema } = require('./database/academicProgress');
+const { createJobsSchema } = require('./database/jobs');
+const { createApplicationsSchema } = require('./database/applications');
+const { createMentorshipSchema } = require('./database/mentorship');
+const { createAcademicProgressSchema } = require('./database/academicProgress');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -36,7 +37,7 @@ try {
   if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
   if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
   if (!fs.existsSync(memoriesDir)) fs.mkdirSync(memoriesDir);
-} catch {}
+} catch { }
 app.use('/uploads', express.static(uploadsRoot));
 
 /**
@@ -63,9 +64,9 @@ async function getManagementToken() {
     client_id: MGMT_CLIENT_ID,
     client_secret: MGMT_CLIENT_SECRET,
     audience: `https://${AUTH0_DOMAIN}/api/v2/`,
-  grant_type: 'client_credentials',
-  // Ensure token has required scopes for user reads
-  scope: process.env.AUTH0_MGMT_SCOPES || 'read:users read:users_app_metadata'
+    grant_type: 'client_credentials',
+    // Ensure token has required scopes for user reads
+    scope: process.env.AUTH0_MGMT_SCOPES || 'read:users read:users_app_metadata'
   };
   const resp = await fetch(url, {
     method: 'POST',
@@ -130,24 +131,24 @@ function deriveRole(email) {
 const useConnectionString = !!process.env.DATABASE_URL;
 const db = useConnectionString
   ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    })
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  })
   : new Pool({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'mockapp_db',
-      port: Number(process.env.DB_PORT) || 5432,
-      ssl: /true|require/i.test(String(process.env.DB_SSL || 'false')) ? { rejectUnauthorized: false } : undefined,
-    });
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'mockapp_db',
+    port: Number(process.env.DB_PORT) || 5432,
+    ssl: /true|require/i.test(String(process.env.DB_SSL || 'false')) ? { rejectUnauthorized: false } : undefined,
+  });
 
 // Ensure DB session timezone is IST for all connections (affects SQL timezone-sensitive functions)
 try {
   db.on('connect', (client) => {
-    client.query("SET TIME ZONE 'Asia/Kolkata'").catch(() => {});
+    client.query("SET TIME ZONE 'Asia/Kolkata'").catch(() => { });
   });
-} catch {}
+} catch { }
 
 async function dbQuery(text, params = []) {
   // Convert MySQL-style '?' placeholders to Postgres-style $1, $2 ...
@@ -174,7 +175,7 @@ checkDb((ok) => {
     console.warn('Postgres not connected at startup. Will continue and serve limited features.');
     console.log('Please check your Postgres/Neon configuration in .env file');
     if (useConnectionString) {
-      const redacted = (process.env.DATABASE_URL || '').replace(/:\\?[^:@/]+@/,'://***@');
+      const redacted = (process.env.DATABASE_URL || '').replace(/:\\?[^:@/]+@/, '://***@');
       console.log('Using DATABASE_URL:', redacted);
     } else {
       console.log('Current config:', {
@@ -220,17 +221,17 @@ async function initializeTables() {
     `);
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_email ON users(email)');
-  await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
-  // Initialize modularized schemas 
-  await createMessagesSchema(dbQuery);
-  await createDonationsSchema(dbQuery);
-  await createRoadmapsSchema(dbQuery);
-  await createConnectionsSchema(dbQuery);
-  await createMentorshipSchema(dbQuery);
-  await createAcademicProgressSchema(dbQuery);
+    await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
+    // Initialize modularized schemas 
+    await createMessagesSchema(dbQuery);
+    await createDonationsSchema(dbQuery);
+    await createRoadmapsSchema(dbQuery);
+    await createConnectionsSchema(dbQuery);
+    await createMentorshipSchema(dbQuery);
+    await createAcademicProgressSchema(dbQuery);
   await createMemoriesSchema(dbQuery);
 
-  console.log('Tables are ready');
+    console.log('Tables are ready');
   } catch (e) {
     console.error('DB init error:', e.message);
   }
@@ -285,7 +286,7 @@ const upload = multer({
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname) || '';
       const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-      const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}_${base}${ext}`;
+      const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`;
       cb(null, fname);
     },
   }),
@@ -328,7 +329,7 @@ app.post('/api/users', checkJwt, (req, res) => {
 
 // Get current user's profile (requires Auth0 JWT)
 app.get('/api/users/profile', checkJwt, (req, res) => {
-  try { console.log('Profile request auth:', req.auth); } catch {}
+  try { console.log('Profile request auth:', req.auth); } catch { }
   const auth0Id = req.auth && req.auth.sub;
   const email = req.auth && req.auth["https://schemas.quickstart/email"] || req.auth && req.auth.email; // best-effort
   if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
@@ -348,7 +349,7 @@ app.get('/api/users/profile', checkJwt, (req, res) => {
     }
 
     // If not present locally, attempt to fetch from Auth0 Management API and seed the DB
-  if (!rows || rows.length === 0) {
+    if (!rows || rows.length === 0) {
       try {
         const auth0User = await fetchAuth0User(auth0Id);
         let seeded = null;
@@ -386,13 +387,13 @@ app.get('/api/users/profile', checkJwt, (req, res) => {
     // Backfill role if missing
     if (!u.user_type && email) {
       const role = deriveRole(email);
-      dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [role, auth0Id]).catch(()=>{});
+      dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [role, auth0Id]).catch(() => { });
       u.user_type = role;
     } else if (email) {
       // Auto-correct role based on domain/email rules (don't downgrade admins)
       const expected = deriveRole(email);
       if (u.user_type !== expected && u.user_type !== 'admin') {
-        dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [expected, auth0Id]).catch(()=>{});
+        dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [expected, auth0Id]).catch(() => { });
         u.user_type = expected;
       }
     }
@@ -622,7 +623,7 @@ app.put('/api/academic-progress/me', checkJwt, async (req, res) => {
     const payload = await buildAcademicProgressResponse(auth0Id);
     return res.json(payload);
   } catch (e) {
-    try { await dbQuery('ROLLBACK'); } catch {}
+    try { await dbQuery('ROLLBACK'); } catch { }
     return res.status(500).json({ error: e.message });
   }
 });
@@ -681,8 +682,8 @@ app.post('/api/donations', (req, res) => {
 
   // Validation
   if (!donor_name || !donor_email || !amount || !payment_method) {
-    return res.status(400).json({ 
-      error: 'Missing required fields: donor_name, donor_email, amount, payment_method' 
+    return res.status(400).json({
+      error: 'Missing required fields: donor_name, donor_email, amount, payment_method'
     });
   }
 
@@ -718,7 +719,7 @@ app.post('/api/donations', (req, res) => {
 
 app.get('/api/donations/:id', (req, res) => {
   const { id } = req.params;
-  
+
   dbQuery(`SELECT donations.*, (donations.created_at AT TIME ZONE 'Asia/Kolkata') AS created_at_ist, (donations.updated_at AT TIME ZONE 'Asia/Kolkata') AS updated_at_ist FROM donations WHERE id = ?`, [id])
     .then(({ rows }) => {
       if (!rows || rows.length === 0) return res.status(404).json({ error: 'Donation not found' });
@@ -730,7 +731,7 @@ app.get('/api/donations/:id', (req, res) => {
 app.put('/api/donations/:id', (req, res) => {
   const { id } = req.params;
   const updates = req.body;
-  
+
   // Get current donation
   dbQuery('SELECT * FROM donations WHERE id = ?', [id]).then(({ rows }) => {
     if (!rows || rows.length === 0) {
@@ -741,21 +742,21 @@ app.put('/api/donations/:id', (req, res) => {
       'donor_name', 'donor_email', 'donor_phone', 'transaction_status',
       'razorpay_payment_id', 'razorpay_signature', 'receipt_sent', 'message'
     ];
-    
+
     const updateFields = [];
     const values = [];
-    
+
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) {
         updateFields.push(`${field} = ?`);
         values.push(updates[field]);
       }
     });
-    
+
     if (updateFields.length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
-    
+
     values.push(id);
     const query = `UPDATE donations SET ${updateFields.join(', ')} WHERE id = ?`;
     dbQuery(query, values)
@@ -766,7 +767,7 @@ app.put('/api/donations/:id', (req, res) => {
 
 app.delete('/api/donations/:id', (req, res) => {
   const { id } = req.params;
-  
+
   dbQuery('DELETE FROM donations WHERE id = ?', [id])
     .then(({ rowCount }) => {
       if (!rowCount) return res.status(404).json({ error: 'Donation not found' });
@@ -800,14 +801,16 @@ app.get('/api/donations/analytics/summary', (req, res) => {
 
   Object.entries(queries).forEach(([key, query]) => {
     dbQuery(query)
-      .then(({ rows }) => { results[key] = rows[0]; completed++; if (completed === totalQueries) {
-        res.json({
-          totalDonationAmount: Number(results.totalAmount.total || 0),
-          totalDonations: Number(results.totalDonations.count || 0),
-          monthlyDonationAmount: Number(results.monthlyAmount.total || 0),
-          monthlyDonations: Number(results.monthlyDonations.count || 0)
-        });
-      }})
+      .then(({ rows }) => {
+        results[key] = rows[0]; completed++; if (completed === totalQueries) {
+          res.json({
+            totalDonationAmount: Number(results.totalAmount.total || 0),
+            totalDonations: Number(results.totalDonations.count || 0),
+            monthlyDonationAmount: Number(results.monthlyAmount.total || 0),
+            monthlyDonations: Number(results.monthlyDonations.count || 0)
+          });
+        }
+      })
       .catch(err => res.status(500).json({ error: err.message }));
   });
 });
@@ -828,6 +831,7 @@ app.post('/api/roadmaps', async (req, res) => {
       duration,
       phases,
       tags,
+      modules_link,
       is_published = false
     } = req.body || {};
 
@@ -836,10 +840,10 @@ app.post('/api/roadmaps', async (req, res) => {
     }
 
     const { rows } = await dbQuery(`
-      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, modules_link, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
-    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, !!is_published]);
+    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, modules_link || null, !!is_published]);
 
     return res.status(201).json(rows && rows[0]);
   } catch (e) {
@@ -847,20 +851,35 @@ app.post('/api/roadmaps', async (req, res) => {
   }
 });
 
-// List roadmaps (optionally filter by owner)
+// List roadmaps (optionally filter by owner or published status)
 app.get('/api/roadmaps', async (req, res) => {
   try {
-    const { owner_email, page = 1, limit = 20 } = req.query || {};
+    const { owner_email, is_published, page = 1, limit = 20 } = req.query || {};
     const p = Math.max(1, parseInt(page, 10));
     const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
     const offset = (p - 1) * l;
 
+    const conditions = [];
+    const params = [];
+
     if (owner_email) {
-      const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?', [owner_email, l, offset]);
-      return res.json({ roadmaps: rows, page: p, limit: l });
+      conditions.push('owner_email = ?');
+      params.push(owner_email);
     }
 
-    const { rows } = await dbQuery('SELECT * FROM roadmaps ORDER BY updated_at DESC LIMIT ? OFFSET ?', [l, offset]);
+    if (is_published !== undefined) {
+      conditions.push('is_published = ?');
+      params.push(is_published === 'true');
+    }
+
+    let query = 'SELECT * FROM roadmaps';
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
+    params.push(l, offset);
+
+    const { rows } = await dbQuery(query, params);
     return res.json({ roadmaps: rows, page: p, limit: l });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -883,7 +902,7 @@ app.get('/api/roadmaps/:id', async (req, res) => {
 app.put('/api/roadmaps/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ['title','description','category','level','duration','phases','tags','is_published'];
+    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'modules_link', 'is_published'];
     const updates = [];
     const values = [];
     for (const key of allowed) {
@@ -1036,9 +1055,9 @@ app.put('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const allowed = [
-      'title','company','location','description','responsibilities','requirements','benefits',
-      'salary_min','salary_max','currency','tags','status','featured','logo','industry','job_type',
-      'is_remote','application_deadline','contact_person','application_method','application_url'
+      'title', 'company', 'location', 'description', 'responsibilities', 'requirements', 'benefits',
+      'salary_min', 'salary_max', 'currency', 'tags', 'status', 'featured', 'logo', 'industry', 'job_type',
+      'is_remote', 'application_deadline', 'contact_person', 'application_method', 'application_url'
     ];
     const updates = [];
     const values = [];
@@ -1177,7 +1196,7 @@ app.put('/api/applications/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
-    const allowed = ['applied','withdrawn','accepted','rejected'];
+    const allowed = ['applied', 'withdrawn', 'accepted', 'rejected'];
     if (!allowed.includes(String(status))) return res.status(400).json({ error: 'Invalid status' });
     // Adjust jobs.applied count only when moving to withdrawn
     if (status === 'withdrawn') {
@@ -1197,7 +1216,7 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check available at: http://localhost:${PORT}/api/health`);
-}); 
+});
 
 /**
  * Messaging with AES-256-GCM encryption at rest
@@ -1280,11 +1299,11 @@ app.get('/api/messages', async (req, res) => {
   }
   const thread_key = buildThreadKey(user, other);
   try {
-  const { rows } = await dbQuery('SELECT * FROM messages WHERE thread_key = ? ORDER BY created_at ASC LIMIT ?', [thread_key, Number(limit)]);
+    const { rows } = await dbQuery('SELECT * FROM messages WHERE thread_key = ? ORDER BY created_at ASC LIMIT ?', [thread_key, Number(limit)]);
 
     // Optionally mark messages addressed to the requester as read (fire-and-forget)
     if (markRead === '1' || markRead === 'true') {
-      dbQuery('UPDATE messages SET read_at = NOW() WHERE thread_key = ? AND receiver_email = ? AND read_at IS NULL', [thread_key, user]).catch(() => {});
+      dbQuery('UPDATE messages SET read_at = NOW() WHERE thread_key = ? AND receiver_email = ? AND read_at IS NULL', [thread_key, user]).catch(() => { });
     }
 
     const messages = (rows || []).map((r) => {
@@ -1418,7 +1437,7 @@ app.post('/api/connections/request', async (req, res) => {
 // Accept / Reject connection
 app.post('/api/connections/respond', async (req, res) => {
   const { user_email, other_email, action } = req.body || {};
-  if (!user_email || !other_email || !['accept','reject'].includes(action)) {
+  if (!user_email || !other_email || !['accept', 'reject'].includes(action)) {
     return res.status(400).json({ error: 'user_email, other_email and action (accept|reject) required' });
   }
   try {
@@ -1470,7 +1489,7 @@ app.post('/api/connections/remove', async (req, res) => {
     const { rows } = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
     if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
     const conn = rows[0];
-    if (!['pending','accepted','rejected'].includes(conn.status)) {
+    if (!['pending', 'accepted', 'rejected'].includes(conn.status)) {
       return res.status(400).json({ error: 'Cannot remove in current state' });
     }
     const { rows: updated } = await dbQuery(`
@@ -1550,7 +1569,7 @@ app.get('/api/users', async (req, res) => {
     const offset = (p - 1) * l;
     const where = [];
     const params = [];
-    if (type && ['student','alumni','admin'].includes(String(type))) {
+    if (type && ['student', 'alumni', 'admin'].includes(String(type))) {
       where.push('user_type = ?');
       params.push(type);
     }
@@ -1699,7 +1718,7 @@ app.post('/api/mentorship/request', async (req, res) => {
 // Respond to mentorship request (mentor side)
 app.post('/api/mentorship/respond', async (req, res) => {
   const { mentor_email, student_email, action } = req.body || {};
-  if (!mentor_email || !student_email || !['accept','reject'].includes(String(action))) {
+  if (!mentor_email || !student_email || !['accept', 'reject'].includes(String(action))) {
     return res.status(400).json({ error: 'mentor_email, student_email and action (accept|reject) required' });
   }
   try {

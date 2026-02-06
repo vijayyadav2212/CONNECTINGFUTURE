@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Map, Target, BookOpen, Users, Plus, TrendingUp, Building, X, Sparkles, BarChart3 } from "lucide-react";
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation";
+import { useToast } from "@/hooks/use-toast";
 
 type Roadmap = {
   id: number;
@@ -21,6 +22,7 @@ type Roadmap = {
   level: string;
   duration: string;
   phases: number;
+  modules_link?: string | null;
   tags?: string | null;
   followers?: number;
   is_published?: boolean;
@@ -30,6 +32,7 @@ type Roadmap = {
 
 function RoadmapPage() {
   const { user, error, isLoading } = useUser();
+  const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editing, setEditing] = useState<Roadmap | null>(null);
@@ -44,6 +47,7 @@ function RoadmapPage() {
     level: "",
     duration: "",
     phases: "",
+    modules_link: "",
     tags: ""
   });
 
@@ -79,11 +83,11 @@ function RoadmapPage() {
       .then(data => {
         setRoadmaps(Array.isArray(data.roadmaps) ? data.roadmaps : []);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingList(false));
   }, [user?.email]);
 
-  const resetForm = () => setFormData({ title: "", description: "", category: "", level: "", duration: "", phases: "", tags: "" });
+  const resetForm = () => setFormData({ title: "", description: "", category: "", level: "", duration: "", phases: "", modules_link: "", tags: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +101,9 @@ function RoadmapPage() {
         level: formData.level,
         duration: formData.duration,
         phases: Number(formData.phases),
-        tags: formData.tags
+        modules_link: formData.modules_link,
+        tags: formData.tags,
+        is_published: true
       };
       const res = await fetch(`${backendUrl}/api/roadmaps`, {
         method: 'POST',
@@ -109,7 +115,13 @@ function RoadmapPage() {
       setRoadmaps(prev => [created, ...prev]);
       setShowCreateModal(false);
       resetForm();
-    } catch {}
+      toast({
+        title: "Roadmap Created",
+        description: "Your new roadmap has been effectively created and published.",
+        duration: 5000,
+        className: "bg-green-50 border-green-200 text-green-900",
+      });
+    } catch { }
   };
 
   const openEdit = (rm: Roadmap) => {
@@ -121,6 +133,7 @@ function RoadmapPage() {
       level: rm.level || "",
       duration: rm.duration || "",
       phases: String(rm.phases ?? ""),
+      modules_link: rm.modules_link || "",
       tags: rm.tags || ""
     });
     setShowEditModal(true);
@@ -140,6 +153,7 @@ function RoadmapPage() {
           level: formData.level,
           duration: formData.duration,
           phases: Number(formData.phases),
+          modules_link: formData.modules_link,
           tags: formData.tags
         })
       });
@@ -149,7 +163,7 @@ function RoadmapPage() {
       setShowEditModal(false);
       setEditing(null);
       resetForm();
-    } catch {}
+    } catch { }
   };
 
   if (isLoading) {
@@ -185,7 +199,7 @@ function RoadmapPage() {
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-100/40 to-transparent rounded-full blur-3xl"></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-50/20 via-purple-50/20 to-indigo-50/20 rounded-full blur-3xl"></div>
         </div>
-        
+
         {/* Page Header */}
         <div className="mb-8 relative z-10">
           <div className="flex items-center justify-between mb-6">
@@ -193,7 +207,7 @@ function RoadmapPage() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent mb-2">Career Roadmaps</h1>
               <p className="text-gray-600">Create and share career paths to guide students and fellow alumni</p>
             </div>
-            <Button 
+            <Button
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200"
               onClick={handleCreateRoadmap}
             >
@@ -472,7 +486,7 @@ function RoadmapPage() {
                     <Input
                       id="title"
                       value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       placeholder="e.g., Full Stack Developer Journey"
                       className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                       required
@@ -486,7 +500,7 @@ function RoadmapPage() {
                     <Textarea
                       id="description"
                       value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Describe what this roadmap covers and who it's for..."
                       className="mt-1 min-h-[100px] border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                       required
@@ -501,7 +515,7 @@ function RoadmapPage() {
                       <select
                         id="category"
                         value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-blue-50/30"
                         required
                       >
@@ -526,7 +540,7 @@ function RoadmapPage() {
                       <select
                         id="level"
                         value={formData.level}
-                        onChange={(e) => setFormData({...formData, level: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, level: e.target.value })}
                         className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:bg-purple-50/30"
                         required
                       >
@@ -547,7 +561,7 @@ function RoadmapPage() {
                       <Input
                         id="duration"
                         value={formData.duration}
-                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                         placeholder="e.g., 6-12 months"
                         className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
                         required
@@ -562,7 +576,7 @@ function RoadmapPage() {
                         id="phases"
                         type="number"
                         value={formData.phases}
-                        onChange={(e) => setFormData({...formData, phases: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, phases: e.target.value })}
                         placeholder="e.g., 8"
                         className="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
                         min="1"
@@ -573,13 +587,26 @@ function RoadmapPage() {
                   </div>
 
                   <div>
+                    <Label htmlFor="modules_link" className="text-sm font-semibold text-gray-800 bg-gradient-to-r from-gray-800 to-indigo-700 bg-clip-text text-transparent">
+                      Modules Resource Link (e.g. YouTube/Drive)
+                    </Label>
+                    <Input
+                      id="modules_link"
+                      value={formData.modules_link}
+                      onChange={(e) => setFormData({ ...formData, modules_link: e.target.value })}
+                      placeholder="e.g., https://youtube.com/playlist?list=..."
+                      className="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                    />
+                  </div>
+
+                  <div>
                     <Label htmlFor="tags" className="text-sm font-semibold text-gray-800 bg-gradient-to-r from-gray-800 to-teal-700 bg-clip-text text-transparent">
                       Tags
                     </Label>
                     <Input
                       id="tags"
                       value={formData.tags}
-                      onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                       placeholder="e.g., JavaScript, React, Node.js (comma separated)"
                       className="mt-1 border-gray-300 focus:border-teal-500 focus:ring-teal-500/20"
                     />
@@ -640,7 +667,7 @@ function RoadmapPage() {
                     <Input
                       id="title-edit"
                       value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       required
                     />
                   </div>
@@ -650,7 +677,7 @@ function RoadmapPage() {
                     <Textarea
                       id="description-edit"
                       value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       required
                     />
                   </div>
@@ -661,7 +688,7 @@ function RoadmapPage() {
                       <Input
                         id="category-edit"
                         value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         required
                       />
                     </div>
@@ -671,7 +698,7 @@ function RoadmapPage() {
                       <Input
                         id="level-edit"
                         value={formData.level}
-                        onChange={(e) => setFormData({...formData, level: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, level: e.target.value })}
                         required
                       />
                     </div>
@@ -683,7 +710,7 @@ function RoadmapPage() {
                       <Input
                         id="duration-edit"
                         value={formData.duration}
-                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                         required
                       />
                     </div>
@@ -693,7 +720,7 @@ function RoadmapPage() {
                         id="phases-edit"
                         type="number"
                         value={formData.phases}
-                        onChange={(e) => setFormData({...formData, phases: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, phases: e.target.value })}
                         min="1"
                         max="20"
                         required
@@ -702,11 +729,21 @@ function RoadmapPage() {
                   </div>
 
                   <div>
+                    <Label htmlFor="modules_link-edit" className="text-sm font-semibold text-gray-800">Modules Resource Link</Label>
+                    <Input
+                      id="modules_link-edit"
+                      value={formData.modules_link}
+                      onChange={(e) => setFormData({ ...formData, modules_link: e.target.value })}
+                      placeholder="e.g., https://youtube.com/playlist?list=..."
+                    />
+                  </div>
+
+                  <div>
                     <Label htmlFor="tags-edit" className="text-sm font-semibold text-gray-800">Tags</Label>
                     <Input
                       id="tags-edit"
                       value={formData.tags}
-                      onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                     />
                   </div>
                 </div>
