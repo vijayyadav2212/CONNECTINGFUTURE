@@ -53,6 +53,14 @@ export default function MentorshipPage() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
+  // Helper: sort sessions with latest (scheduled or created) first
+  const sortSessionsLatestFirst = (arr: Session[]) => {
+    return (arr || []).slice().sort((a, b) => {
+      const aKey = a.scheduled_at ? new Date(a.scheduled_at).getTime() : ((a as any).created_at ? new Date((a as any).created_at).getTime() : 0);
+      const bKey = b.scheduled_at ? new Date(b.scheduled_at).getTime() : ((b as any).created_at ? new Date((b as any).created_at).getTime() : 0);
+      return bKey - aKey; // newest first
+    });
+  };
   const [scheduleForm, setScheduleForm] = useState<{ session_id: number; scheduled_at: string; duration_minutes: number } | null>(null);
   const [prevRequests, setPrevRequests] = useState<Record<number, string>>({});
   const [prevSessions, setPrevSessions] = useState<Record<number, string>>({});
@@ -114,7 +122,7 @@ export default function MentorshipPage() {
       const sq = await fetch(`${API_BASE}/api/mentorship/sessions?mentor_email=${encodeURIComponent(user.email)}`);
       const sj = await sq.json();
       const newSessions: Session[] = sj.sessions || [];
-      setSessions(newSessions);
+      setSessions(sortSessionsLatestFirst(newSessions));
 
       // Hydrate student profiles from fresh results
       const emails = Array.from(new Set([
@@ -191,7 +199,7 @@ export default function MentorshipPage() {
         const sessMap: Record<number, string> = {};
         newSessions.forEach((s) => { sessMap[s.id] = s.status; });
         setPrevSessions(sessMap);
-        setSessions(newSessions);
+        setSessions(sortSessionsLatestFirst(newSessions));
       } catch {}
     }, 15000);
     return () => clearInterval(interval);
@@ -230,7 +238,7 @@ export default function MentorshipPage() {
       if (user?.email) {
         const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=mentor`);
         const sj = await sq.json();
-        setSessions(sj.sessions || []);
+        setSessions(sortSessionsLatestFirst(sj.sessions || []));
       }
     } catch (e) {
       toast({ title: 'Scheduling Error', description: 'Please try again.', variant: 'destructive' });
