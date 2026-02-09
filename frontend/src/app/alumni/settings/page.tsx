@@ -44,6 +44,81 @@ export default function SettingsPage() {
     allowMessages: true
   });
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  React.useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:4000/api/users/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        setProfileData({
+          fullName: data.user.name || '',
+          email: data.user.email || '',
+          phone: data.user.phone || '',
+          location: data.user.location || '',
+          bio: data.user.bio || '',
+          website: data.user.website_url || ''
+        });
+        if (data.user.notification_preferences) {
+          setNotifications(prev => ({ ...prev, ...data.user.notification_preferences }));
+        }
+        if (data.user.privacy_settings) {
+          setPrivacy(prev => ({ ...prev, ...data.user.privacy_settings }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        name: profileData.fullName,
+        phone: profileData.phone,
+        location: profileData.location,
+        bio: profileData.bio,
+        portfolio: profileData.website,
+        notification_preferences: notifications,
+        privacy_settings: privacy
+      };
+
+      const res = await fetch('http://localhost:4000/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Settings saved successfully!' });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setProfileData({ ...profileData, [e.target.name]: e.target.value });
   };
@@ -111,10 +186,21 @@ export default function SettingsPage() {
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="flex items-center justify-between mb-8">
                     <h2 className="text-2xl font-bold text-slate-900">Edit Profile</h2>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg shadow-blue-200 transition-all active:scale-95">
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes
-                    </button>
+                    <div className="flex items-center gap-4">
+                      {message && (
+                        <span className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                          {message.text}
+                        </span>
+                      )}
+                      <button 
+                        onClick={saveProfile}
+                        disabled={saving}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-70"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-8 mb-10">

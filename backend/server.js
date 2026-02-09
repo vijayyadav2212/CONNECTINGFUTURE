@@ -225,6 +225,7 @@ async function initializeTables() {
     // Schema migration: ensure new columns exist even if table was already created
     try {
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)');
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)');
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS university VARCHAR(255)');
     } catch (e) { console.log('User schema migration note:', e.message); }
 
