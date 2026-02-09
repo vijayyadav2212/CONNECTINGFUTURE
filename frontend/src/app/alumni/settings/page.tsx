@@ -38,6 +38,7 @@ export default function SettingsPage() {
     jobTitle: 'R&D',
     location: 'Mumbai',
     linkedin: 'https://linkedin.com/in/yourprofile',
+    website: '',
     bio: 'Motivated Information Technology undergraduate seeking an entry-level opportunity to apply knowledge of programming, databases, and software development while contributing to organizational growth',
     skills: 'data analysis, SQL',
     isMentor: true,
@@ -77,11 +78,19 @@ export default function SettingsPage() {
       if (res.ok && data.user) {
         setProfileData({
           fullName: data.user.name || '',
+          graduationYear: String(data.user.graduation_year || ''),
+          course: data.user.major || '',
           email: data.user.email || '',
           phone: data.user.phone || '',
+          currentCompany: data.user.company || '',
+          jobTitle: data.user.job_title || '',
           location: data.user.location || '',
+          linkedin: data.user.linkedin_url || '',
+          website: data.user.website_url || '',
           bio: data.user.bio || '',
-          website: data.user.website_url || ''
+          skills: data.user.skills || '',
+          isMentor: !!data.user.is_mentor,
+          profileImage: data.user.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
         });
         if (data.user.notification_preferences) {
           setNotifications(prev => ({ ...prev, ...data.user.notification_preferences }));
@@ -134,80 +143,7 @@ export default function SettingsPage() {
     }
   };
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  React.useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/users/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.user) {
-        setProfileData({
-          fullName: data.user.name || '',
-          email: data.user.email || '',
-          phone: data.user.phone || '',
-          location: data.user.location || '',
-          bio: data.user.bio || '',
-          website: data.user.website_url || ''
-        });
-        if (data.user.notification_preferences) {
-          setNotifications(prev => ({ ...prev, ...data.user.notification_preferences }));
-        }
-        if (data.user.privacy_settings) {
-          setPrivacy(prev => ({ ...prev, ...data.user.privacy_settings }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveProfile = async () => {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const token = localStorage.getItem('token');
-      const payload = {
-        name: profileData.fullName,
-        phone: profileData.phone,
-        location: profileData.location,
-        bio: profileData.bio,
-        portfolio: profileData.website,
-        notification_preferences: notifications,
-        privacy_settings: privacy
-      };
-
-      const res = await fetch('http://localhost:4000/api/users/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Settings saved successfully!' });
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        throw new Error('Failed to save settings');
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -442,6 +378,19 @@ export default function SettingsPage() {
                                 value={profileData.linkedin}
                                 onChange={handleProfileChange}
                                 placeholder="https://linkedin.com/in/..."
+                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Portfolio / Website</label>
+                            <div className="relative">
+                              <Globe className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                              <input
+                                name="website"
+                                value={profileData.website}
+                                onChange={handleProfileChange}
+                                placeholder="https://yourportfolio.com"
                                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                               />
                             </div>
