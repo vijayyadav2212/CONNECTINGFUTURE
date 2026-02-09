@@ -1,20 +1,71 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import StudentNavigation from '../StudentNavigation';
-import Link from 'next/link';
-import { Calendar, Award, FileText, AlertCircle, RefreshCw, Pencil, Plus, Save, Trash2, X, CheckCircle } from 'lucide-react';
-import apiClient from '../../../../lib/auth/apiClient';
-import { useAuth0Token } from '../../../../hooks/useAuth0Token';
+import React, { useEffect, useState, useRef } from "react";
+import StudentNavigation from "../StudentNavigation";
+import { GraduationCap, Pencil, Briefcase, TrendingUp, Award, BookOpen, Clock, CheckCircle, Circle, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
 
+/* ------------------ HOOKS ------------------ */
+function useIntersectionObserver(elementRef: React.RefObject<Element | null>, threshold = 0.1) {
+  const [isIntersecting, setIsIntersecting] = useState(false);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsIntersecting(entry.isIntersecting);
+      },
+      { threshold }
+    );
+
+    observer.observe(element);
+    return () => {
+      observer.unobserve(element);
+      observer.disconnect();
+    };
+  }, [elementRef, threshold]);
+
+  return isIntersecting;
+}
+
+function useAnimatedCounter(end: number, duration = 2000, trigger = true) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!trigger) return;
+
+    let startTimestamp: number | null = null;
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      // specific for GPA which might be float
+      if (end % 1 !== 0) {
+        setCount(Number((progress * end).toFixed(2)));
+      } else {
+        setCount(Math.floor(progress * end));
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    requestAnimationFrame(step);
+  }, [end, duration, trigger]);
+
+  return count;
+}
+
+
+/* ------------------ TYPES ------------------ */
 interface Course {
   id: string;
   name: string;
   code: string;
   credits: number;
   grade: string;
-  status: 'completed' | 'in-progress' | 'upcoming';
-  progress: number;
+  status: "completed" | "in-progress" | "upcoming";
 }
 
 interface Semester {
@@ -22,640 +73,361 @@ interface Semester {
   name: string;
   gpa: number;
   courses: Course[];
-  totalCredits: number;
 }
 
-interface OverallStats {
-  gpa: number;
-  creditsCompleted: number;
-  totalCredits: number;
-  completionRate: number;
-  currentSemesterLabel?: string | null;
-}
+/* ------------------ SUB-COMPONENTS ------------------ */
 
-type CourseStatus = Course['status'];
-
-export default function AcademicProgress() {
-  const { tokenLoading, isAuthenticated, refreshToken } = useAuth0Token() as any;
-
-  const [selectedSemester, setSelectedSemester] = useState<string>('');
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [overallStats, setOverallStats] = useState<OverallStats>({
-    gpa: 0,
-    creditsCompleted: 0,
-    totalCredits: 0,
-    completionRate: 0,
-    currentSemesterLabel: null,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [editOpen, setEditOpen] = useState(false);
-  const [draftSemesters, setDraftSemesters] = useState<Semester[]>([]);
-  const [draftSelectedSemesterId, setDraftSelectedSemesterId] = useState<string>('');
-  const [saving, setSaving] = useState(false);
-  const [successPopup, setSuccessPopup] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const loadAcademicProgress = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiClient.getOrNull('/academic-progress/me');
-      const nextOverall: OverallStats = data?.overallStats || {
-        gpa: 0,
-        creditsCompleted: 0,
-        totalCredits: 0,
-        completionRate: 0,
-      };
-      const nextSemesters: Semester[] = Array.isArray(data?.semesters) ? data.semesters : [];
-
-      setOverallStats(nextOverall);
-      setSemesters(nextSemesters);
-
-      setSelectedSemester((prev) => {
-        const ids = new Set(nextSemesters.map((s) => s.id));
-        if (prev && ids.has(prev)) return prev;
-        if (ids.has('current')) return 'current';
-        return nextSemesters[0]?.id || '';
-      });
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load academic progress');
-    } finally {
-      setLoading(false);
-    }
+const StatCard = ({ icon: Icon, value, label, color, delay, isVisible }: {
+  icon: any;
+  value: string | number;
+  label: string;
+  color: "blue" | "green" | "purple" | "orange";
+  delay: string;
+  isVisible: boolean;
+}) => {
+  const colorClasses = {
+    blue: 'bg-blue-500 shadow-blue-200',
+    green: 'bg-emerald-500 shadow-emerald-200',
+    purple: 'bg-purple-500 shadow-purple-200',
+    orange: 'bg-orange-500 shadow-orange-200'
   };
 
-  const openEditor = () => {
-    setFormError(null);
-    // deep copy to avoid mutating live state while editing
-    const copy: Semester[] = JSON.parse(JSON.stringify(semesters || []));
-    setDraftSemesters(copy);
-    setDraftSelectedSemesterId(selectedSemester || copy[0]?.id || '');
-    setEditOpen(true);
-  };
-
-  const closeEditor = () => {
-    if (saving) return;
-    setEditOpen(false);
-    setFormError(null);
-  };
-
-  const draftCurrentSemester = useMemo(() => {
-    if (!draftSemesters.length) return null;
-    return draftSemesters.find((s) => s.id === draftSelectedSemesterId) || draftSemesters[0];
-  }, [draftSemesters, draftSelectedSemesterId]);
-
-  const updateDraftSemester = (semesterId: string, patch: Partial<Semester>) => {
-    setDraftSemesters((prev) => prev.map((s) => (s.id === semesterId ? { ...s, ...patch } : s)));
-  };
-
-  const updateDraftCourse = (semesterId: string, courseId: string, patch: Partial<Course>) => {
-    setDraftSemesters((prev) =>
-      prev.map((s) => {
-        if (s.id !== semesterId) return s;
-        return {
-          ...s,
-          courses: (s.courses || []).map((c) => (c.id === courseId ? { ...c, ...patch } : c)),
-        };
-      })
-    );
-  };
-
-  const deleteDraftCourse = (semesterId: string, courseId: string) => {
-    setDraftSemesters((prev) =>
-      prev.map((s) => {
-        if (s.id !== semesterId) return s;
-        return { ...s, courses: (s.courses || []).filter((c) => c.id !== courseId) };
-      })
-    );
-  };
-
-  const addDraftCourse = (semesterId: string) => {
-    const newId = `course-${Date.now()}`;
-    const newCourse: Course = {
-      id: newId,
-      name: 'New Course',
-      code: '',
-      credits: 0,
-      grade: '',
-      status: 'upcoming',
-      progress: 0,
-    };
-    setDraftSemesters((prev) =>
-      prev.map((s) => (s.id === semesterId ? { ...s, courses: [...(s.courses || []), newCourse] } : s))
-    );
-  };
-
-  const addDraftSemester = () => {
-    const nextNum = draftSemesters.length + 1;
-    const newSemester: Semester = {
-      id: `sem-${Date.now()}`,
-      name: `Semester ${nextNum}`,
-      gpa: 0,
-      totalCredits: 0,
-      courses: [],
-    };
-    setDraftSemesters((prev) => [newSemester, ...prev]);
-    setDraftSelectedSemesterId(newSemester.id);
-  };
-
-  const validateDraft = () => {
-    if (!draftSemesters.length) return 'Please add at least one semester.';
-    for (const s of draftSemesters) {
-      if (!String(s.name || '').trim()) return 'Semester name is required.';
-      const courses = s.courses || [];
-      for (const c of courses) {
-        if (!String(c.name || '').trim()) return 'Course name is required.';
-      }
-    }
-    return null;
-  };
-
-  const saveDraft = async () => {
-    setFormError(null);
-    const msg = validateDraft();
-    if (msg) {
-      setFormError(msg);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const payloadSemesters: Semester[] = (draftSemesters || []).map((s) => {
-        const courses = Array.isArray(s.courses) ? s.courses : [];
-        const computedCredits = courses.reduce((sum, c) => sum + Number(c.credits || 0), 0);
-        return {
-          ...s,
-          totalCredits: computedCredits,
-        };
-      });
-
-      const resp = await apiClient.put('/academic-progress/me', { semesters: payloadSemesters });
-      const nextOverall: OverallStats = resp?.overallStats || overallStats;
-      const nextSemesters: Semester[] = Array.isArray(resp?.semesters) ? resp.semesters : semesters;
-
-      setOverallStats(nextOverall);
-      setSemesters(nextSemesters);
-
-      setSelectedSemester((prev) => {
-        const ids = new Set(nextSemesters.map((s) => s.id));
-        if (prev && ids.has(prev)) return prev;
-        if (ids.has('current')) return 'current';
-        return nextSemesters[0]?.id || '';
-      });
-
-      setEditOpen(false);
-      setSuccessPopup(true);
-      window.setTimeout(() => setSuccessPopup(false), 2500);
-    } catch (e: any) {
-      setFormError(e?.message || 'Failed to save academic progress');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    if (tokenLoading) return;
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    loadAcademicProgress();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenLoading, isAuthenticated]);
-
-  const currentSemester = useMemo(() => {
-    if (!semesters.length) return null;
-    return semesters.find((s) => s.id === selectedSemester) || semesters[0];
-  }, [semesters, selectedSemester]);
-
-  const currentSemesterLabel = useMemo(() => {
-    if (overallStats.currentSemesterLabel) return String(overallStats.currentSemesterLabel);
-    const name = currentSemester?.name || '';
-    const m = name.match(/Semester\s+(\d+)/i);
-    if (m?.[1]) return `${m[1]}th`;
-    return 'Current';
-  }, [currentSemester?.name, overallStats.currentSemesterLabel]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'text-green-600 bg-green-100';
-      case 'in-progress': return 'text-blue-600 bg-blue-100';
-      case 'upcoming': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getGradeColor = (grade: string) => {
-    if (grade.startsWith('A')) return 'text-green-600 bg-green-100';
-    if (grade.startsWith('B')) return 'text-blue-600 bg-blue-100';
-    if (grade.startsWith('C')) return 'text-orange-600 bg-orange-100';
-    return 'text-red-600 bg-red-100';
+  const bgClasses = {
+    blue: 'bg-blue-50 hover:bg-blue-100/80',
+    green: 'bg-emerald-50 hover:bg-emerald-100/80',
+    purple: 'bg-purple-50 hover:bg-purple-100/80',
+    orange: 'bg-orange-50 hover:bg-orange-100/80'
   };
 
   return (
+    <div
+      className={`group relative p-6 rounded-2xl border-0 ${bgClasses[color]} transition-all duration-500 hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-xl
+        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-3 rounded-xl ${colorClasses[color]} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+          <Icon size={24} />
+        </div>
+        {color === 'green' && <div className="text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full text-xs font-bold">+0.2</div>}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+        <h3 className="text-3xl font-bold text-gray-800 tracking-tight">{value}</h3>
+      </div>
+    </div>
+  );
+};
+
+
+const CourseCard = ({ course, delay }: { course: Course, delay: number }) => {
+  const statusConfig = {
+    completed: { color: 'text-emerald-700 bg-emerald-100 border-emerald-200', icon: CheckCircle },
+    'in-progress': { color: 'text-blue-700 bg-blue-100 border-blue-200', icon: Clock }, // animate-pulse removed from here to avoid text jitter, can add to dot
+    upcoming: { color: 'text-gray-600 bg-gray-100 border-gray-200', icon: Circle },
+  };
+
+  const StatusIcon = statusConfig[course.status].icon;
+
+  return (
+    <div
+      className="group flex flex-col md:flex-row md:items-center justify-between p-5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 hover:-translate-x-1 animate-fade-in-up"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+    >
+      <div className="flex items-center gap-4 mb-4 md:mb-0">
+        <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+          {course.code.replace(/[0-9]/g, '')}
+        </div>
+        <div>
+          <h4 className="font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">{course.name}</h4>
+          <p className="text-sm text-gray-500">{course.code} • {course.credits} Credits</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6">
+        <div className="flex flex-col items-end">
+          <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Grade</span>
+          <span className={`font-bold ${course.grade === 'A' || course.grade === 'A+' ? 'text-emerald-600' : 'text-gray-700'}`}>
+            {course.grade}
+          </span>
+        </div>
+
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border ${statusConfig[course.status].color}`}>
+          <StatusIcon size={14} className={course.status === 'in-progress' ? 'animate-spin-slow' : ''} />
+          <span className="capitalize">{course.status.replace('-', ' ')}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+/* ------------------ COMPONENT ------------------ */
+export default function AcademicProgress() {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [editOpen, setEditOpen] = useState(false);
+
+  // Refs
+
+  const statsRef = useRef<HTMLDivElement>(null);
+  const semesterRef = useRef<HTMLDivElement>(null);
+  const coursesRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observers
+
+  const showStats = useIntersectionObserver(statsRef);
+  const showSemester = useIntersectionObserver(semesterRef);
+
+  // Data
+  const semesters: Semester[] = [
+    {
+      id: "sem6",
+      name: "Semester 6",
+      gpa: 8.5,
+      courses: [
+        { id: "c1", name: "Data Structures & Algorithms", code: "CS301", credits: 4, grade: "A", status: "completed" },
+        { id: "c2", name: "Database Management Systems", code: "CS302", credits: 3, grade: "B+", status: "in-progress" },
+        { id: "c3", name: "Operating Systems", code: "CS303", credits: 3, grade: "-", status: "in-progress" },
+        { id: "c4", name: "Computer Networks", code: "CS304", credits: 4, grade: "-", status: "upcoming" },
+      ],
+    },
+  ];
+
+  const overallGpa = semesters.reduce((s, x) => s + x.gpa, 0) / semesters.length;
+  // Ensure animatedGpa is treated as number for StatCard, although useAnimatedCounter returns number
+  const animatedGpa = useAnimatedCounter(overallGpa, 1500, showStats);
+  const totalCredits = 120; // Mock data
+  const creditsEarned = useAnimatedCounter(86, 2000, showStats);
+
+  // Mouse move effect for background
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  return (
     <StudentNavigation>
-      <div className="p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Academic Progress</h1>
-            <p className="text-gray-600">Track your academic journey and performance</p>
-          </div>
+      <div className="relative min-h-screen overflow-hidden bg-gray-50/50">
 
-          {isAuthenticated && !tokenLoading && !loading && !error && (
-            <button
-              onClick={openEditor}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700 shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-              title="Edit academic data"
-            >
-              <Pencil className="w-4 h-4 text-white" />
-              Edit
-            </button>
-          )}
+        {/* ANIMATED BACKGROUND BLOBS */}
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+          <div
+            className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-indigo-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float"
+            style={{ transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)` }}
+          />
+          <div
+            className="absolute top-[20%] right-[-10%] w-[35rem] h-[35rem] bg-purple-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float"
+            style={{
+              animationDelay: '2s',
+              transform: `translate(${-mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`
+            }}
+          />
+          <div
+            className="absolute bottom-[-10%] left-[20%] w-[45rem] h-[45rem] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float"
+            style={{
+              animationDelay: '4s',
+              transform: `translate(${mousePosition.x * 0.01}px, ${-mousePosition.y * 0.02}px)`
+            }}
+          />
         </div>
 
-        {tokenLoading || loading ? (
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-            <div className="animate-pulse">
-              <div className="h-5 w-48 bg-gray-200 rounded mb-3" />
-              <div className="h-3 w-72 bg-gray-100 rounded" />
-            </div>
-          </div>
-        ) : !isAuthenticated ? (
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-orange-600" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-gray-900">Login required</h2>
-                <p className="text-sm text-gray-600 mt-1">Please sign in to view your academic progress.</p>
-                <div className="mt-4 flex items-center gap-3">
-                  <Link
-                    href="/api/auth/login"
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700"
-                  >
-                    Sign in
-                  </Link>
-                  <button
-                    onClick={() => refreshToken?.()}
-                    className="px-4 py-2 border border-gray-300 rounded-lg font-semibold text-sm hover:bg-gray-50"
-                  >
-                    Refresh session
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-red-200 mb-8">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-gray-900">Couldn’t load academic progress</h2>
-                <p className="text-sm text-gray-600 mt-1">{error}</p>
-                <div className="mt-4 flex items-center gap-3">
-                  <button
-                    onClick={loadAcademicProgress}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Retry
-                  </button>
-                  <button
-                    onClick={() => refreshToken?.()}
-                    className="px-4 py-2 border border-gray-300 rounded-lg font-semibold text-sm hover:bg-gray-50"
-                  >
-                    Refresh token
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">
-                  Backend must be running and `NEXT_PUBLIC_API_BASE` should point to it (default: `http://localhost:4000`).
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
 
-        {/* Overall Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Overall CGPA</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{overallStats.gpa}</p>
-                <p className="text-green-600 text-sm mt-1">Excellent</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Award className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
+          {/* HEADER */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mb-8"
+          >
+            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
+              {/* Subtle background pattern */}
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Current Semester</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{currentSemesterLabel}</p>
-                <p className="text-orange-600 text-sm mt-1">In Progress</p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Calendar className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Semester Selection */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Semester Details</h2>
-            <select 
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
-              disabled={!currentSemester || semesters.length === 0}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            >
-              {semesters.map(semester => (
-                <option key={semester.id} value={semester.id}>
-                  {semester.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Semester Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="p-4 bg-green-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Semester CGPA</h3>
-                <Award className="w-5 h-5 text-green-600" />
-              </div>
-              <p className="text-2xl font-bold text-green-600">{currentSemester?.gpa ?? 0}</p>
-            </div>
-
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Courses</h3>
-                <FileText className="w-5 h-5 text-purple-600" />
-              </div>
-              <p className="text-2xl font-bold text-purple-600">{currentSemester?.courses?.length ?? 0}</p>
-            </div>
-          </div>
-
-          {/* Courses List */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Courses</h3>
-            <div className="grid gap-4">
-              {(currentSemester?.courses || []).map(course => (
-                <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4 className="font-semibold text-gray-900">{course.name}</h4>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(course.status)}`}>
-                          {course.status.replace('-', ' ')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span>{course.code}</span>
-                        {course.grade && (
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${getGradeColor(course.grade)}`}>
-                            Grade: {course.grade}
-                          </span>
-                        )}
-                      </div>
+              <div className="relative z-10">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    {/* Label */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <GraduationCap className="w-5 h-5 text-blue-600" />
+                      <span className="text-blue-700 font-semibold text-sm">Academic Journey</span>
                     </div>
+
+                    {/* Main Title */}
+                    <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                      Academic Progress
+                    </h1>
+
+                    {/* Subtitle */}
+                    <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                      Track your journey and achievements.
+                    </p>
+                  </div>
+
+                  {/* Edit Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setEditOpen(true)}
+                    className="hidden md:flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-white/40"
+                  >
+                    <Pencil className="w-4 h-4 text-gray-700" />
+                    <span className="text-sm font-medium text-gray-700">Edit Goals</span>
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* STATS GRID */}
+          <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <StatCard
+              icon={TrendingUp}
+              value={animatedGpa} // Will display nicely even if float
+              label="Overall CGPA"
+              color="blue"
+              delay="0"
+              isVisible={showStats}
+            />
+            <StatCard
+              icon={BookOpen}
+              value={creditsEarned}
+              label="Credits Earned"
+              color="green"
+              delay="100"
+              isVisible={showStats}
+            />
+            <StatCard
+              icon={Briefcase}
+              value={semesters[0].name}
+              label="Current Semester"
+              color="purple"
+              delay="200"
+              isVisible={showStats}
+            />
+            <StatCard
+              icon={Award}
+              value="Top 10%"
+              label="Class Rank"
+              color="orange"
+              delay="300"
+              isVisible={showStats}
+            />
+          </div>
+
+          {/* MAIN CONTENT SPLIT */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            {/* LEFT COLUMN: SEMESTER OVERVIEW & COURSES */}
+            <div className="lg:col-span-2 space-y-8">
+
+              {/* CURRENT SEMESTER HEADER */}
+              <div
+                ref={semesterRef}
+                className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 border border-white/50 shadow-xl transition-all duration-700
+                        ${showSemester ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+              >
+                <div className="flex justify-between items-end mb-6 border-b border-gray-100 pb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Current Semester</h2>
+                    <p className="text-indigo-500 font-medium">{semesters[0].name} • 2024-2025</p>
+                  </div>
+                  <div className="text-right hidden sm:block">
+                    <span className="text-3xl font-bold text-gray-800">{semesters[0].gpa}</span>
+                    <span className="text-sm text-gray-400 block uppercase tracking-wider">Target GPA</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Success Popup */}
-        {successPopup && (
-          <div className="fixed top-4 right-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl border border-green-200 p-4 flex items-start gap-3">
-              <div className="w-10 h-10 bg-green-600 rounded-2xl flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-gray-900">Saved successfully</div>
-                <div className="text-xs text-gray-600">Academic progress updated.</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {editOpen && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Edit Academic Data</h3>
-                  <p className="text-sm text-gray-600">Update semesters, courses, grades, and progress.</p>
+                {/* Course List */}
+                <div ref={coursesRef} className="space-y-4">
+                  {semesters[0].courses.map((course, index) => (
+                    <CourseCard key={course.id} course={course} delay={index * 100} />
+                  ))}
                 </div>
-                <button
-                  onClick={closeEditor}
-                  className="p-2 rounded-xl hover:bg-gray-100 text-gray-600"
-                  aria-label="Close"
-                  title="Close"
-                >
-                  <X className="w-5 h-5" />
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: INSIGHTS / ALERTS */}
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl p-6 text-white shadow-2xl shadow-indigo-200 transform hover:scale-[1.02] transition-transform duration-500">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
+                    <Award className="w-6 h-6 text-yellow-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold mb-1">Scholarship Eligible</h3>
+                    <p className="text-indigo-100 text-sm leading-relaxed">
+                      Your GPA of 8.5 qualifies you for the "Dean's List" scholarship next semester!
+                    </p>
+                  </div>
+                </div>
+                <button className="w-full py-3 bg-white text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition-colors shadow-lg">
+                  Apply Now
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr]">
-                {/* Left: Semesters */}
-                <div className="border-b lg:border-b-0 lg:border-r border-gray-200 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm font-bold text-gray-900">Semesters</div>
-                    <button
-                      onClick={addDraftSemester}
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add
-                    </button>
+              <div className="bg-white/60 backdrop-blur-md border border-white/60 rounded-3xl p-6 shadow-lg">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <AlertCircle size={18} className="text-orange-500" />
+                  Upcoming Deadlines
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                    <div className="text-center min-w-[3rem]">
+                      <span className="block text-xs text-gray-400 uppercase font-bold">Feb</span>
+                      <span className="block text-lg font-bold text-gray-800">15</span>
+                    </div>
+                    <div className="w-px h-8 bg-gray-100"></div>
+                    <div>
+                      <p className="font-semibold text-gray-700 text-sm">Course Registration</p>
+                      <p className="text-xs text-gray-400">Fall 2025 Semester</p>
+                    </div>
                   </div>
-
-                  <div className="space-y-2 max-h-[62vh] overflow-auto pr-1">
-                    {draftSemesters.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setDraftSelectedSemesterId(s.id)}
-                        className={
-                          `w-full text-left px-3 py-3 rounded-xl border transition-colors ` +
-                          (draftSelectedSemesterId === s.id
-                            ? 'bg-green-50 border-green-200'
-                            : 'bg-white border-gray-200 hover:bg-gray-50')
-                        }
-                      >
-                        <div className="text-sm font-bold text-gray-900 truncate">{s.name}</div>
-                        <div className="text-xs text-gray-600 mt-1 flex items-center justify-between">
-                          <span>CGPA: {s.gpa ?? 0}</span>
-                          <span>Courses: {(s.courses || []).length}</span>
-                        </div>
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                    <div className="text-center min-w-[3rem]">
+                      <span className="block text-xs text-gray-400 uppercase font-bold">Feb</span>
+                      <span className="block text-lg font-bold text-gray-800">28</span>
+                    </div>
+                    <div className="w-px h-8 bg-gray-100"></div>
+                    <div>
+                      <p className="font-semibold text-gray-700 text-sm">Exam Schedule</p>
+                      <p className="text-xs text-gray-400">Finals for Sem 6</p>
+                    </div>
                   </div>
-                </div>
-
-                {/* Right: Details */}
-                <div className="p-6 overflow-auto max-h-[75vh]">
-                  {!draftCurrentSemester ? (
-                    <div className="text-sm text-gray-600">Add a semester to start editing.</div>
-                  ) : (
-                    <>
-                      {formError && (
-                        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                            <div>
-                              <div className="text-sm font-bold text-gray-900">Fix before saving</div>
-                              <div className="text-sm text-gray-700 mt-1">{formError}</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Semester Name</label>
-                          <input
-                            value={draftCurrentSemester.name}
-                            onChange={(e) => updateDraftSemester(draftCurrentSemester.id, { name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">CGPA</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            key={draftCurrentSemester.id}
-                            defaultValue={draftCurrentSemester.gpa ?? 0}
-                            onBlur={(e) => {
-                              const raw = String(e.target.value || '').trim();
-                              const parsed = raw === '' ? 0 : Number.parseFloat(raw);
-                              updateDraftSemester(draftCurrentSemester.id, { gpa: Number.isFinite(parsed) ? parsed : 0 });
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-lg font-bold text-gray-900">Courses</h4>
-                        <button
-                          onClick={() => addDraftCourse(draftCurrentSemester.id)}
-                          className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Course
-                        </button>
-                      </div>
-
-                      <div className="space-y-3">
-                        {(draftCurrentSemester.courses || []).map((c) => (
-                          <div key={c.id} className="border border-gray-200 rounded-2xl p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-600 mb-1">Course Name</label>
-                                  <input
-                                    value={c.name}
-                                    onChange={(e) => updateDraftCourse(draftCurrentSemester.id, c.id, { name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-600 mb-1">Code</label>
-                                  <input
-                                    value={c.code}
-                                    onChange={(e) => updateDraftCourse(draftCurrentSemester.id, c.id, { code: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 md:col-span-2">
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Status</label>
-                                    <select
-                                      value={c.status}
-                                      onChange={(e) => updateDraftCourse(draftCurrentSemester.id, c.id, { status: e.target.value as CourseStatus })}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                    >
-                                      <option value="completed">Completed</option>
-                                      <option value="in-progress">In Progress</option>
-                                      <option value="upcoming">Upcoming</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Grade</label>
-                                    <input
-                                      value={c.grade}
-                                      onChange={(e) => updateDraftCourse(draftCurrentSemester.id, c.id, { grade: e.target.value })}
-                                      placeholder="A, B+, ..."
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => deleteDraftCourse(draftCurrentSemester.id, c.id)}
-                                className="p-2 rounded-xl hover:bg-red-50 text-red-600"
-                                title="Remove course"
-                                aria-label="Remove course"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                        <button
-                          onClick={closeEditor}
-                          disabled={saving}
-                          className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-sm hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={saveDraft}
-                          disabled={saving}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {saving ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="w-4 h-4" />
-                              Save changes
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
+
+          </div>
+
+        </div>
+
+        {/* EDIT MODAL */}
+        {editOpen && (
+          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl transform transition-all scale-100">
+              <div className="text-center mb-6">
+                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <Pencil className="w-8 h-8 text-gray-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Edit Mode</h3>
+                <p className="text-gray-500 mt-2">
+                  Backend connection is currently disabled for this demo.
+                </p>
+              </div>
+              <button
+                onClick={() => setEditOpen(false)}
+                className="w-full py-3.5 bg-gray-900 text-white font-semibold rounded-xl hover:bg-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
+              >
+                Got it
+              </button>
+            </div>
           </div>
         )}
+
       </div>
     </StudentNavigation>
   );

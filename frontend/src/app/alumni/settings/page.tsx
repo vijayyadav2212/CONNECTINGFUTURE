@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AlumniNavigation from '../AluminaNavigation';
 import {
   User,
@@ -15,18 +16,32 @@ import {
   LogOut,
   ChevronRight,
   Camera,
-  Save
+  Save,
+  Briefcase,
+  GraduationCap,
+  Linkedin,
+  FileText,
+  MapPin,
+  Check
 } from 'lucide-react';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [profileData, setProfileData] = useState({
     fullName: 'Ved Prakash',
+    graduationYear: '2026',
+    course: 'Information technology',
     email: 'ved.prakash@example.com',
     phone: '+91 98765 43210',
-    location: 'Bangalore, India',
-    bio: 'Software Engineer passionate about building scalable web applications and community building.',
-    website: 'https://vedprakash.dev'
+    currentCompany: 'MotorCorp',
+    jobTitle: 'R&D',
+    location: 'Mumbai',
+    linkedin: 'https://linkedin.com/in/yourprofile',
+    bio: 'Motivated Information Technology undergraduate seeking an entry-level opportunity to apply knowledge of programming, databases, and software development while contributing to organizational growth',
+    skills: 'data analysis, SQL',
+    isMentor: true,
+    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
   });
 
   const [notifications, setNotifications] = useState({
@@ -119,8 +134,106 @@ export default function SettingsPage() {
     }
   };
 
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setProfileData({ ...profileData, [e.target.name]: e.target.value });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  React.useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:4000/api/users/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        setProfileData({
+          fullName: data.user.name || '',
+          email: data.user.email || '',
+          phone: data.user.phone || '',
+          location: data.user.location || '',
+          bio: data.user.bio || '',
+          website: data.user.website_url || ''
+        });
+        if (data.user.notification_preferences) {
+          setNotifications(prev => ({ ...prev, ...data.user.notification_preferences }));
+        }
+        if (data.user.privacy_settings) {
+          setPrivacy(prev => ({ ...prev, ...data.user.privacy_settings }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        name: profileData.fullName,
+        phone: profileData.phone,
+        location: profileData.location,
+        bio: profileData.bio,
+        portfolio: profileData.website,
+        notification_preferences: notifications,
+        privacy_settings: privacy
+      };
+
+      const res = await fetch('http://localhost:4000/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Settings saved successfully!' });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userType');
+    window.location.href = '/api/auth/logout';
+  };
+
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setProfileData({ ...profileData, [name]: checked });
+    } else {
+      setProfileData({ ...profileData, [name]: value });
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData({ ...profileData, profileImage: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const menuItems = [
@@ -156,8 +269,8 @@ export default function SettingsPage() {
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                           }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -170,7 +283,10 @@ export default function SettingsPage() {
 
                 <div className="mt-8">
                   <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Support</h2>
-                  <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  >
                     <LogOut className="w-5 h-5" />
                     <span className="font-medium">Sign Out</span>
                   </button>
@@ -184,8 +300,13 @@ export default function SettingsPage() {
               {/* Profile Settings */}
               {activeTab === 'profile' && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-bold text-slate-900">Edit Profile</h2>
+                  <div className="flex items-center gap-3 mb-2">
+                    <User className="w-6 h-6 text-blue-600" />
+                    <h2 className="text-2xl font-bold text-slate-900">Profile Details</h2>
+                  </div>
+                  <p className="text-slate-500 mb-8 ml-9">Complete your profile to connect with fellow alumni</p>
+
+                  <div className="flex justify-end mb-6">
                     <div className="flex items-center gap-4">
                       {message && (
                         <span className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
@@ -203,82 +324,175 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col md:flex-row gap-8 mb-10">
-                    <div className="shrink-0 flex flex-col items-center">
-                      <div className="w-32 h-32 rounded-full bg-slate-200 relative overflow-hidden ring-4 ring-white shadow-lg mb-4 group cursor-pointer">
-                        <img
-                          src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Camera className="w-8 h-8 text-white" />
-                        </div>
-                      </div>
-                      <button className="text-blue-600 text-sm font-semibold hover:underline">Change Photo</button>
-                    </div>
+                  <div className="flex flex-col md:flex-row gap-8">
 
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
-                        <input
-                          name="fullName"
-                          value={profileData.fullName}
-                          onChange={handleProfileChange}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                        <input
-                          name="email"
-                          value={profileData.email}
-                          onChange={handleProfileChange}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 text-slate-500"
-                          disabled
-                        />
-                      </div>
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
-                        <input
-                          name="phone"
-                          value={profileData.phone}
-                          onChange={handleProfileChange}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
-                        <input
-                          name="location"
-                          value={profileData.location}
-                          onChange={handleProfileChange}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Bio</label>
-                        <textarea
-                          name="bio"
-                          rows={3}
-                          value={profileData.bio}
-                          onChange={handleProfileChange}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
-                        />
-                        <p className="text-xs text-slate-500 mt-2 text-right">250 characters max</p>
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Website / Portfolio</label>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                          <input
-                            name="website"
-                            value={profileData.website}
-                            onChange={handleProfileChange}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    {/* Left Column: Profile Image */}
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="relative group cursor-pointer mb-3">
+                        <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-lg bg-slate-100">
+                          <img
+                            src={profileData.profileImage}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
                           />
                         </div>
+                        <label className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                          <Camera className="w-8 h-8 text-white" />
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                          />
+                        </label>
+                        <div className="absolute bottom-1 right-1 bg-blue-600 text-white p-2 rounded-full shadow-md border-2 border-white">
+                          <Camera className="w-4 h-4" />
+                        </div>
                       </div>
+                      <p className="text-xs text-slate-500 font-medium text-center">Allowed *.jpeg, *.jpg, *.png,<br /> max size of 3 MB</p>
+                    </div>
+
+                    {/* Right Column: Form Sections */}
+                    <div className="flex-1 space-y-8">
+
+                      {/* PERSONAL INFORMATION (BLUE) */}
+                      <div>
+                        <div className="bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 shadow-md mb-6">
+                          <User className="w-5 h-5" />
+                          <h3 className="font-bold uppercase tracking-wide text-sm">Personal Information</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-2">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Full Name *</label>
+                            <input
+                              name="fullName"
+                              value={profileData.fullName}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Graduation Year *</label>
+                            <select
+                              name="graduationYear"
+                              value={profileData.graduationYear}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            >
+                              {Array.from({ length: 15 }, (_, i) => 2030 - i).map(year => (
+                                <option key={year} value={year}>{year}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Course/Major *</label>
+                            <input
+                              name="course"
+                              value={profileData.course}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* PROFESSIONAL INFORMATION (GREEN) */}
+                      <div>
+                        <div className="bg-green-700 text-white px-4 py-3 rounded-lg flex items-center gap-3 shadow-md mb-6">
+                          <Briefcase className="w-5 h-5" />
+                          <h3 className="font-bold uppercase tracking-wide text-sm">Professional Information</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-2">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Current Company</label>
+                            <input
+                              name="currentCompany"
+                              value={profileData.currentCompany}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Job Title</label>
+                            <input
+                              name="jobTitle"
+                              value={profileData.jobTitle}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Location</label>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                              <input
+                                name="location"
+                                value={profileData.location}
+                                onChange={handleProfileChange}
+                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">LinkedIn Profile</label>
+                            <div className="relative">
+                              <Linkedin className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                              <input
+                                name="linkedin"
+                                value={profileData.linkedin}
+                                onChange={handleProfileChange}
+                                placeholder="https://linkedin.com/in/..."
+                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ADDITIONAL INFORMATION (PURPLE) */}
+                      <div>
+                        <div className="bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 shadow-md mb-6">
+                          <FileText className="w-5 h-5" />
+                          <h3 className="font-bold uppercase tracking-wide text-sm">Additional Information</h3>
+                        </div>
+                        <div className="space-y-6 px-2">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Bio</label>
+                            <textarea
+                              name="bio"
+                              rows={4}
+                              value={profileData.bio}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all resize-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Skills & Expertise</label>
+                            <input
+                              name="skills"
+                              value={profileData.skills}
+                              onChange={handleProfileChange}
+                              className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">Separate skills with commas</p>
+                          </div>
+
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              name="isMentor"
+                              checked={profileData.isMentor}
+                              onChange={handleProfileChange}
+                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                            />
+                            <label className="font-bold text-slate-800 flex items-center gap-2">
+                              <User className="w-4 h-4 text-blue-600" />
+                              I'm open to mentoring students and junior alumni
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -343,8 +557,8 @@ export default function SettingsPage() {
                             key={option}
                             onClick={() => setPrivacy({ ...privacy, profileVisibility: option })}
                             className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col items-center text-center transition-all ${privacy.profileVisibility === option
-                                ? 'border-blue-600 bg-blue-50/50'
-                                : 'border-slate-200 hover:border-slate-300'
+                              ? 'border-blue-600 bg-blue-50/50'
+                              : 'border-slate-200 hover:border-slate-300'
                               }`}
                           >
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${privacy.profileVisibility === option ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'

@@ -206,14 +206,14 @@ export default function MemoriesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('recent');
-  const [showComments, setShowComments] = useState<{[key: number]: boolean}>({});
+  const [showComments, setShowComments] = useState<{ [key: number]: boolean }>({});
   const [newComment, setNewComment] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(new Set());
   const [isSharing, setIsSharing] = useState(false);
-  const [comments, setComments] = useState<{[key: number]: any[]}>({
+  const [comments, setComments] = useState<{ [key: number]: any[] }>({
     1: [
       { id: 1, author: 'John Doe', text: 'Congratulations! So proud of you! 🎉', time: '2 hours ago', likes: 5 },
       { id: 2, author: 'Jane Smith', text: 'Amazing achievement! 👏', time: '3 hours ago', likes: 3 }
@@ -243,8 +243,8 @@ export default function MemoriesPage() {
       tags: Array.isArray(m.tags)
         ? m.tags
         : (typeof m.tags === 'string' && m.tags.length
-            ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
-            : []),
+          ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+          : []),
       likes: m.likes ?? 0,
       comments: m.comments ?? m.comments_count ?? 0,
       isLiked: m.isLiked ?? m.is_liked ?? false,
@@ -255,7 +255,7 @@ export default function MemoriesPage() {
       saved: m.saved ?? false,
     };
   };
-  
+
   const [newMemory, setNewMemory] = useState({
     title: '',
     description: '',
@@ -292,10 +292,10 @@ export default function MemoriesPage() {
           const data = JSON.parse(e.data);
           const id = data.id;
           setMemories(prev => prev.map(m => m.id === id ? { ...m, likes: data.likes ?? m.likes, isLiked: data.is_liked ?? m.isLiked } : m));
-        } catch {}
+        } catch { }
       });
       es.addEventListener('memory-view', (e: any) => {
-        try { const d = JSON.parse(e.data); const id = d.id; setMemories(prev => prev.map(m => m.id === id ? { ...m, views: d.views ?? m.views } : m)); } catch {}
+        try { const d = JSON.parse(e.data); const id = d.id; setMemories(prev => prev.map(m => m.id === id ? { ...m, views: d.views ?? m.views } : m)); } catch { }
       });
       es.addEventListener('memory-comment', (e: any) => {
         try {
@@ -309,11 +309,11 @@ export default function MemoriesPage() {
             const next = exists ? list.map((x: any) => (x.id === mapped.id ? mapped : x)) : [...list, mapped];
             // Only bump count if it's a new comment
             if (!exists) {
-              try { setMemories(p => p.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m)); } catch {}
+              try { setMemories(p => p.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m)); } catch { }
             }
             return { ...prev, [id]: next };
           });
-        } catch {}
+        } catch { }
       });
       es.addEventListener('memory-create', (e: any) => {
         try {
@@ -321,10 +321,10 @@ export default function MemoriesPage() {
           const nm = normalizeMemory(d);
           setMemories(prev => [nm, ...prev.filter(m => m.id !== nm.id)]);
           setFilteredMemories(prev => [nm, ...prev.filter(m => m.id !== nm.id)]);
-        } catch {}
+        } catch { }
       });
       // share events not used in UI anymore
-    } catch {}
+    } catch { }
   }, [selectedCategory, searchQuery, activeTab]);
 
   const handleLike = async (memoryId: number) => {
@@ -333,12 +333,12 @@ export default function MemoriesPage() {
       const action = m?.isLiked ? 'unlike' : 'like';
       setPendingLikeIds(prev => new Set(prev).add(memoryId));
       const resp = await apiClient.post(`/memories/${memoryId}/like`, { action });
-      setMemories(memories.map(memory => 
-        memory.id === memoryId 
+      setMemories(memories.map(memory =>
+        memory.id === memoryId
           ? { ...memory, isLiked: resp?.is_liked ?? !m?.isLiked, likes: resp?.likes ?? (m?.isLiked ? (m.likes - 1) : (m.likes + 1)) }
           : memory
       ));
-    } catch {}
+    } catch { }
     finally {
       setPendingLikeIds(prev => { const next = new Set(prev); next.delete(memoryId); return next; });
     }
@@ -358,7 +358,7 @@ export default function MemoriesPage() {
           likes: c.likes || 0,
         }));
         setComments(prev => ({ ...prev, [memoryId]: mapped }));
-      } catch {}
+      } catch { }
     }
   };
 
@@ -372,12 +372,12 @@ export default function MemoriesPage() {
           const exists = list.some((x: any) => x.id === newItem.id);
           const next = exists ? list.map((x: any) => (x.id === newItem.id ? newItem : x)) : [...list, newItem];
           if (!exists) {
-            try { setMemories(m => m.map(mm => mm.id === memoryId ? { ...mm, comments: (mm.comments || mm.comments_count || 0) + 1 } : mm)); } catch {}
+            try { setMemories(m => m.map(mm => mm.id === memoryId ? { ...mm, comments: (mm.comments || mm.comments_count || 0) + 1 } : mm)); } catch { }
           }
           return { ...prev, [memoryId]: next };
         });
         setNewComment('');
-      } catch {}
+      } catch { }
     }
   };
 
@@ -400,96 +400,94 @@ export default function MemoriesPage() {
       return;
     }
     try {
-        setIsSharing(true);
-        let image_url: string | null = null;
-        if (imageFile) {
-          const fd = new FormData();
-          fd.append('image', imageFile);
-          try {
-            const up = await apiClient.postFormData('/uploads/memory-image', fd);
-            image_url = up?.url || null;
-            if (image_url) {
-              toast({ title: 'Image uploaded', description: 'Your photo was uploaded successfully.' });
-            } else {
-              toast({ title: 'Upload incomplete', description: 'No image URL returned.', });
-            }
-          } catch (err: any) {
-            toast({ title: 'Upload failed', description: (err?.message || 'Unable to upload image'), });
-            // Proceed without image if upload fails
+      setIsSharing(true);
+      let image_url: string | null = null;
+      if (imageFile) {
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        try {
+          const up = await apiClient.postFormData('/uploads/memory-image', fd);
+          image_url = up?.url || null;
+          if (image_url) {
+            toast({ title: 'Image uploaded', description: 'Your photo was uploaded successfully.' });
+          } else {
+            toast({ title: 'Upload incomplete', description: 'No image URL returned.', });
           }
+        } catch (err: any) {
+          toast({ title: 'Upload failed', description: (err?.message || 'Unable to upload image'), });
+          // Proceed without image if upload fails
         }
-        const payload = {
-          author_name: 'You',
-          author_avatar: null,
-          author_batch: '2020-2024',
-          author_department: 'Your Department',
-          title: newMemory.title,
-          description: newMemory.description || '',
-          image_url,
-          date: new Date().toISOString().split('T')[0],
-          location: newMemory.location || 'Campus',
-          tags: newMemory.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-          category: newMemory.category,
-          type: 'photo'
-        };
-        await apiClient.post('/memories', payload);
-        toast({ title: 'Memory shared', description: 'Your memory has been posted.' });
-        setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
-        setImagePreview(null);
-        setImageFile(null);
-        setShowAddForm(false);
-        // Refresh list
-        const resp = await apiClient.get(`/memories?q=&category=all&sort=recent&page=1&limit=50`);
-        const rawList = resp?.memories || resp || [];
-        const list = rawList.map((m: any) => normalizeMemory(m));
-        setMemories(list);
-        setFilteredMemories(list);
-      } catch (e: any) {
-        toast({ title: 'Unable to share memory', description: (e?.message || 'Please try again later') });
       }
-      finally {
-        setIsSharing(false);
-      }
+      const payload = {
+        author_name: 'You',
+        author_avatar: null,
+        author_batch: '2020-2024',
+        author_department: 'Your Department',
+        title: newMemory.title,
+        description: newMemory.description || '',
+        image_url,
+        date: new Date().toISOString().split('T')[0],
+        location: newMemory.location || 'Campus',
+        tags: newMemory.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        category: newMemory.category,
+        type: 'photo'
+      };
+      await apiClient.post('/memories', payload);
+      toast({ title: 'Memory shared', description: 'Your memory has been posted.' });
+      setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
+      setImagePreview(null);
+      setImageFile(null);
+      setShowAddForm(false);
+      // Refresh list
+      const resp = await apiClient.get(`/memories?q=&category=all&sort=recent&page=1&limit=50`);
+      const rawList = resp?.memories || resp || [];
+      const list = rawList.map((m: any) => normalizeMemory(m));
+      setMemories(list);
+      setFilteredMemories(list);
+    } catch (e: any) {
+      toast({ title: 'Unable to share memory', description: (e?.message || 'Please try again later') });
+    }
+    finally {
+      setIsSharing(false);
+    }
   };
 
   const MemoryCard = ({ memory, isGridView }: { memory: any, isGridView: boolean }) => {
     const CategoryIcon = categoryIcons[memory.category as keyof typeof categoryIcons] || Users;
     const author = memory.author || { name: 'Alumni', avatar: '', batch: '', department: '' };
-    
+
     return (
-      <Card 
-        className={`group overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 ${
-          isGridView ? 'h-full' : 'flex flex-col sm:flex-row'
-        } cursor-pointer relative bg-white border-0 shadow-lg hover:shadow-2xl`}
+      <Card
+        className={`group overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 ${isGridView ? 'h-full' : 'flex flex-col sm:flex-row'
+          } cursor-pointer relative bg-white border-0 shadow-lg hover:shadow-2xl`}
         onClick={async () => {
           setSelectedMemory(memory);
           try {
             const v = await apiClient.post(`/memories/${memory.id}/view`, {});
             setMemories(memories.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m));
-          } catch {}
+          } catch { }
         }}
         onMouseEnter={() => setHoveredCard(memory.id)}
         onMouseLeave={() => setHoveredCard(null)}
       >
         {/* Gradient Overlay on Hover */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
-        
+
         <div className={`${isGridView ? '' : 'w-full sm:w-56 flex-shrink-0'} relative`}>
           <div className="relative overflow-hidden">
-            <img 
-              src={memory.image} 
+            <img
+              src={memory.image}
               alt={memory.title}
-              className={`${
-                isGridView ? 'w-full h-56 sm:h-64' : 'w-full h-48 sm:h-full'
-              } object-cover group-hover:scale-110 transition-transform duration-700`}
+              className={`${isGridView ? 'w-full h-56 sm:h-64' : 'w-full h-48 sm:h-full'
+                } object-cover group-hover:scale-110 transition-transform duration-700`}
             />
-            
+
             {/* Modern Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-            
+
             {/* Category Badge - Floating */}
             <div className="absolute top-3 left-3 z-20">
-              <Badge 
+              <Badge
                 className="bg-white/95 backdrop-blur-sm text-gray-800 hover:bg-white transition-all shadow-lg border-0 px-3 py-1.5"
               >
                 <CategoryIcon className="w-3.5 h-3.5 mr-1.5" />
@@ -502,7 +500,7 @@ export default function MemoriesPage() {
                 <Video className="w-4 h-4" />
               </div>
             )}
-            
+
             {/* Engagement Stats on Image */}
             <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between z-20">
               <div className="flex items-center gap-3">
@@ -530,7 +528,7 @@ export default function MemoriesPage() {
             </div>
           </div>
         </div>
-        
+
         <div className={`${isGridView ? 'p-5' : 'flex-1 p-5'} relative z-20`}>
           {/* Author section with better contrast */}
           <div className="flex items-start justify-between mb-3">
@@ -554,13 +552,13 @@ export default function MemoriesPage() {
                 </p>
               </div>
             </div>
-            
+
             {/* Date with Modern Design */}
             <div className="text-right flex-shrink-0">
               <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium bg-gray-50 px-2.5 py-1.5 rounded-lg">
                 <Clock className="w-3.5 h-3.5" />
-                {new Date(memory.date).toLocaleDateString('en-US', { 
-                  month: 'short', 
+                {new Date(memory.date).toLocaleDateString('en-US', {
+                  month: 'short',
                   day: 'numeric',
                   year: 'numeric'
                 })}
@@ -576,12 +574,12 @@ export default function MemoriesPage() {
             <p className={`text-gray-700 leading-relaxed ${isGridView ? 'line-clamp-3' : 'line-clamp-2'} text-sm`}>
               {memory.description}
             </p>
-            
+
             {/* Tags */}
             <div className="flex flex-wrap gap-2 pt-2">
               {(Array.isArray(memory.tags) ? memory.tags.slice(0, 3) : []).map((tag: string, idx: number) => (
-                <Badge 
-                  key={idx} 
+                <Badge
+                  key={idx}
                   variant="secondary"
                   className="text-xs font-medium bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-blue-200 hover:from-blue-100 hover:to-purple-100 transition-all cursor-pointer"
                 >
@@ -589,7 +587,7 @@ export default function MemoriesPage() {
                 </Badge>
               ))}
             </div>
-            
+
             {/* Location */}
             <div className="flex items-center gap-2 text-xs text-gray-600 pt-2 border-t border-gray-100">
               <MapPin className="w-3.5 h-3.5 text-red-500" />
@@ -606,11 +604,10 @@ export default function MemoriesPage() {
                 e.stopPropagation();
                 handleLike(memory.id);
               }}
-              className={`flex-1 transition-all duration-300 ${
-                memory.isLiked 
-                  ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+              className={`flex-1 transition-all duration-300 ${memory.isLiked
+                  ? 'text-red-600 bg-red-50 hover:bg-red-100'
                   : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
-              } ${pendingLikeIds.has(memory.id) ? 'opacity-70 pointer-events-none' : ''}`}
+                } ${pendingLikeIds.has(memory.id) ? 'opacity-70 pointer-events-none' : ''}`}
             >
               <Heart className={`w-4 h-4 mr-1.5 ${memory.isLiked ? 'fill-current' : ''}`} />
               Like
@@ -658,7 +655,7 @@ export default function MemoriesPage() {
                       Relive, share, and celebrate the moments that defined your journey. Every memory tells a story. 📸✨
                     </p>
                   </div>
-                  
+
                   {/* Stats Cards */}
                   <div className="flex gap-4">
                     <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/30 shadow-xl">
@@ -697,7 +694,7 @@ export default function MemoriesPage() {
                     </Button>
                   )}
                 </div>
-                
+
                 {/* Category Filter */}
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger className="w-full lg:w-56 h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl bg-white text-gray-900">
@@ -714,7 +711,7 @@ export default function MemoriesPage() {
                     <SelectItem value="competition">🏅 Competition</SelectItem>
                   </SelectContent>
                 </Select>
-              
+
                 {/* View Mode Toggle */}
                 <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl">
                   <Button
@@ -734,9 +731,9 @@ export default function MemoriesPage() {
                     <List className="w-4 h-4" />
                   </Button>
                 </div>
-                
+
                 {/* Add Memory Button */}
-                <Button 
+                <Button
                   onClick={() => setShowAddForm(!showAddForm)}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 px-6 rounded-xl"
                 >
@@ -820,31 +817,35 @@ export default function MemoriesPage() {
                   <Input
                     placeholder="Memory Title"
                     value={newMemory.title}
-                    onChange={(e) => setNewMemory({...newMemory, title: e.target.value})}
-                    className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                    onChange={(e) => setNewMemory({ ...newMemory, title: e.target.value })}
+                    className="h-12 bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
                   />
+
                   <Textarea
                     placeholder="Describe this wonderful memory..."
                     value={newMemory.description}
-                    onChange={(e) => setNewMemory({...newMemory, description: e.target.value})}
+                    onChange={(e) => setNewMemory({ ...newMemory, description: e.target.value })}
                     rows={4}
-                    className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none rounded-xl"
+                    className="h-12 bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+
                   />
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <Input
                       placeholder="Location"
                       value={newMemory.location}
-                      onChange={(e) => setNewMemory({...newMemory, location: e.target.value})}
-                      className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                      onChange={(e) => setNewMemory({ ...newMemory, location: e.target.value })}
+                      className="h-12 bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+
                     />
                     <Input
                       placeholder="Tags (comma separated)"
                       value={newMemory.tags}
-                      onChange={(e) => setNewMemory({...newMemory, tags: e.target.value})}
-                      className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                      onChange={(e) => setNewMemory({ ...newMemory, tags: e.target.value })}
+                      className="h-12 bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+
                     />
-                    <Select value={newMemory.category} onValueChange={(value) => setNewMemory({...newMemory, category: value})}>
-                      <SelectTrigger className="h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl">
+                    <Select value={newMemory.category} onValueChange={(value) => setNewMemory({ ...newMemory, category: value })}>
+                      <SelectTrigger className="h-12 bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl">
                         <SelectValue placeholder="Category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -858,21 +859,21 @@ export default function MemoriesPage() {
                     </Select>
                   </div>
                   <div className="flex gap-3 pt-2">
-                    <Button 
-                      onClick={handleAddMemory} 
+                    <Button
+                      onClick={handleAddMemory}
                       disabled={isSharing}
                       className={`flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 rounded-xl ${isSharing ? 'opacity-70 pointer-events-none' : ''}`}
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
                       {isSharing ? 'Sharing…' : 'Share Memory'}
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         setShowAddForm(false);
                         setImagePreview(null);
                       }}
-                      className="h-12 border-gray-300 hover:bg-gray-50 transition-all duration-200 rounded-xl"
+                      className="h-12 bg-white text-black border-gray-300 hover:bg-gray-50 transition-all duration-200 rounded-xl"
                     >
                       Cancel
                     </Button>
@@ -901,19 +902,18 @@ export default function MemoriesPage() {
                 </Button>
               </Card>
             ) : (
-              <div className={`${
-                viewMode === 'grid' 
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' 
+              <div className={`${viewMode === 'grid'
+                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
                   : 'space-y-6'
-              }`}>
+                }`}>
                 {filteredMemories.map((memory, index) => (
-                  <div 
-                    key={`${memory.id}-${index}`} 
+                  <div
+                    key={`${memory.id}-${index}`}
                     className="animate-in fade-in-50 duration-500"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
-                  <MemoryCard memory={memory} isGridView={viewMode === 'grid'} />
-                    
+                    <MemoryCard memory={memory} isGridView={viewMode === 'grid'} />
+
                     {/* Comments Section */}
                     {showComments[memory.id] && (
                       <Card className="mt-4 ml-0 lg:ml-4 border-l-4 border-blue-500 bg-gradient-to-br from-blue-50/50 to-purple-50/30 shadow-xl animate-in slide-in-from-left-2 duration-300">
@@ -953,7 +953,7 @@ export default function MemoriesPage() {
                               </div>
                             ))}
                           </div>
-                          
+
                           {/* Add Comment */}
                           <div className="flex gap-3 pt-4 border-t border-gray-200">
                             <Avatar className="w-10 h-10 ring-2 ring-white shadow-md flex-shrink-0">
@@ -962,8 +962,8 @@ export default function MemoriesPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 flex gap-2">
-                              <Input 
-                                placeholder="Write a comment..." 
+                              <Input
+                                placeholder="Write a comment..."
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 onKeyDown={(e) => {
@@ -974,7 +974,7 @@ export default function MemoriesPage() {
                                 }}
                                 className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
                               />
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={() => handleAddComment(memory.id)}
                                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-5"
@@ -994,8 +994,8 @@ export default function MemoriesPage() {
             {/* Load More */}
             {filteredMemories.length > 0 && (
               <div className="text-center pt-6">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="px-8 py-6 border-gray-300 hover:bg-gray-50 hover:border-gray-400 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold rounded-xl"
                 >
                   Load More Memories
@@ -1028,7 +1028,7 @@ export default function MemoriesPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 px-4 py-2">
                       {selectedMemory.category}
@@ -1042,14 +1042,14 @@ export default function MemoriesPage() {
                   </div>
                 </DialogTitle>
               </DialogHeader>
-              
+
               {/* Content */}
               <div className="flex-1 overflow-auto">
                 <div className="grid lg:grid-cols-2 gap-6 p-6">
                   {/* Image */}
                   <div className="relative bg-black rounded-2xl overflow-hidden">
-                    <img 
-                      src={selectedMemory.image} 
+                    <img
+                      src={selectedMemory.image}
                       alt={selectedMemory.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />
@@ -1062,26 +1062,26 @@ export default function MemoriesPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Details */}
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-3xl font-bold text-gray-900 mb-3">{selectedMemory.title}</h2>
                       <p className="text-gray-700 leading-relaxed text-lg">{selectedMemory.description}</p>
                     </div>
-                    
+
                     {/* Tags */}
                     <div className="flex flex-wrap gap-2">
                       {selectedMemory.tags.map((tag: string, idx: number) => (
-                        <Badge 
-                          key={idx} 
+                        <Badge
+                          key={idx}
                           className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-blue-200 px-4 py-2 text-sm font-semibold hover:from-blue-200 hover:to-purple-200 transition-all cursor-pointer"
                         >
                           #{tag}
                         </Badge>
                       ))}
                     </div>
-                    
+
                     {/* Info Cards */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 border border-blue-200">
@@ -1101,7 +1101,7 @@ export default function MemoriesPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-4 border border-red-200">
                         <div className="flex items-center gap-3">
                           <div className="p-3 bg-red-500 rounded-xl shadow-lg">
@@ -1114,23 +1114,22 @@ export default function MemoriesPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Actions */}
                     <div className="border-t border-gray-200 pt-6">
                       <div className="grid grid-cols-3 gap-3">
                         <Button
                           variant={selectedMemory.isLiked ? "default" : "outline"}
                           onClick={() => handleLike(selectedMemory.id)}
-                          className={`transition-all duration-300 h-12 rounded-xl ${
-                            selectedMemory.isLiked 
-                              ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white' 
+                          className={`transition-all duration-300 h-12 rounded-xl ${selectedMemory.isLiked
+                              ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white'
                               : 'hover:bg-red-50 hover:border-red-300 hover:text-red-600'
-                          }`}
+                            }`}
                         >
                           <Heart className={`w-5 h-5 mr-2 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />
                           {selectedMemory.likes}
                         </Button>
-                        
+
                         <Button
                           variant="outline"
                           onClick={() => toggleComments(selectedMemory.id)}
@@ -1139,13 +1138,13 @@ export default function MemoriesPage() {
                           <MessageCircle className="w-5 h-5 mr-2" />
                           {comments[selectedMemory.id]?.length || selectedMemory.comments}
                         </Button>
-                        
+
                         {/* Share icon removed from modal */}
                       </div>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Comments in Modal */}
                 {showComments[selectedMemory.id] && (
                   <div className="border-t border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6">
@@ -1155,7 +1154,7 @@ export default function MemoriesPage() {
                       </div>
                       Comments ({comments[selectedMemory.id]?.length || 0})
                     </h4>
-                    
+
                     <div className="space-y-4 max-h-64 overflow-y-auto mb-6 pr-2">
                       {comments[selectedMemory.id]?.map((comment: any) => (
                         <div key={comment.id} className="flex gap-3 animate-in fade-in-50">
@@ -1185,7 +1184,7 @@ export default function MemoriesPage() {
                         </div>
                       ))}
                     </div>
-                    
+
                     {/* Add Comment */}
                     <div className="flex gap-3 pt-4 border-t border-gray-200">
                       <Avatar className="w-11 h-11 ring-2 ring-white shadow-md flex-shrink-0">
@@ -1194,15 +1193,15 @@ export default function MemoriesPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-3">
-                        <Textarea 
-                          placeholder="Write a thoughtful comment..." 
+                        <Textarea
+                          placeholder="Write a thoughtful comment..."
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
-                          className="min-h-[80px] border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none rounded-xl" 
+                          className="min-h-[80px] border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none rounded-xl"
                           rows={3}
                         />
                         <div className="flex justify-end">
-                          <Button 
+                          <Button
                             onClick={() => handleAddComment(selectedMemory.id)}
                             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
                           >
