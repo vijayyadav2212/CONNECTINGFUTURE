@@ -106,7 +106,7 @@ export default function MentorshipPage() {
         setPrice(mentor?.price ?? '');
         setMyRatingAvg(mentor?.rating_avg ?? null);
         setMyRatingCount(mentor?.rating_count ?? null);
-      } catch {}
+      } catch { }
     }
     loadProfile();
   }, [user?.email]);
@@ -143,7 +143,7 @@ export default function MentorshipPage() {
       const map: Record<string, UserProfile> = {};
       entries.forEach(([email, prof]) => { if (email) map[email] = prof as UserProfile; });
       setProfiles(map);
-    } catch {}
+    } catch { }
   }
 
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function MentorshipPage() {
         newRequests.forEach((r) => { map[r.id] = r.status; });
         setPrevRequests(map);
         setRequests(newRequests);
-      } catch {}
+      } catch { }
 
       try {
         const sq = await fetch(`${API_BASE}/api/mentorship/sessions?mentor_email=${encodeURIComponent(user.email)}`);
@@ -200,7 +200,7 @@ export default function MentorshipPage() {
         newSessions.forEach((s) => { sessMap[s.id] = s.status; });
         setPrevSessions(sessMap);
         setSessions(sortSessionsLatestFirst(newSessions));
-      } catch {}
+      } catch { }
     }, 15000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -280,18 +280,20 @@ export default function MentorshipPage() {
         }),
       });
       // No toast implementation here; rely on UI state
-    } catch {}
+    } catch { }
     setSaving(false);
   }
   return (
     <AlumniNavigation>
-      <div className="p-8 bg-gradient-to-br from-slate-50/50 to-blue-50/50 min-h-screen">
+      <div className="bg-white rounded-3xl p-10 shadow-xl border border-slate-200">
+
+
         <div className="space-y-8">
           {/* Enhanced Header */}
           <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 animate-pulse"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
-            
+
             <div className="relative z-10">
               <div className="flex items-center justify-between">
                 <div>
@@ -307,7 +309,7 @@ export default function MentorshipPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Enhanced Mentorship Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 text-center group hover:scale-105 transition-all duration-500">
@@ -320,7 +322,7 @@ export default function MentorshipPage() {
                 <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full w-4/5"></div>
               </div>
             </div>
-            
+
             <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 text-center group hover:scale-105 transition-all duration-500">
               <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <span className="text-white text-3xl">✅</span>
@@ -331,7 +333,7 @@ export default function MentorshipPage() {
                 <div className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full w-full"></div>
               </div>
             </div>
-            
+
             <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 text-center group hover:scale-105 transition-all duration-500">
               <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <span className="text-white text-3xl">⭐</span>
@@ -343,31 +345,32 @@ export default function MentorshipPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Mentor Profile Setup */}
           <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20">
             <h3 className="text-3xl font-black text-slate-900 mb-6">Your Mentor Profile</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Skills / Expertise</label>
-                <Textarea value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g., React, Node.js, System Design" />
+                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Skills / Expertise</label>
+                <Textarea className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g., React, Node.js, System Design" />
+
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Mentorship Topics</label>
-                <Textarea value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="e.g., Interview Prep, Career Guidance" />
+                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Mentorship Topics</label>
+                <Textarea className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="e.g., Interview Prep, Career Guidance" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>
-                <Input value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="e.g., Weekends, 6-9 PM IST" />
+                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Availability</label>
+                <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="e.g., Weekends, 6-9 PM IST" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Experience (years)</label>
-                  <Input type="number" value={experience as any} onChange={(e) => setExperience(e.target.value ? Number(e.target.value) : '')} />
+                  <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Experience (years)</label>
+                  <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="number" value={experience as any} onChange={(e) => setExperience(e.target.value ? Number(e.target.value) : '')} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Session Price (₹)</label>
-                  <Input type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
+                  <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Session Price (₹)</label>
+                  <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
                 </div>
               </div>
               <div className="lg:col-span-2 grid grid-cols-2 gap-4">
@@ -592,31 +595,31 @@ export default function MentorshipPage() {
           </div>
         </div>
       </div>
-    {/* Meeting Start Dialog */}
-    <Dialog open={!!meetingDialog} onOpenChange={(open) => { if (!open) setMeetingDialog(null); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Session starting now</DialogTitle>
-          <DialogDescription>
-            {meetingDialog ? (
-              <span>
-                With {profiles[meetingDialog.student_email]?.name || meetingDialog.student_email}. Scheduled at {meetingDialog.scheduled_at ? new Date(meetingDialog.scheduled_at).toLocaleString() : '—'}.
-              </span>
-            ) : null}
-          </DialogDescription>
-        </DialogHeader>
-        {meetingDialog?.meeting_link ? (
-          <div className="mt-2">
-            <a href={meetingDialog.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md hover:from-blue-700 hover:to-indigo-700">Open Google Meet</a>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-600">No meeting link provided.</p>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setMeetingDialog(null)}>Dismiss</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* Meeting Start Dialog */}
+      <Dialog open={!!meetingDialog} onOpenChange={(open) => { if (!open) setMeetingDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Session starting now</DialogTitle>
+            <DialogDescription>
+              {meetingDialog ? (
+                <span>
+                  With {profiles[meetingDialog.student_email]?.name || meetingDialog.student_email}. Scheduled at {meetingDialog.scheduled_at ? new Date(meetingDialog.scheduled_at).toLocaleString() : '—'}.
+                </span>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          {meetingDialog?.meeting_link ? (
+            <div className="mt-2">
+              <a href={meetingDialog.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md hover:from-blue-700 hover:to-indigo-700">Open Google Meet</a>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-600">No meeting link provided.</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMeetingDialog(null)}>Dismiss</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AlumniNavigation>
   );
 }

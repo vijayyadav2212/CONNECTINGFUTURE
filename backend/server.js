@@ -202,6 +202,8 @@ async function initializeTables() {
         name VARCHAR(255),
         picture TEXT,
         bio TEXT,
+        phone VARCHAR(20),
+        university VARCHAR(255),
         user_type VARCHAR(20) DEFAULT 'alumni',
         graduation_year INT,
         major VARCHAR(255),
@@ -219,6 +221,13 @@ async function initializeTables() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `);
+
+    // Schema migration: ensure new columns exist even if table was already created
+    try {
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)');
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS university VARCHAR(255)');
+    } catch (e) { console.log('User schema migration note:', e.message); }
+
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_email ON users(email)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
@@ -229,7 +238,7 @@ async function initializeTables() {
     await createConnectionsSchema(dbQuery);
     await createMentorshipSchema(dbQuery);
     await createAcademicProgressSchema(dbQuery);
-  await createMemoriesSchema(dbQuery);
+    await createMemoriesSchema(dbQuery);
 
     console.log('Tables are ready');
   } catch (e) {
@@ -421,21 +430,28 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
 
   const {
     name,
+    phone,
+    university,
     graduationYear,
     course,
     currentCompany,
     jobTitle,
     location,
     linkedIn,
+    gitHub,
+    portfolio,
     bio,
     skills,
-    isOpenToMentoring
+    isOpenToMentoring,
+    picture // Add picture to destructuring
   } = req.body;
 
   const values = {
     auth0_id: auth0Id,
     email,
     name: name || null,
+    phone: phone || null,
+    university: university || null,
     graduation_year: graduationYear ? parseInt(graduationYear, 10) : null,
     major: course || null,
     current_job: jobTitle || null,
@@ -443,18 +459,23 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     job_title: jobTitle || null,
     location: location || null,
     linkedin_url: linkedIn || null,
+    github_url: gitHub || null,
+    website_url: portfolio || null,
     bio: bio || null,
     skills: Array.isArray(skills) ? skills.join(',') : (skills || null),
     is_mentor: !!isOpenToMentoring,
+    picture: picture || null,
     registration_completed: true
   };
 
   const sql = `
-    INSERT INTO users (auth0_id, email, name, graduation_year, major, current_job, company, job_title, location, linkedin_url, bio, skills, is_mentor, registration_completed)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (auth0_id, email, name, phone, university, graduation_year, major, current_job, company, job_title, location, linkedin_url, github_url, website_url, bio, skills, is_mentor, picture, registration_completed)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (auth0_id) DO UPDATE SET
       email = EXCLUDED.email,
       name = EXCLUDED.name,
+      phone = EXCLUDED.phone,
+      university = EXCLUDED.university,
       graduation_year = EXCLUDED.graduation_year,
       major = EXCLUDED.major,
       current_job = EXCLUDED.current_job,
@@ -462,9 +483,12 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
       job_title = EXCLUDED.job_title,
       location = EXCLUDED.location,
       linkedin_url = EXCLUDED.linkedin_url,
+      github_url = EXCLUDED.github_url,
+      website_url = EXCLUDED.website_url,
       bio = EXCLUDED.bio,
       skills = EXCLUDED.skills,
       is_mentor = EXCLUDED.is_mentor,
+      picture = COALESCE(EXCLUDED.picture, users.picture),
       registration_completed = EXCLUDED.registration_completed
   `;
 
@@ -472,6 +496,8 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     values.auth0_id,
     values.email,
     values.name,
+    values.phone,
+    values.university,
     values.graduation_year,
     values.major,
     values.current_job,
@@ -479,9 +505,12 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     values.job_title,
     values.location,
     values.linkedin_url,
+    values.github_url,
+    values.website_url,
     values.bio,
     values.skills,
     values.is_mentor,
+    values.picture,
     values.registration_completed
   ];
 
@@ -1579,7 +1608,7 @@ app.get('/api/users', async (req, res) => {
       params.push(like, like);
     }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const { rows: list } = await dbQuery(`SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor FROM users ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
+    const { rows: list } = await dbQuery(`SELECT id, auth0_id, email, name, picture, bio, phone, university, user_type, graduation_year, major, current_job, company, job_title, location, skills, linkedin_url, github_url, website_url, is_mentor FROM users ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
     const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM users ${whereSql}`, params);
     const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
     return res.json({ users: list, page: p, limit: l, total, totalPages: Math.ceil(total / l) });
@@ -1593,7 +1622,7 @@ app.get('/api/users/by-email', async (req, res) => {
   try {
     const { email } = req.query || {};
     if (!email) return res.status(400).json({ error: 'email required' });
-    const { rows } = await dbQuery('SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+    const { rows } = await dbQuery('SELECT id, auth0_id, email, name, picture, bio, phone, university, user_type, graduation_year, major, current_job, company, job_title, location, skills, linkedin_url, github_url, website_url, is_mentor FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
     if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
     return res.json({ user: rows[0] });
   } catch (e) {
@@ -1857,7 +1886,7 @@ const imageUpload = multer({
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname) || '';
       const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-      const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}_${base}${ext}`;
+      const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`;
       cb(null, fname);
     },
   }),
@@ -1883,7 +1912,7 @@ const sseClients = new Set();
 function broadcastSse(event, data) {
   const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
   for (const res of sseClients) {
-    try { res.write(payload); } catch {}
+    try { res.write(payload); } catch { }
   }
 }
 
@@ -1929,7 +1958,7 @@ app.post('/api/memories', async (req, res) => {
       title, description || null, image_url || null, date || null, location || null, tagsStr, category || null, type
     ]);
     const created = rows && rows[0];
-    try { broadcastSse('memory-create', created); } catch {}
+    try { broadcastSse('memory-create', created); } catch { }
     return res.status(201).json(created);
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -1984,7 +2013,7 @@ app.post('/api/memories/:id/view', async (req, res) => {
     await dbQuery('UPDATE memories SET views = COALESCE(views,0) + 1 WHERE id = ?', [id]);
     const { rows } = await dbQuery('SELECT views FROM memories WHERE id = ? LIMIT 1', [id]);
     const views = rows && rows[0] ? rows[0].views : 0;
-    try { broadcastSse('memory-view', { id: Number(id), views }); } catch {}
+    try { broadcastSse('memory-view', { id: Number(id), views }); } catch { }
     return res.json({ views });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -2000,7 +2029,7 @@ app.post('/api/memories/:id/like', async (req, res) => {
     await dbQuery('UPDATE memories SET likes = GREATEST(0, COALESCE(likes,0) + ?), is_liked = ? WHERE id = ?', [inc, inc > 0, id]);
     const { rows } = await dbQuery('SELECT likes, is_liked FROM memories WHERE id = ? LIMIT 1', [id]);
     const payload = { id: Number(id), likes: rows && rows[0] ? rows[0].likes : 0, is_liked: rows && rows[0] ? rows[0].is_liked : false };
-    try { broadcastSse('memory-like', payload); } catch {}
+    try { broadcastSse('memory-like', payload); } catch { }
     return res.json(payload);
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -2014,7 +2043,7 @@ app.post('/api/memories/:id/share', async (req, res) => {
     await dbQuery('UPDATE memories SET share_count = COALESCE(share_count,0) + 1 WHERE id = ?', [id]);
     const { rows } = await dbQuery('SELECT share_count FROM memories WHERE id = ? LIMIT 1', [id]);
     const share_count = rows && rows[0] ? rows[0].share_count : 0;
-    try { broadcastSse('memory-share', { id: Number(id), share_count }); } catch {}
+    try { broadcastSse('memory-share', { id: Number(id), share_count }); } catch { }
     return res.json({ share_count });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -2044,7 +2073,7 @@ app.post('/api/memories/:id/comments', async (req, res) => {
     `, [id, author_name || null, author_email || null, author_avatar || null, text]);
     await dbQuery('UPDATE memories SET comments_count = COALESCE(comments_count,0) + 1 WHERE id = ?', [id]);
     const created = rows && rows[0];
-    try { broadcastSse('memory-comment', { id: Number(id), comment: created }); } catch {}
+    try { broadcastSse('memory-comment', { id: Number(id), comment: created }); } catch { }
     return res.status(201).json(created);
   } catch (e) {
     return res.status(500).json({ error: e.message });

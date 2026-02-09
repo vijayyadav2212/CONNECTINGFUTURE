@@ -228,7 +228,8 @@ export default function EventsPage() {
       {showForm && (
         <div className="fixed inset-0 bg-white/60 flex items-center justify-center z-50">
 
-          <div className="bg-white w-full max-w-xl rounded-3xl p-8 shadow-xl relative">
+          <div className="bg-white w-full max-w-xl rounded-3xl p-8 shadow-xl relative max-h-[85vh] overflow-y-auto">
+
 
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-black"

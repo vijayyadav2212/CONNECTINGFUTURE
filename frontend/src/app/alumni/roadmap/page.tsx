@@ -488,7 +488,7 @@ function RoadmapPage() {
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       placeholder="e.g., Full Stack Developer Journey"
-                      className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                      className="mt-1 bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                       required
                     />
                   </div>
@@ -502,7 +502,7 @@ function RoadmapPage() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Describe what this roadmap covers and who it's for..."
-                      className="mt-1 min-h-[100px] border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                      className="mt-1 min-h-[100px] bg-white text-black border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                       required
                     />
                   </div>
@@ -563,7 +563,7 @@ function RoadmapPage() {
                         value={formData.duration}
                         onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                         placeholder="e.g., 6-12 months"
-                        className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
+                        className="mt-1 bg-white text-black border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
                         required
                       />
                     </div>
@@ -578,7 +578,7 @@ function RoadmapPage() {
                         value={formData.phases}
                         onChange={(e) => setFormData({ ...formData, phases: e.target.value })}
                         placeholder="e.g., 8"
-                        className="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                        className="mt-1 bg-white text-black border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
                         min="1"
                         max="20"
                         required
@@ -595,7 +595,7 @@ function RoadmapPage() {
                       value={formData.modules_link}
                       onChange={(e) => setFormData({ ...formData, modules_link: e.target.value })}
                       placeholder="e.g., https://youtube.com/playlist?list=..."
-                      className="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                      className="mt-1 bg-white text-black border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
                     />
                   </div>
 
@@ -608,7 +608,7 @@ function RoadmapPage() {
                       value={formData.tags}
                       onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                       placeholder="e.g., JavaScript, React, Node.js (comma separated)"
-                      className="mt-1 border-gray-300 focus:border-teal-500 focus:ring-teal-500/20"
+                      className="mt-1 bg-white text-black border-gray-300 focus:border-teal-500 focus:ring-teal-500/20"
                     />
                   </div>
                 </div>
@@ -618,7 +618,7 @@ function RoadmapPage() {
                     type="button"
                     variant="outline"
                     onClick={() => setShowCreateModal(false)}
-                    className="hover:bg-gray-50"
+                    className="hover:bg-gray-50 text-gray-800 bg-gradient-to-r from-gray-800 to-teal-700 bg-clip-text text-transparent"
                   >
                     Cancel
                   </Button>

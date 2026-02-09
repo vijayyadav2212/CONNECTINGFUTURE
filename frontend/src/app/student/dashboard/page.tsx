@@ -238,7 +238,7 @@ export default function StudentDashboard() {
 
         <div className="p-6 lg:p-8 relative">
           {/* Welcome Section */}
-          <motion.div 
+          <motion.div
             initial="hidden"
             animate="visible"
             variants={fadeInUp}
@@ -248,7 +248,7 @@ export default function StudentDashboard() {
             <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
               {/* Subtle background pattern */}
               <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -259,17 +259,17 @@ export default function StudentDashboard() {
                       </svg>
                       <span className="text-blue-700 font-semibold text-sm">Welcome Back</span>
                     </div>
-                    
+
                     {/* Main greeting */}
                     <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
                       Hello, {profile?.name || 'Student'}!
                     </h1>
-                    
+
                     {/* Subtitle */}
                     <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
                       Your community is growing. Ready to make an impact today?
                     </p>
-                    
+
                     {/* Additional info */}
                     <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                       <span className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
@@ -286,7 +286,7 @@ export default function StudentDashboard() {
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* Settings/Update Button */}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
