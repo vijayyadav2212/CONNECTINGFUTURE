@@ -131,12 +131,12 @@ export default function MentorshipRequests() {
   async function loadRequestsAndSessions() {
     if (!user?.email) return;
     try {
-      const rq = await fetch(`${API_BASE}/api/mentorship/requests?student_email=${encodeURIComponent(user.email)}`);
+      const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
       const rj = await rq.json();
       setRequests(rj.requests || []);
     } catch {}
     try {
-      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}`);
+      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
       const sj = await sq.json();
       setSessions(sj.sessions || []);
     } catch {}
@@ -156,7 +156,7 @@ export default function MentorshipRequests() {
     const interval = setInterval(async () => {
       if (!user?.email) return;
       try {
-        const rq = await fetch(`${API_BASE}/api/mentorship/requests?student_email=${encodeURIComponent(user.email)}`);
+        const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
         const rj = await rq.json();
         const newRequests: Request[] = rj.requests || [];
         // Detect status changes
@@ -177,7 +177,7 @@ export default function MentorshipRequests() {
       } catch {}
 
       try {
-        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}`);
+        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
         const sj = await sq.json();
         const newSessions: Session[] = sj.sessions || [];
         // Reminders: first time we see a scheduled session in <24h
@@ -432,12 +432,12 @@ export default function MentorshipRequests() {
                       <p className="text-xs text-blue-700 font-medium">Session Price</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto pt-4 border-t border-gray-100">
-                    <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-70 font-semibold text-sm px-4" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-auto pt-4 border-t border-gray-100">
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-70" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
                       {btnText}
                     </Button>
                     {m.price ? ( 
-                      <Button variant="outline" className="w-full h-12 border-2 hover:border-blue-300 font-semibold text-sm px-4" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number(m.price) })}>
+                      <Button variant="outline" className="w-full border-2 hover:border-blue-300" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number(m.price) })}>
                         Purchase Session
                       </Button>
                     ) : null}
@@ -491,7 +491,7 @@ export default function MentorshipRequests() {
                           </div>
                         </div>
                       </div>
-                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="h-12 px-8 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-red-400 to-rose-500 text-white hover:from-red-500 hover:to-rose-600 transition-all min-w-[140px]">Remove Mentor</Button>
+                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-red-400 to-rose-500 text-white hover:from-red-500 hover:to-rose-600 transition-all">Remove Mentor</Button>
                     </div>
                   );
                 })}
@@ -564,26 +564,18 @@ export default function MentorshipRequests() {
                         <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
                       </div>
                       <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
-                      {(() => {
-                        if (!s.meeting_link || !s.scheduled_at) return null;
-                        const start = new Date(s.scheduled_at).getTime();
-                        const durMs = (s.duration_minutes || 60) * 60 * 1000;
-                        const now = Date.now();
-                        const isActive = s.status === 'scheduled' && now >= start && now < start + durMs;
-                        if (!isActive) return null;
-                        return (
-                          <div className="mt-1 text-sm">
-                            <a href={s.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-semibold">Join Now</a>
-                          </div>
-                        );
-                      })()}
+                      {s.meeting_link ? (
+                        <div className="mt-1 text-sm">
+                          <a href={s.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Join Meeting</a>
+                        </div>
+                      ) : null}
                       {(() => {
                         const start = s.scheduled_at ? new Date(s.scheduled_at).getTime() : null;
                         const durMs = (s.duration_minutes || 60) * 60 * 1000;
                         const ended = start ? (Date.now() >= start + durMs) : false;
                         return s.status === 'completed' || ended;
                       })() ? (
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
                           <div className="flex items-center gap-2">
                             <StarRating
                               value={ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}
@@ -593,13 +585,11 @@ export default function MentorshipRequests() {
                             <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
                           </div>
                           <Input
-                            className="h-12"
                             placeholder="Optional feedback"
                             value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
                             onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
                           />
                           <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[120px]"
                             onClick={() => {
                               if (!ratingForm || ratingForm.session_id !== s.id) return;
                               const r = ratingForm.rating;
@@ -613,9 +603,8 @@ export default function MentorshipRequests() {
                         </div>
                       ) : null}
                       {s.status === 'paid' ? (
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
                           <Input
-                            className="h-12"
                             type="datetime-local"
                             value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : ''}
                             onChange={(e) => setScheduleForm({
@@ -626,7 +615,6 @@ export default function MentorshipRequests() {
                             })}
                           />
                           <Input
-                            className="h-12"
                             type="number"
                             placeholder="Duration (mins)"
                             value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.duration_minutes as number) : (60 as number)}
@@ -638,7 +626,6 @@ export default function MentorshipRequests() {
                             })}
                           />
                           <Input
-                            className="h-12"
                             type="url"
                             placeholder="Google Meet link (https://meet.google.com/...)"
                             value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : ''}
@@ -650,7 +637,6 @@ export default function MentorshipRequests() {
                             })}
                           />
                           <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[120px]"
                             onClick={() => {
                               if (!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at)) return;
                               const when = new Date(scheduleForm.scheduled_at);

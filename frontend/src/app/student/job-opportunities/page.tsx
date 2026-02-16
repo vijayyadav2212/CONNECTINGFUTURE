@@ -77,8 +77,6 @@ const JobOpportunitiesPage = () => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('q', searchTerm);
     if (filterType && filterType !== 'all') params.set('job_type', filterType);
-    // Only show approved jobs to students
-    params.set('status', 'Approved');
     try {
       const res = await fetch(`${API_BASE}/jobs?${params.toString()}`);
       const data = await res.json();
@@ -127,8 +125,6 @@ const JobOpportunitiesPage = () => {
         const params = new URLSearchParams();
         if (searchTerm) params.set('q', searchTerm);
         if (filterType && filterType !== 'all') params.set('job_type', filterType);
-        // Only show approved jobs
-        params.set('status', 'Approved');
         const res = await fetch(`${API_BASE}/jobs?${params.toString()}`);
         const data = await res.json();
         const latest: JobOpportunity[] = (data.jobs || []).map(mapJobRow);

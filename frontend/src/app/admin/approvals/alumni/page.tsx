@@ -1,20 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import AdminNavigation from '../../AdminNavigation';
 import { 
   UserCheck, UserX, Search, Filter, CheckCircle, 
   XCircle, Clock, Eye, Mail, Phone, Linkedin, 
   GraduationCap, Building, MapPin, Calendar 
 } from 'lucide-react';
-import { useUser } from '@auth0/nextjs-auth0/client';
-import { useAuth0Token } from '../../../../../hooks/useAuth0Token';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
 interface AlumniApproval {
   id: number;
-  auth0_id?: string;
   name: string;
   email: string;
   phone?: string;
@@ -28,217 +23,75 @@ interface AlumniApproval {
   skills?: string[];
   submittedAt: string;
   status: 'pending' | 'approved' | 'rejected';
-  approval_status?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export default function AlumniApprovalsPage() {
-  const { user, isLoading: userLoading } = useUser();
-  const { token: accessToken, tokenLoading } = useAuth0Token();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAlumni, setSelectedAlumni] = useState<AlumniApproval | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const [alumniList, setAlumniList] = useState<AlumniApproval[]>([]);
+  // Mock data
+  const [alumniList, setAlumniList] = useState<AlumniApproval[]>([
+    {
+      id: 1,
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      phone: '+91 98765 43210',
+      graduationYear: 2020,
+      major: 'Computer Science',
+      company: 'Google',
+      jobTitle: 'Software Engineer',
+      location: 'Mumbai, India',
+      linkedinUrl: 'https://linkedin.com/in/johndoe',
+      bio: 'Passionate software engineer with 4 years of experience in full-stack development.',
+      skills: ['React', 'Node.js', 'Python', 'AWS'],
+      submittedAt: '2 hours ago',
+      status: 'pending'
+    },
+    {
+      id: 2,
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      graduationYear: 2019,
+      major: 'Mechanical Engineering',
+      company: 'Tesla',
+      jobTitle: 'Mechanical Design Engineer',
+      location: 'Bangalore, India',
+      bio: 'Experienced mechanical engineer specializing in automotive design.',
+      skills: ['CAD', 'SolidWorks', 'FEA', 'Product Design'],
+      submittedAt: '5 hours ago',
+      status: 'pending'
+    },
+    {
+      id: 3,
+      name: 'Mike Johnson',
+      email: 'mike.j@example.com',
+      graduationYear: 2018,
+      major: 'Electrical Engineering',
+      company: 'Intel',
+      jobTitle: 'Hardware Engineer',
+      location: 'Pune, India',
+      submittedAt: '1 day ago',
+      status: 'approved'
+    },
+  ]);
 
-  // Load alumni data from backend
-  useEffect(() => {
-    async function loadAlumni() {
-      if (userLoading || tokenLoading || !user || !accessToken) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const response = await fetch(`${API_BASE}/api/users?type=alumni&limit=100`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        
-        if (!response.ok) {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to load alumni data');
-          } else {
-            throw new Error(`Server error: ${response.status} ${response.statusText}`);
-          }
-        }
-        
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error('Server returned invalid response. Backend may be down.');
-        }
-        
-        const data = await response.json();
-        const users = data.users || [];
-        
-        // Transform backend data to match our interface
-        const transformedAlumni: AlumniApproval[] = users.map((u: any) => ({
-          id: u.id,
-          auth0_id: u.auth0_id,
-          name: u.name || 'Unknown',
-          email: u.email,
-          phone: u.phone,
-          graduationYear: u.graduation_year || new Date().getFullYear(),
-          major: u.major || 'Not specified',
-          company: u.company,
-          jobTitle: u.job_title,
-          location: u.location,
-          linkedinUrl: u.linkedin_url,
-          bio: u.bio,
-          skills: u.skills ? u.skills.split(',') : [],
-          submittedAt: u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Unknown',
-          status: (u.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
-          approval_status: u.approval_status,
-          created_at: u.created_at,
-          updated_at: u.updated_at,
-        }));
-        
-        setAlumniList(transformedAlumni);
-      } catch (err: any) {
-        console.error('Error loading alumni:', err);
-        setError(err.message || 'Failed to load alumni data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    loadAlumni();
-  }, [user, userLoading, accessToken, tokenLoading]);
-
-  // Test data fallback (keep some test data for demonstration)
-  useEffect(() => {
-    if (!userLoading && !tokenLoading && alumniList.length === 0 && !error) {
-      const testData: AlumniApproval[] = [
-        {
-          id: 1,
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          phone: '+91 98765 43210',
-          graduationYear: 2020,
-          major: 'Computer Science',
-          company: 'Google',
-          jobTitle: 'Software Engineer',
-          location: 'Mumbai, India',
-          linkedinUrl: 'https://linkedin.com/in/johndoe',
-          bio: 'Passionate software engineer with 4 years of experience in full-stack development.',
-          skills: ['React', 'Node.js', 'Python', 'AWS'],
-          submittedAt: '2 hours ago',
-          status: 'pending'
-        },
-        {
-          id: 2,
-          name: 'Jane Smith',
-          email: 'jane.smith@example.com',
-          graduationYear: 2019,
-          major: 'Mechanical Engineering',
-          company: 'Tesla',
-          jobTitle: 'Mechanical Design Engineer',
-          location: 'Bangalore, India',
-          bio: 'Experienced mechanical engineer specializing in automotive design.',
-          skills: ['CAD', 'SolidWorks', 'FEA', 'Product Design'],
-          submittedAt: '5 hours ago',
-          status: 'pending'
-        },
-        {
-          id: 3,
-          name: 'Mike Johnson',
-          email: 'mike.j@example.com',
-          graduationYear: 2018,
-          major: 'Electrical Engineering',
-          company: 'Intel',
-          jobTitle: 'Hardware Engineer',
-          location: 'Pune, India',
-          submittedAt: '1 day ago',
-          status: 'approved'
-        }
-      ];
-      setAlumniList(testData);
-    }
-  }, [userLoading, tokenLoading, alumniList.length, error]);
-
-  const handleApprove = async (alumniId: number) => {
-    if (!user || !accessToken) return;
-    
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/users/${alumniId}/approval`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          approval_status: 'approved'
-        }),
-      });
-      
-      if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to approve alumni');
-        } else {
-          throw new Error(`Server error: ${response.status}`);
-        }
-      }
-      
-      // Update local state
-      setAlumniList(alumniList.map(a => 
-        a.id === alumniId ? { ...a, status: 'approved' as const } : a
-      ));
-      setSelectedAlumni(null);
-      
-      alert('Alumni approved successfully!');
-    } catch (err: any) {
-      alert(`Error approving alumni: ${err.message}`);
-    }
+  const handleApprove = (alumniId: number) => {
+    setAlumniList(alumniList.map(a => 
+      a.id === alumniId ? { ...a, status: 'approved' as const } : a
+    ));
+    setSelectedAlumni(null);
   };
 
-  const handleReject = async (alumniId: number, reason: string) => {
-    if (!user || !accessToken) return;
-    
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/users/${alumniId}/approval`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          approval_status: 'rejected',
-          rejection_reason: reason
-        }),
-      });
-      
-      if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to reject alumni');
-        } else {
-          throw new Error(`Server error: ${response.status}`);
-        }
-      }
-      
-      // Update local state
-      setAlumniList(alumniList.map(a => 
-        a.id === alumniId ? { ...a, status: 'rejected' as const } : a
-      ));
-      setShowRejectionModal(false);
-      setSelectedAlumni(null);
-      setRejectionReason('');
-      
-      alert('Alumni rejected successfully!');
-    } catch (err: any) {
-      alert(`Error rejecting alumni: ${err.message}`);
-    }
+  const handleReject = (alumniId: number, reason: string) => {
+    setAlumniList(alumniList.map(a => 
+      a.id === alumniId ? { ...a, status: 'rejected' as const } : a
+    ));
+    setShowRejectionModal(false);
+    setSelectedAlumni(null);
+    setRejectionReason('');
   };
 
   const filteredAlumni = alumniList.filter(alumni => {
@@ -270,24 +123,6 @@ export default function AlumniApprovalsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Alumni Approvals</h1>
           <p className="text-gray-600 mt-2">Review and approve alumni registration requests</p>
         </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-start">
-              <XCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-red-900 mb-1">Error Loading Alumni</h3>
-                <p className="text-red-700 text-sm">{error}</p>
-                {error.includes('Backend may be down') && (
-                  <p className="text-red-600 text-sm mt-2">
-                    💡 Make sure the backend server is running on port 4000
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Filters and Search */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -345,13 +180,7 @@ export default function AlumniApprovalsPage() {
 
         {/* Alumni List */}
         <div className="grid grid-cols-1 gap-4">
-          {loading ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading alumni...</h3>
-              <p className="text-gray-600">Please wait while we fetch the data</p>
-            </div>
-          ) : filteredAlumni.length === 0 ? (
+          {filteredAlumni.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
               <UserCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No alumni found</h3>

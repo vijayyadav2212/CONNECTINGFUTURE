@@ -1,4 +1,5 @@
 
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -6,6 +7,7 @@ const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const nodemailer = require('nodemailer'); // For sending emails
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const crypto = require('crypto');
@@ -18,12 +20,10 @@ const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
-const { createMemoriesSchema } = require('./database/memories');
 const { createJobsSchema } = require('./database/jobs');
 const { createApplicationsSchema } = require('./database/applications');
 const { createMentorshipSchema } = require('./database/mentorship');
 const { createAcademicProgressSchema } = require('./database/academicProgress');
-const { createEventsSchema } = require('./database/events');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -33,13 +33,65 @@ app.use(express.json());
 // Serve uploaded files statically
 const uploadsRoot = path.join(__dirname, 'uploads');
 const resumesDir = path.join(uploadsRoot, 'resumes');
-const memoriesDir = path.join(uploadsRoot, 'memories');
 try {
   if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
   if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
-  if (!fs.existsSync(memoriesDir)) fs.mkdirSync(memoriesDir);
 } catch { }
 app.use('/uploads', express.static(uploadsRoot));
+
+// Event image upload configuration
+const eventImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(uploadsRoot, 'events');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '';
+    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
+    cb(null, `${base}_${Date.now()}${ext}`);
+  }
+});
+const eventImageUpload = multer({
+  storage: eventImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) return cb(null, true);
+    return cb(new Error('Only image files allowed'));
+  }
+});
+
+app.post('/api/uploads/event-image', eventImageUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Image file is required' });
+  const url = `${req.protocol}://${req.get('host')}/uploads/events/${req.file.filename}`;
+  return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+});
+
+// 1. GET ALL EVENTS
+app.get('/api/events', async (req, res) => {
+  const { user_email } = req.query;
+  const query = "SELECT * FROM events ORDER BY event_date DESC";
+
+  try {
+    const eventsRes = await dbQuery(query);
+    let events = eventsRes.rows;
+
+    if (user_email) {
+      const registrationsRes = await dbQuery('SELECT event_id FROM event_registrations WHERE user_email = ?', [user_email]);
+      const registeredEventIds = new Set(registrationsRes.rows.map(r => r.event_id));
+
+      events = events.map(event => ({
+        ...event,
+        isRegistered: registeredEventIds.has(event.id)
+      }));
+    }
+
+    res.json(events);
+  } catch (err) {
+    console.error("Database Error:", err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
+});
 
 /**
  * Auth0 Management API helpers
@@ -144,6 +196,13 @@ const db = useConnectionString
     ssl: /true|require/i.test(String(process.env.DB_SSL || 'false')) ? { rejectUnauthorized: false } : undefined,
   });
 
+// Prevent unhandled pool errors from crashing the process; log and continue
+try {
+  db.on && db.on('error', (err) => {
+    console.warn('Postgres pool error:', err && err.message ? err.message : err);
+  });
+} catch (e) { }
+
 // Ensure DB session timezone is IST for all connections (affects SQL timezone-sensitive functions)
 try {
   db.on('connect', (client) => {
@@ -223,26 +282,60 @@ async function initializeTables() {
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_email ON users(email)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
-    // Add approval columns if missing (safe to run even if table pre-exists)
-    try {
-      await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'pending'");
-      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_by INT');
-      await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ NULL");
-    } catch (e) {
-      // Non-fatal: continue if ALTER fails for any reason
-      console.warn('Could not ensure approval columns exist:', e.message || e);
-    }
     // Initialize modularized schemas 
     await createMessagesSchema(dbQuery);
     await createDonationsSchema(dbQuery);
     await createRoadmapsSchema(dbQuery);
     await createConnectionsSchema(dbQuery);
-    await createMentorshipSchema(dbQuery);
-    await createAcademicProgressSchema(dbQuery);
-    await createMemoriesSchema(dbQuery);
-    await createJobsSchema(dbQuery);
-    await createApplicationsSchema(dbQuery);
-    await createEventsSchema(dbQuery);
+    // Create events table (Postgres) if missing
+    await dbQuery(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      user_auth0_id VARCHAR(255) NULL,
+      title VARCHAR(1024) NOT NULL,
+      description TEXT,
+      event_date TIMESTAMPTZ,
+      event_time VARCHAR(64),
+      duration VARCHAR(64),
+      location VARCHAR(512),
+      event_type VARCHAR(128),
+      is_virtual BOOLEAN DEFAULT FALSE,
+      image_url TEXT,
+      tags TEXT,
+      organizer VARCHAR(255),
+      max_attendees INT,
+      current_attendees INT DEFAULT 0,
+      price NUMERIC(10,2) DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+    // Ensure columns exist (migration for existing tables)
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_time VARCHAR(64)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS duration VARCHAR(64)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location VARCHAR(512)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type VARCHAR(128)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_virtual BOOLEAN DEFAULT FALSE`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS tags TEXT`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer VARCHAR(255)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS approval_status VARCHAR(64) DEFAULT 'pending'`);
+    // Auto-approve existing pending events to match new policy
+    await dbQuery(`UPDATE events SET approval_status = 'approved' WHERE approval_status = 'pending'`);
+
+    // Create event_registrations table
+    await dbQuery(`
+    CREATE TABLE IF NOT EXISTS event_registrations (
+      id SERIAL PRIMARY KEY,
+      event_id INT NOT NULL,
+      user_email VARCHAR(255) NOT NULL,
+      user_name VARCHAR(255),
+      registered_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(event_id, user_email)
+    )`);
+
+
 
     console.log('Tables are ready');
   } catch (e) {
@@ -280,6 +373,91 @@ app.get('/api/health', (req, res) => {
       }
     });
   });
+});
+
+// GET all events for frontend
+app.get('/api/events', async (req, res) => {
+  try {
+    const q = `SELECT id, title, description, event_date, event_time, duration, location, is_virtual, event_type, image_url, tags, organizer, max_attendees, current_attendees, price, approval_status FROM events ORDER BY created_at DESC`;
+    const { rows } = await dbQuery(q, []);
+    const mapped = (rows || []).map(r => ({
+      id: r.id ? String(r.id) : '',
+      title: r.title || '',
+      description: r.description || '',
+      event_date: r.event_date ? new Date(r.event_date).toISOString() : null,
+      event_time: r.event_time || '',
+      duration: r.duration || '',
+      location: r.location || '',
+      is_virtual: !!r.is_virtual,
+      event_type: r.event_type || '',
+      image_url: r.image_url || '',
+      tags: r.tags ? (Array.isArray(r.tags) ? r.tags : String(r.tags).split(',').map(s => s.trim()).filter(Boolean)) : [],
+      organizer: r.organizer || '',
+      max_attendees: r.max_attendees || null,
+      current_attendees: r.current_attendees || 0,
+      price: r.price || 0,
+      approval_status: r.approval_status || 'pending'
+    }));
+    return res.json(mapped);
+  } catch (e) {
+    console.error('Events fetch error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to fetch events' });
+  }
+});
+
+// PATCH update event (partial updates) - supports approval_status updates
+app.patch('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body || {};
+    const allowed = ['approval_status', 'title', 'description', 'event_date', 'event_time', 'duration', 'location', 'is_virtual', 'event_type', 'image_url', 'tags', 'organizer', 'max_attendees', 'current_attendees', 'price'];
+    const fields = [];
+    const params = [];
+    Object.keys(updates).forEach(key => {
+      if (allowed.includes(key)) {
+        fields.push(`${key} = ?`);
+        params.push(updates[key]);
+      }
+    });
+    if (fields.length === 0) return res.status(400).json({ error: 'No updatable fields provided' });
+    params.push(id);
+    const q = `UPDATE events SET ${fields.join(', ')} WHERE id = ? RETURNING id`;
+    const { rows } = await dbQuery(q, params);
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    return res.json({ message: 'Event updated', id });
+  } catch (e) {
+    console.error('Event update error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to update event' });
+  }
+});
+
+// DELETE all events (development/admin only)
+app.delete('/api/events/clear-all/confirm', async (req, res) => {
+  try {
+    await dbQuery('DELETE FROM events');
+    return res.json({ message: 'All events cleared successfully' });
+  } catch (e) {
+    console.error('Events clear error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to clear events' });
+  }
+});
+
+
+
+// DELETE single event
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const q = `DELETE FROM events WHERE id = ? RETURNING id`;
+    const { rows } = await dbQuery(q, [id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    return res.json({ message: 'Event deleted successfully', id });
+  } catch (e) {
+    console.error('Event deletion error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to delete event' });
+  }
 });
 
 // Protected route example
@@ -445,8 +623,6 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     isOpenToMentoring
   } = req.body;
 
-  const userType = deriveRole(email);
-  
   const values = {
     auth0_id: auth0Id,
     email,
@@ -464,12 +640,9 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     registration_completed: true
   };
 
-  // Determine approval status based on user type
-  const approvalStatus = userType === 'alumni' ? 'pending' : 'approved';
-  
   const sql = `
-    INSERT INTO users (auth0_id, email, name, graduation_year, major, current_job, company, job_title, location, linkedin_url, bio, skills, is_mentor, registration_completed, user_type, approval_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (auth0_id, email, name, graduation_year, major, current_job, company, job_title, location, linkedin_url, bio, skills, is_mentor, registration_completed)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (auth0_id) DO UPDATE SET
       email = EXCLUDED.email,
       name = EXCLUDED.name,
@@ -483,9 +656,7 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
       bio = EXCLUDED.bio,
       skills = EXCLUDED.skills,
       is_mentor = EXCLUDED.is_mentor,
-      registration_completed = EXCLUDED.registration_completed,
-      user_type = EXCLUDED.user_type,
-      approval_status = EXCLUDED.approval_status
+      registration_completed = EXCLUDED.registration_completed
   `;
 
   const params = [
@@ -502,9 +673,7 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     values.bio,
     values.skills,
     values.is_mentor,
-    values.registration_completed,
-    userType,
-    approvalStatus
+    values.registration_completed
   ];
 
   dbQuery(sql, params)
@@ -527,125 +696,6 @@ app.post('/api/users/sync-self', checkJwt, async (req, res) => {
     });
     return res.json({ message: 'Synced from Auth0', user: seeded });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// --- ACADEMIC PROGRESS ROUTES ---
-
-// Compose academic progress response for a user
-async function buildAcademicProgressResponse(auth0Id) {
-  const { rows: semRows } = await dbQuery(
-    'SELECT semester_key, name, gpa, total_credits, is_current FROM academic_semesters WHERE student_auth0_id = ? ORDER BY created_at DESC',
-    [auth0Id]
-  );
-  const { rows: courseRows } = await dbQuery(
-    'SELECT semester_key, course_key, name, code, credits, grade, status, progress FROM academic_courses WHERE student_auth0_id = ?',
-    [auth0Id]
-  );
-
-  const courseBySemester = new Map();
-  for (const c of (courseRows || [])) {
-    const arr = courseBySemester.get(c.semester_key) || [];
-    arr.push({
-      id: c.course_key,
-      name: c.name,
-      code: c.code,
-      credits: Number(c.credits || 0),
-      grade: c.grade || '',
-      status: c.status || 'upcoming',
-      progress: Number(c.progress || 0),
-    });
-    courseBySemester.set(c.semester_key, arr);
-  }
-
-  const semesters = (semRows || []).map((s) => ({
-    id: s.semester_key,
-    name: s.name,
-    gpa: Number(s.gpa || 0),
-    totalCredits: Number(s.total_credits || 0),
-    courses: courseBySemester.get(s.semester_key) || [],
-    is_current: !!s.is_current,
-  }));
-
-  // Compute overall stats
-  const allCourses = (courseRows || []).map((c) => ({ credits: Number(c.credits || 0), status: c.status || 'upcoming' }));
-  const totalCredits = allCourses.reduce((sum, c) => sum + c.credits, 0);
-  const creditsCompleted = allCourses.filter((c) => c.status === 'completed').reduce((sum, c) => sum + c.credits, 0);
-  const gpaValues = (semRows || []).map((s) => Number(s.gpa || 0)).filter((v) => Number.isFinite(v));
-  const gpa = gpaValues.length ? Number((gpaValues.reduce((a, b) => a + b, 0) / gpaValues.length).toFixed(2)) : 0;
-  const completionRate = totalCredits > 0 ? Number(((creditsCompleted / totalCredits) * 100).toFixed(1)) : 0;
-  const current = semesters.find((s) => s.is_current);
-  const overallStats = {
-    gpa,
-    creditsCompleted,
-    totalCredits,
-    completionRate,
-    currentSemesterLabel: current ? current.name : null,
-  };
-
-  return { overallStats, semesters };
-}
-
-// Get current user's academic progress
-app.get('/api/academic-progress/me', checkJwt, async (req, res) => {
-  try {
-    const auth0Id = req.auth && req.auth.sub;
-    if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
-    const payload = await buildAcademicProgressResponse(auth0Id);
-    return res.json(payload);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Replace current user's academic progress with provided semesters/courses
-app.put('/api/academic-progress/me', checkJwt, async (req, res) => {
-  const auth0Id = req.auth && req.auth.sub;
-  if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
-  const semesters = Array.isArray(req.body && req.body.semesters) ? req.body.semesters : [];
-  try {
-    await dbQuery('BEGIN');
-    // Clear existing
-    await dbQuery('DELETE FROM academic_courses WHERE student_auth0_id = ?', [auth0Id]);
-    await dbQuery('DELETE FROM academic_semesters WHERE student_auth0_id = ?', [auth0Id]);
-
-    for (const s of semesters) {
-      const semester_key = String(s.id || s.name || `sem-${Date.now()}`);
-      const name = String(s.name || semester_key);
-      const gpa = Number(s.gpa || 0);
-      const totalCredits = Number(s.totalCredits || 0);
-      const isCurrent = s.id === 'current' ? true : false;
-      await dbQuery(
-        'INSERT INTO academic_semesters (student_auth0_id, semester_key, name, gpa, total_credits, is_current) VALUES (?, ?, ?, ?, ?, ?)',
-        [auth0Id, semester_key, name, gpa, totalCredits, isCurrent]
-      );
-
-      const courses = Array.isArray(s.courses) ? s.courses : [];
-      for (const c of courses) {
-        const course_key = String(c.id || `${semester_key}-${Date.now()}`);
-        await dbQuery(
-          'INSERT INTO academic_courses (student_auth0_id, semester_key, course_key, name, code, credits, grade, status, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            auth0Id,
-            semester_key,
-            course_key,
-            String(c.name || ''),
-            c.code || null,
-            Number(c.credits || 0),
-            c.grade || null,
-            String(c.status || 'upcoming'),
-            Number(c.progress || 0),
-          ]
-        );
-      }
-    }
-
-    await dbQuery('COMMIT');
-    const payload = await buildAcademicProgressResponse(auth0Id);
-    return res.json(payload);
-  } catch (e) {
-    try { await dbQuery('ROLLBACK'); } catch { }
     return res.status(500).json({ error: e.message });
   }
 });
@@ -853,7 +903,6 @@ app.post('/api/roadmaps', async (req, res) => {
       duration,
       phases,
       tags,
-      modules_link,
       is_published = false
     } = req.body || {};
 
@@ -862,10 +911,10 @@ app.post('/api/roadmaps', async (req, res) => {
     }
 
     const { rows } = await dbQuery(`
-      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, modules_link, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
-    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, modules_link || null, !!is_published]);
+    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, !!is_published]);
 
     return res.status(201).json(rows && rows[0]);
   } catch (e) {
@@ -873,35 +922,20 @@ app.post('/api/roadmaps', async (req, res) => {
   }
 });
 
-// List roadmaps (optionally filter by owner or published status)
+// List roadmaps (optionally filter by owner)
 app.get('/api/roadmaps', async (req, res) => {
   try {
-    const { owner_email, is_published, page = 1, limit = 20 } = req.query || {};
+    const { owner_email, page = 1, limit = 20 } = req.query || {};
     const p = Math.max(1, parseInt(page, 10));
     const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
     const offset = (p - 1) * l;
 
-    const conditions = [];
-    const params = [];
-
     if (owner_email) {
-      conditions.push('owner_email = ?');
-      params.push(owner_email);
+      const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?', [owner_email, l, offset]);
+      return res.json({ roadmaps: rows, page: p, limit: l });
     }
 
-    if (is_published !== undefined) {
-      conditions.push('is_published = ?');
-      params.push(is_published === 'true');
-    }
-
-    let query = 'SELECT * FROM roadmaps';
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-    query += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
-    params.push(l, offset);
-
-    const { rows } = await dbQuery(query, params);
+    const { rows } = await dbQuery('SELECT * FROM roadmaps ORDER BY updated_at DESC LIMIT ? OFFSET ?', [l, offset]);
     return res.json({ roadmaps: rows, page: p, limit: l });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -924,7 +958,7 @@ app.get('/api/roadmaps/:id', async (req, res) => {
 app.put('/api/roadmaps/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'modules_link', 'is_published'];
+    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'is_published'];
     const updates = [];
     const values = [];
     for (const key of allowed) {
@@ -1173,231 +1207,6 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
     `, [id, applicant_email, resume_url || null, cover_letter || null]);
     await dbQuery('UPDATE jobs SET applied = COALESCE(applied,0) + 1 WHERE id = ?', [id]);
     return res.status(201).json({ application: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Admin: Approve or reject a job posting
-app.put('/api/admin/jobs/:id/approval', checkJwt, async (req, res) => {
-  try {
-    const adminAuth0 = req.auth && req.auth.sub;
-    if (!adminAuth0) return res.status(401).json({ error: 'Unauthorized' });
-    
-    // Verify caller is an admin
-    const adminRow = await dbQuery('SELECT id, user_type FROM users WHERE auth0_id = ? LIMIT 1', [adminAuth0]);
-    if (!adminRow.rows || adminRow.rows.length === 0 || adminRow.rows[0].user_type !== 'admin') {
-      return res.status(403).json({ error: 'Admin privileges required' });
-    }
-
-    const { id } = req.params;
-    const { status } = req.body || {};
-    
-    // Validate status
-    const validStatuses = ['Pending Review', 'Approved', 'Rejected'];
-    if (!validStatuses.includes(String(status))) {
-      return res.status(400).json({ error: 'Invalid status. Must be one of: Pending Review, Approved, Rejected' });
-    }
-
-    // Update job status
-    const { rows } = await dbQuery(
-      'UPDATE jobs SET status = ?, updated_at = NOW() WHERE id = ? RETURNING *',
-      [status, id]
-    );
-    
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-    
-    return res.json({ job: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// =============== EVENTS ENDPOINTS ===============
-
-// Create an event
-app.post('/api/events', async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      event_type,
-      location,
-      is_virtual = false,
-      virtual_link,
-      start_date,
-      end_date,
-      max_attendees,
-      registration_url,
-      image_url,
-      tags,
-      status = 'Pending Review',
-      posted_by,
-    } = req.body || {};
-
-    if (!title || !description || !event_type || !start_date || !posted_by) {
-      return res.status(400).json({ error: 'Missing required fields: title, description, event_type, start_date, posted_by' });
-    }
-
-    const { rows } = await dbQuery(`
-      INSERT INTO events (
-        title, description, event_type, location, is_virtual, virtual_link,
-        start_date, end_date, max_attendees, registration_url, image_url, tags, status, posted_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING *
-    `, [
-      title, description, event_type, location || null, !!is_virtual, virtual_link || null,
-      start_date, end_date || null, max_attendees || null, registration_url || null,
-      image_url || null, Array.isArray(tags) ? tags.join(',') : (tags || null), status, posted_by
-    ]);
-    return res.status(201).json(rows && rows[0]);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Get all events with filters
-app.get('/api/events', async (req, res) => {
-  try {
-    const {
-      q,
-      event_type,
-      status,
-      posted_by,
-      is_virtual,
-      page = 1,
-      limit = 20
-    } = req.query || {};
-
-    const p = Math.max(1, parseInt(page, 10));
-    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
-    const offset = (p - 1) * l;
-
-    const where = [];
-    const params = [];
-
-    if (q) {
-      const like = `%${String(q).toLowerCase()}%`;
-      where.push('(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(tags) LIKE ?)');
-      params.push(like, like, like);
-    }
-    if (event_type && event_type !== 'All Types') { where.push('event_type = ?'); params.push(event_type); }
-    if (status && status !== 'All Status') { where.push('status = ?'); params.push(status); }
-    if (posted_by) { where.push('LOWER(posted_by) = LOWER(?)'); params.push(posted_by); }
-    if (is_virtual === 'true' || is_virtual === '1') { where.push('is_virtual = TRUE'); }
-
-    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
-    const { rows } = await dbQuery(
-      `SELECT * FROM events${whereSql} ORDER BY start_date DESC LIMIT ? OFFSET ?`,
-      [...params, l, offset]
-    );
-    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM events${whereSql}`, params);
-    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
-    return res.json({ events: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Get one event
-app.get('/api/events/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { rows } = await dbQuery('SELECT * FROM events WHERE id = ? LIMIT 1', [id]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Event not found' });
-    return res.json(rows[0]);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Update an event
-app.put('/api/events/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      title, description, event_type, location, is_virtual, virtual_link,
-      start_date, end_date, max_attendees, registration_url, image_url, tags, status
-    } = req.body || {};
-
-    const updates = [];
-    const params = [];
-    if (title !== undefined) { updates.push('title = ?'); params.push(title); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
-    if (event_type !== undefined) { updates.push('event_type = ?'); params.push(event_type); }
-    if (location !== undefined) { updates.push('location = ?'); params.push(location); }
-    if (is_virtual !== undefined) { updates.push('is_virtual = ?'); params.push(!!is_virtual); }
-    if (virtual_link !== undefined) { updates.push('virtual_link = ?'); params.push(virtual_link); }
-    if (start_date !== undefined) { updates.push('start_date = ?'); params.push(start_date); }
-    if (end_date !== undefined) { updates.push('end_date = ?'); params.push(end_date); }
-    if (max_attendees !== undefined) { updates.push('max_attendees = ?'); params.push(max_attendees); }
-    if (registration_url !== undefined) { updates.push('registration_url = ?'); params.push(registration_url); }
-    if (image_url !== undefined) { updates.push('image_url = ?'); params.push(image_url); }
-    if (tags !== undefined) { updates.push('tags = ?'); params.push(Array.isArray(tags) ? tags.join(',') : tags); }
-    if (status !== undefined) { updates.push('status = ?'); params.push(status); }
-
-    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
-    
-    updates.push('updated_at = NOW()');
-    params.push(id);
-
-    const { rows } = await dbQuery(
-      `UPDATE events SET ${updates.join(', ')} WHERE id = ? RETURNING *`,
-      params
-    );
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Event not found' });
-    return res.json(rows[0]);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Delete an event
-app.delete('/api/events/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { rows } = await dbQuery('DELETE FROM events WHERE id = ? RETURNING id', [id]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Event not found' });
-    return res.json({ message: 'Event deleted successfully' });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Admin: Approve or reject an event
-app.put('/api/admin/events/:id/approval', checkJwt, async (req, res) => {
-  try {
-    const adminAuth0 = req.auth && req.auth.sub;
-    if (!adminAuth0) return res.status(401).json({ error: 'Unauthorized' });
-    
-    // Verify caller is an admin
-    const adminRow = await dbQuery('SELECT id, user_type FROM users WHERE auth0_id = ? LIMIT 1', [adminAuth0]);
-    if (!adminRow.rows || adminRow.rows.length === 0 || adminRow.rows[0].user_type !== 'admin') {
-      return res.status(403).json({ error: 'Admin privileges required' });
-    }
-
-    const { id } = req.params;
-    const { status } = req.body || {};
-    
-    // Validate status
-    const validStatuses = ['Pending Review', 'Approved', 'Rejected'];
-    if (!validStatuses.includes(String(status))) {
-      return res.status(400).json({ error: 'Invalid status. Must be one of: Pending Review, Approved, Rejected' });
-    }
-
-    // Update event status
-    const { rows } = await dbQuery(
-      'UPDATE events SET status = ?, updated_at = NOW() WHERE id = ? RETURNING *',
-      [status, id]
-    );
-    
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-    
-    return res.json({ event: rows[0] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1826,7 +1635,7 @@ app.get('/api/users', async (req, res) => {
       params.push(like, like);
     }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const { rows: list } = await dbQuery(`SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor, approval_status FROM users ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
+    const { rows: list } = await dbQuery(`SELECT id, auth0_id, email, name, picture, bio, user_type, graduation_year, major, current_job, company, job_title, location, skills, is_mentor FROM users ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
     const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM users ${whereSql}`, params);
     const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
     return res.json({ users: list, page: p, limit: l, total, totalPages: Math.ceil(total / l) });
@@ -1848,479 +1657,148 @@ app.get('/api/users/by-email', async (req, res) => {
   }
 });
 
-/**
- * Mentorship Endpoints
- */
+// --- Events API ---
 
-// List available mentors with optional filters
-app.get('/api/mentors', async (req, res) => {
+
+
+
+app.post('/api/events', async (req, res) => {
   try {
-    const { q, min_experience, max_price, min_rating, page = 1, limit = 30 } = req.query || {};
-    const p = Math.max(1, parseInt(page, 10));
-    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
-    const offset = (p - 1) * l;
+    const { title, description, event_date, event_time, duration, location, event_type, is_virtual, image_url, tags, organizer } = req.body;
+    console.log("POST /api/events received:", { title, image_url, organizer });
 
-    const where = [];
-    const params = [];
+    const user_auth0_id = req.auth?.sub || 'anonymous';
 
-    if (q) {
-      const like = `%${String(q).toLowerCase()}%`;
-      where.push('(LOWER(skills) LIKE ? OR LOWER(topics) LIKE ? OR LOWER(availability) LIKE ?)');
-      params.push(like, like, like);
-    }
-    if (min_experience !== undefined && min_experience !== null && String(min_experience) !== '') {
-      where.push('experience_years >= ?');
-      params.push(parseInt(min_experience, 10));
-    }
-    if (max_price !== undefined && max_price !== null && String(max_price) !== '') {
-      where.push('price <= ?');
-      params.push(Number(max_price));
-    }
-    if (min_rating !== undefined && min_rating !== null && String(min_rating) !== '') {
-      where.push('rating_avg >= ?');
-      params.push(Number(min_rating));
-    }
+    // Convert array tags to string if needed, or keep as string
+    const tagsVal = Array.isArray(tags) ? tags.join(',') : tags;
 
-    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
-    const { rows } = await dbQuery(
-      `SELECT mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count FROM mentors${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
-      [...params, l, offset]
-    );
-    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) AS total FROM mentors${whereSql}`, params);
-    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
-    return res.json({ mentors: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Get one mentor profile by email
-app.get('/api/mentors/profile', async (req, res) => {
-  try {
-    const { email } = req.query || {};
-    if (!email) return res.status(400).json({ error: 'email required' });
-    const { rows } = await dbQuery('SELECT mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count FROM mentors WHERE LOWER(mentor_email) = LOWER(?) LIMIT 1', [email]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
-    return res.json({ mentor: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Create/update mentor profile (alumni)
-app.post('/api/mentors/profile', async (req, res) => {
-  try {
-    const { email, skills, topics, availability, experience_years, price } = req.body || {};
-    if (!email) return res.status(400).json({ error: 'email required' });
-    const exp = experience_years === '' || experience_years == null ? 0 : parseInt(experience_years, 10);
-    const pr = price === '' || price == null ? 0 : Number(price);
-    const sql = `
-      INSERT INTO mentors (mentor_email, skills, topics, availability, experience_years, price, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, NOW())
-      ON CONFLICT (mentor_email) DO UPDATE SET
-        skills = EXCLUDED.skills,
-        topics = EXCLUDED.topics,
-        availability = EXCLUDED.availability,
-        experience_years = EXCLUDED.experience_years,
-        price = EXCLUDED.price,
-        updated_at = NOW()
-      RETURNING mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count
+    const sqlHelper = `
+      INSERT INTO events 
+      (user_auth0_id, title, description, event_date, event_time, duration, location, event_type, is_virtual, image_url, tags, organizer, approval_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
     `;
-    const { rows } = await dbQuery(sql, [email, skills || null, topics || null, availability || null, exp, pr]);
-    return res.status(201).json({ mentor: rows && rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
 
-// Create mentorship request
-app.post('/api/mentorship/request', async (req, res) => {
-  const { student_email, mentor_email, message } = req.body || {};
-  if (!student_email || !mentor_email) return res.status(400).json({ error: 'student_email and mentor_email required' });
-  if (student_email.toLowerCase() === mentor_email.toLowerCase()) return res.status(400).json({ error: 'Cannot request self' });
-  try {
-    const pair_key = buildPairKey(student_email, mentor_email);
-    const { rows: existing } = await dbQuery('SELECT * FROM mentorship_requests WHERE pair_key = ? LIMIT 1', [pair_key]);
-    if (existing && existing.length) {
-      const r = existing[0];
-      if (r.status === 'pending') return res.json({ request: r });
-      if (r.status === 'accepted') return res.status(409).json({ error: 'Already accepted', request: r });
-      // If rejected, allow re-request by resetting status
-      const { rows } = await dbQuery(
-        'UPDATE mentorship_requests SET student_email = ?, mentor_email = ?, status = \'pending\', message = ?, accepted_at = NULL, updated_at = NOW() WHERE id = ? RETURNING *',
-        [student_email, mentor_email, message || null, r.id]
-      );
-      return res.status(201).json({ request: rows[0] });
-    }
-    const { rows } = await dbQuery(
-      'INSERT INTO mentorship_requests (pair_key, student_email, mentor_email, status, message) VALUES (?, ?, ?, \'pending\', ?) RETURNING *',
-      [pair_key, student_email, mentor_email, message || null]
-    );
-    return res.status(201).json({ request: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Respond to mentorship request (mentor side)
-app.post('/api/mentorship/respond', async (req, res) => {
-  const { mentor_email, student_email, action } = req.body || {};
-  if (!mentor_email || !student_email || !['accept', 'reject'].includes(String(action))) {
-    return res.status(400).json({ error: 'mentor_email, student_email and action (accept|reject) required' });
-  }
-  try {
-    const pair_key = buildPairKey(student_email, mentor_email);
-    const { rows } = await dbQuery('SELECT * FROM mentorship_requests WHERE pair_key = ? LIMIT 1', [pair_key]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'No request found' });
-    const reqRow = rows[0];
-    if (reqRow.status !== 'pending') return res.status(400).json({ error: 'Request not pending' });
-    const newStatus = action === 'accept' ? 'accepted' : 'rejected';
-    const { rows: updated } = await dbQuery(
-      'UPDATE mentorship_requests SET status = ?, accepted_at = CASE WHEN ? = \'accepted\' THEN NOW() ELSE NULL END, updated_at = NOW() WHERE id = ? RETURNING *',
-      [newStatus, newStatus, reqRow.id]
-    );
-    return res.json({ request: updated[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// List mentorship requests for mentor or student
-app.get('/api/mentorship/requests', async (req, res) => {
-  const { mentor_email, student_email, status } = req.query || {};
-  if (!mentor_email && !student_email) return res.status(400).json({ error: 'mentor_email or student_email required' });
-  try {
-    let sql = 'SELECT * FROM mentorship_requests WHERE 1=1';
-    const params = [];
-    if (mentor_email) { sql += ' AND mentor_email = ?'; params.push(mentor_email); }
-    if (student_email) { sql += ' AND student_email = ?'; params.push(student_email); }
-    if (status) { sql += ' AND status = ?'; params.push(status); }
-    sql += ' ORDER BY updated_at DESC LIMIT 200';
-    const { rows } = await dbQuery(sql, params);
-    return res.json({ requests: rows });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Record a paid session (after payment)
-app.post('/api/mentorship/sessions/purchase', async (req, res) => {
-  const { student_email, mentor_email, amount, currency = 'INR', payment_id, order_id } = req.body || {};
-  if (!student_email || !mentor_email || !amount) return res.status(400).json({ error: 'student_email, mentor_email and amount required' });
-  try {
-    const pair_key = buildPairKey(student_email, mentor_email);
-    const { rows } = await dbQuery(
-      'INSERT INTO mentorship_sessions (pair_key, student_email, mentor_email, status, amount, currency, payment_id, order_id) VALUES (?, ?, ?, \'paid\', ?, ?, ?, ?) RETURNING *',
-      [pair_key, student_email, mentor_email, Number(amount), currency || 'INR', payment_id || null, order_id || null]
-    );
-    return res.status(201).json({ session: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Schedule a session (student provides meeting_link)
-app.post('/api/mentorship/sessions/schedule', async (req, res) => {
-  const { session_id, scheduled_at, duration_minutes = 60, meeting_link, notes } = req.body || {};
-  if (!session_id || !scheduled_at) return res.status(400).json({ error: 'session_id and scheduled_at required' });
-  try {
-    const { rows } = await dbQuery('SELECT * FROM mentorship_sessions WHERE id = ? LIMIT 1', [session_id]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Session not found' });
-    const sess = rows[0];
-    const { rows: updated } = await dbQuery(
-      'UPDATE mentorship_sessions SET status = \'scheduled\', scheduled_at = ?, duration_minutes = ?, meeting_link = ?, notes = COALESCE(?, notes), updated_at = NOW() WHERE id = ? RETURNING *',
-      [new Date(scheduled_at), Math.max(15, parseInt(duration_minutes, 10) || 60), meeting_link || null, notes || null, session_id]
-    );
-    return res.json({ session: updated[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Complete a session (mentor marks as completed)
-app.post('/api/mentorship/sessions/complete', async (req, res) => {
-  const { session_id } = req.body || {};
-  if (!session_id) return res.status(400).json({ error: 'session_id required' });
-  try {
-    const { rows } = await dbQuery('UPDATE mentorship_sessions SET status = \'completed\', updated_at = NOW() WHERE id = ? RETURNING *', [session_id]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Session not found' });
-    return res.json({ session: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// List sessions for mentor or student
-app.get('/api/mentorship/sessions', async (req, res) => {
-  const { mentor_email, student_email, status } = req.query || {};
-  if (!mentor_email && !student_email) return res.status(400).json({ error: 'mentor_email or student_email required' });
-  try {
-    let sql = 'SELECT * FROM mentorship_sessions WHERE 1=1';
-    const params = [];
-    if (mentor_email) { sql += ' AND mentor_email = ?'; params.push(mentor_email); }
-    if (student_email) { sql += ' AND student_email = ?'; params.push(student_email); }
-    if (status) { sql += ' AND status = ?'; params.push(status); }
-    sql += ' ORDER BY COALESCE(scheduled_at, created_at) ASC LIMIT 200';
-    const { rows } = await dbQuery(sql, params);
-    return res.json({ sessions: rows });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Submit rating for a mentor after session
-app.post('/api/mentorship/ratings', async (req, res) => {
-  const { session_id, student_email, mentor_email, rating, feedback } = req.body || {};
-  if (!session_id || !student_email || !mentor_email || !rating) {
-    return res.status(400).json({ error: 'session_id, student_email, mentor_email and rating required' });
-  }
-  try {
-    const r = Math.max(1, Math.min(5, parseInt(rating, 10)));
-    const { rows } = await dbQuery(
-      'INSERT INTO mentor_ratings (session_id, student_email, mentor_email, rating, feedback) VALUES (?, ?, ?, ?, ?) RETURNING *',
-      [session_id, student_email, mentor_email, r, feedback || null]
-    );
-    // Update aggregate rating on mentors
-    const { rows: agg } = await dbQuery('SELECT AVG(rating) AS avg, COUNT(*) AS cnt FROM mentor_ratings WHERE mentor_email = ?', [mentor_email]);
-    const avg = agg && agg[0] ? Number(agg[0].avg || 0).toFixed(2) : 0;
-    const cnt = agg && agg[0] ? parseInt(agg[0].cnt || 0, 10) : 0;
-    await dbQuery('UPDATE mentors SET rating_avg = ?, rating_count = ?, updated_at = NOW() WHERE mentor_email = ?', [avg, cnt, mentor_email]);
-    return res.status(201).json({ rating: rows[0], ratingSummary: { rating_avg: Number(avg), rating_count: cnt } });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// --- File Uploads (Memory Image) ---
-const allowedImageTypes = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif'
-]);
-const imageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, memoriesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '';
-      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-      const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}_${base}${ext}`;
-      cb(null, fname);
-    },
-  }),
-  fileFilter: (req, file, cb) => {
-    if (allowedImageTypes.has(file.mimetype)) return cb(null, true);
-    return cb(new Error('Invalid image type. Only JPG, PNG, WEBP, GIF are allowed.'));
-  },
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
-app.post('/api/uploads/memory-image', imageUpload.single('image'), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'Image file is required' });
-    const url = `${req.protocol}://${req.get('host')}/uploads/memories/${req.file.filename}`;
-    return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// --- Memories SSE Stream ---
-const sseClients = new Set();
-function broadcastSse(event, data) {
-  const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
-  for (const res of sseClients) {
-    try { res.write(payload); } catch {}
-  }
-}
-
-app.get('/api/memories/stream', (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Connection', 'keep-alive');
-  if (res.flushHeaders) res.flushHeaders();
-  res.write(':\n\n'); // initial comment to establish the stream
-  sseClients.add(res);
-  req.on('close', () => { sseClients.delete(res); });
-});
-
-// --- Memories CRUD ---
-// Create a memory
-app.post('/api/memories', async (req, res) => {
-  try {
-    const {
-      author_name,
-      author_avatar,
-      author_batch,
-      author_department,
+    const values = [
+      user_auth0_id,
       title,
       description,
-      image_url,
-      date,
+      event_date,
+      event_time,
+      duration,
       location,
-      tags,
-      category,
-      type = 'photo',
-    } = req.body || {};
+      event_type,
+      is_virtual,
+      image_url,
+      tagsVal,
+      organizer,
+      'approved' // Auto-approve all new events
+    ];
 
-    if (!title) return res.status(400).json({ error: 'Title is required' });
-    const tagsStr = Array.isArray(tags) ? tags.join(',') : (tags || null);
-    const { rows } = await dbQuery(`
-      INSERT INTO memories (
-        author_name, author_avatar, author_batch, author_department,
-        title, description, image_url, date, location, tags, category, type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING *
-    `, [
-      author_name || null, author_avatar || null, author_batch || null, author_department || null,
-      title, description || null, image_url || null, date || null, location || null, tagsStr, category || null, type
-    ]);
-    const created = rows && rows[0];
-    try { broadcastSse('memory-create', created); } catch {}
-    return res.status(201).json(created);
+    const result = await dbQuery(sqlHelper, values);
+    res.json({ message: "Success", id: result.rows[0].id });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error("Event Create Error:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// List memories with filters
-app.get('/api/memories', async (req, res) => {
-  try {
-    const {
-      q,
-      category,
-      sort = 'recent',
-      page = 1,
-      limit = 20
-    } = req.query || {};
-
-    const p = Math.max(1, parseInt(page, 10));
-    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
-    const offset = (p - 1) * l;
-
-    const where = [];
-    const params = [];
-    if (q) {
-      const like = `%${String(q).toLowerCase()}%`;
-      where.push('(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(tags) LIKE ? OR LOWER(author_name) LIKE ?)');
-      params.push(like, like, like, like);
-    }
-    if (category && category !== 'all') { where.push('category = ?'); params.push(category); }
-
-    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
-    let orderBy = 'created_at DESC';
-    if (sort === 'trending') orderBy = 'likes DESC, created_at DESC';
-    else if (sort === 'popular') orderBy = 'views DESC, created_at DESC';
-
-    const { rows } = await dbQuery(
-      `SELECT * FROM memories${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-      [...params, l, offset]
-    );
-    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) AS total FROM memories${whereSql}`, params);
-    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
-    return res.json({ memories: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Increment view counter
-app.post('/api/memories/:id/view', async (req, res) => {
+// Register for event
+app.post('/api/events/:id/register', async (req, res) => {
   try {
     const { id } = req.params;
-    await dbQuery('UPDATE memories SET views = COALESCE(views,0) + 1 WHERE id = ?', [id]);
-    const { rows } = await dbQuery('SELECT views FROM memories WHERE id = ? LIMIT 1', [id]);
-    const views = rows && rows[0] ? rows[0].views : 0;
-    try { broadcastSse('memory-view', { id: Number(id), views }); } catch {}
-    return res.json({ views });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+    const { user_email, user_name } = req.body;
 
-// Like / Unlike a memory
-app.post('/api/memories/:id/like', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { action = 'like' } = req.body || {};
-    const inc = action === 'unlike' ? -1 : 1;
-    await dbQuery('UPDATE memories SET likes = GREATEST(0, COALESCE(likes,0) + ?), is_liked = ? WHERE id = ?', [inc, inc > 0, id]);
-    const { rows } = await dbQuery('SELECT likes, is_liked FROM memories WHERE id = ? LIMIT 1', [id]);
-    const payload = { id: Number(id), likes: rows && rows[0] ? rows[0].likes : 0, is_liked: rows && rows[0] ? rows[0].is_liked : false };
-    try { broadcastSse('memory-like', payload); } catch {}
-    return res.json(payload);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+    if (!user_email) return res.status(400).json({ error: 'Email is required' });
 
-// Share count
-app.post('/api/memories/:id/share', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await dbQuery('UPDATE memories SET share_count = COALESCE(share_count,0) + 1 WHERE id = ?', [id]);
-    const { rows } = await dbQuery('SELECT share_count FROM memories WHERE id = ? LIMIT 1', [id]);
-    const share_count = rows && rows[0] ? rows[0].share_count : 0;
-    try { broadcastSse('memory-share', { id: Number(id), share_count }); } catch {}
-    return res.json({ share_count });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+    // Check if event exists
+    const eventRes = await dbQuery('SELECT * FROM events WHERE id = ?', [id]);
+    const event = eventRes.rows[0];
+    if (!event) return res.status(404).json({ error: 'Event not found' });
 
-// Comments
-app.get('/api/memories/:id/comments', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { rows } = await dbQuery('SELECT * FROM memory_comments WHERE memory_id = ? ORDER BY created_at ASC', [id]);
-    return res.json({ comments: rows || [] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+    // Check if already registered
+    const check = await dbQuery('SELECT * FROM event_registrations WHERE event_id = ? AND user_email = ?', [id, user_email]);
+    if (check.rows.length > 0) return res.status(400).json({ error: 'Already registered' });
 
-app.post('/api/memories/:id/comments', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { author_name, author_email, author_avatar, text } = req.body || {};
-    if (!text) return res.status(400).json({ error: 'Comment text is required' });
-    const { rows } = await dbQuery(`
-      INSERT INTO memory_comments (memory_id, author_name, author_email, author_avatar, text)
-      VALUES (?, ?, ?, ?, ?)
-      RETURNING *
-    `, [id, author_name || null, author_email || null, author_avatar || null, text]);
-    await dbQuery('UPDATE memories SET comments_count = COALESCE(comments_count,0) + 1 WHERE id = ?', [id]);
-    const created = rows && rows[0];
-    try { broadcastSse('memory-comment', { id: Number(id), comment: created }); } catch {}
-    return res.status(201).json(created);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+    // Register
+    await dbQuery('INSERT INTO event_registrations (event_id, user_email, user_name) VALUES (?, ?, ?)', [id, user_email, user_name]);
 
-// Admin: update user's approval status
-app.put('/api/admin/users/:id/approval', checkJwt, async (req, res) => {
-  try {
-    const adminAuth0 = req.auth && req.auth.sub;
-    if (!adminAuth0) return res.status(401).json({ error: 'Unauthorized' });
-    // Verify caller is an admin in local users table
-    const adminRow = await dbQuery('SELECT id, user_type FROM users WHERE auth0_id = ? LIMIT 1', [adminAuth0]);
-    if (!adminRow.rows || adminRow.rows.length === 0 || adminRow.rows[0].user_type !== 'admin') {
-      return res.status(403).json({ error: 'Admin privileges required' });
+    // Update attendee count
+    await dbQuery('UPDATE events SET current_attendees = current_attendees + 1 WHERE id = ?', [id]);
+
+    // Send Email
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const mode = event.is_virtual ? 'Virtual (Online)' : 'Offline (In-person)';
+      const locationLabel = event.is_virtual ? 'Meeting Link' : 'Venue';
+      const locationValue = event.location || 'TBD';
+      const organizer = event.organizer || 'Alumni Coordinator';
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user_email,
+        subject: `Registration Confirmed: ${event.title}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #4F46E5; padding: 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 24px;">Event Registration Confirmed</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+              <p style="font-size: 16px; color: #333;">Hi ${user_name || 'Student'},</p>
+              <p style="font-size: 16px; color: #333;">You have successfully registered for <strong>${event.title}</strong>.</p>
+              
+              <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <p style="margin: 8px 0; color: #555; font-style: italic;">"${event.description || 'Join us for this exciting event!'}"</p>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;" />
+                <p style="margin: 8px 0;"><strong>📅 Date:</strong> ${new Date(event.event_date).toDateString()}</p>
+                <p style="margin: 8px 0;"><strong>⏰ Time:</strong> ${event.event_time || 'TBD'}</p>
+                <p style="margin: 8px 0;"><strong>📍 Mode:</strong> ${mode}</p>
+                <p style="margin: 8px 0;"><strong>🔗 ${locationLabel}:</strong> ${event.is_virtual ? `<a href="${locationValue}" style="color: #4F46E5;">${locationValue}</a>` : locationValue}</p>
+                <p style="margin: 8px 0;"><strong>👤 Posted By:</strong> ${organizer}</p>
+              </div>
+
+              <p style="font-size: 14px; color: #666;">We look forward to seeing you there!</p>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #999;">
+              ConnectingFuture Alumni Portal
+            </div>
+          </div>
+        `
+      };
+
+      try {
+        await new Promise((resolve, reject) => {
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error('Email error:', error);
+              reject(error);
+            } else {
+              console.log('Email sent:', info.response);
+              resolve(info);
+            }
+          });
+        });
+      } catch (emailErr) {
+        console.error("Failed to send email but registration recorded:", emailErr);
+        // Decide if we want to fail the request or just warn. 
+        // For now, let's keep registration as success but log heavily.
+        // Or actually, let's return a warning in the JSON.
+      }
+    } else {
+      console.log('Skipping email: EMAIL_USER/PASS not set');
     }
 
-    const { id } = req.params;
-    const { approval_status } = req.body || {};
-    if (!['pending', 'approved', 'rejected'].includes(String(approval_status))) {
-      return res.status(400).json({ error: 'Invalid approval_status' });
-    }
-
-    const params = [approval_status, adminRow.rows[0].id, id];
-    const query = `UPDATE users SET approval_status = ?, approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ? RETURNING id, auth0_id, email, name, approval_status, approved_by, approved_at`;
-    const { rows } = await dbQuery(query, params);
-    if (!rows || rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    return res.json({ user: rows[0] });
+    res.json({ message: 'Registration successful' });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('Registration error:', e);
+    res.status(500).json({ error: e.message });
   }
 });
+

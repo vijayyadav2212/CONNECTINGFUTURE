@@ -74,14 +74,45 @@ export default function CreateEventPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement API call to create event
-    console.log('Event data:', formData);
-    
-    // Show success message
-    setShowSuccess(true);
-    setTimeout(() => {
-      router.push('/admin/events');
-    }, 2000);
+    const submitEvent = async () => {
+      try {
+        let image_url = '';
+        if (formData.image) {
+          const imgForm = new FormData();
+          imgForm.append('image', formData.image);
+          const imgRes = await fetch('http://localhost:4000/api/uploads/event-image', {
+            method: 'POST',
+            body: imgForm
+          });
+          if (imgRes.ok) {
+            const imgData = await imgRes.json();
+            image_url = imgData.url;
+          } else {
+            alert('Image upload failed');
+            return;
+          }
+        }
+        const { image, ...eventData } = formData;
+        const res = await fetch('http://localhost:4000/api/events', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...eventData, image_url }),
+        });
+        if (res.ok) {
+          setShowSuccess(true);
+          setTimeout(() => {
+            router.push('/admin/events');
+          }, 2000);
+        } else {
+          alert('Failed to create event.');
+        }
+      } catch (err) {
+        alert('Error creating event.');
+      }
+    };
+    submitEvent();
   };
 
   const handleCancel = () => {
