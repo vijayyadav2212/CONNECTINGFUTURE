@@ -14,6 +14,8 @@ import {
   Filter,
   Star,
   DollarSign,
+  FileText,
+  Link2,
   Clock,
 } from "lucide-react"
 import Link from "next/link"
@@ -290,6 +292,7 @@ function AlumniJobBoard() {
     benefits: "",
     tags: "",
   })
+  const [activeStep, setActiveStep] = useState<number>(1)
 
   // Browse Jobs state
   const [searchQuery, setSearchQuery] = useState("")
@@ -315,6 +318,8 @@ function AlumniJobBoard() {
     if (selectedJobType && selectedJobType !== 'All Types') params.set('job_type', selectedJobType)
     if (locationQuery) params.set('location', locationQuery)
     if (remoteOnly) params.set('remote_only', 'true')
+    // Only show approved jobs in the general listing
+    params.set('status', 'Approved')
     try {
       const res = await fetch(`${API_BASE}/jobs?${params.toString()}`)
       const data = await res.json()
@@ -1778,312 +1783,163 @@ function AlumniJobBoard() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Job Title and Company Name */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Job/Internship Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Senior Software Engineer"
-                      value={formData.jobTitle}
-                      onChange={(e) => handleInputChange("jobTitle", e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Company Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., TechCorp Inc."
-                      value={formData.companyName}
-                      onChange={(e) => handleInputChange("companyName", e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
+                {/* Steps Header */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex items-center justify-between">
+                    {[{id:1,name:'Basic Info',icon:<Briefcase className="w-4 h-4"/>},{id:2,name:'Details',icon:<FileText className="w-4 h-4"/>},{id:3,name:'Compensation',icon:<DollarSign className="w-4 h-4"/>},{id:4,name:'Application',icon:<Link2 className="w-4 h-4"/>}].map((step, index) => (
+                      <div key={step.id} className="flex items-center">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${activeStep >= step.id ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}>
+                            {step.icon}
+                          </div>
+                          <div className="hidden md:block">
+                            <p className={`text-sm font-semibold ${activeStep >= step.id ? 'text-gray-900' : 'text-gray-400'}`}>Step {step.id}</p>
+                            <p className={`text-xs ${activeStep >= step.id ? 'text-gray-600' : 'text-gray-400'}`}>{step.name}</p>
+                          </div>
+                        </div>
+                        {index < 3 && (
+                          <div className={`flex-1 h-0.5 mx-4 ${activeStep > step.id ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gray-200'}`} />
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Location and Remote */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Location <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., San Francisco, CA"
-                      value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center pt-8">
-                    <Checkbox
-                      id="remote"
-                      checked={formData.remoteAvailable}
-                      onCheckedChange={(checked) => handleInputChange("remoteAvailable", checked as boolean)}
-                    />
-                    <label htmlFor="remote" className="ml-2 text-sm text-gray-700">
-                      Remote work available
-                    </label>
-                  </div>
-                </div>
-
-                {/* Job Type and Industry */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Job Type <span className="text-red-500">*</span>
-                    </label>
-                    <Select value={formData.jobType} onValueChange={(value) => handleInputChange("jobType", value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Full-time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {jobTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Industry <span className="text-red-500">*</span>
-                    </label>
-                    <Select value={formData.industry} onValueChange={(value) => handleInputChange("industry", value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select Industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {industries.filter(industry => industry !== "All Industries").map((industry) => (
-                          <SelectItem key={industry} value={industry}>
-                            {industry}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Job Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    placeholder="Provide a detailed description of the role..."
-                    value={formData.jobDescription}
-                    onChange={(e) => handleInputChange("jobDescription", e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Responsibilities */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Key Responsibilities <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    placeholder="List the main responsibilities..."
-                    value={formData.responsibilities}
-                    onChange={(e) => handleInputChange("responsibilities", e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Requirements */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Requirements/Qualifications <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    placeholder="List required skills, experience, education..."
-                    value={formData.requirements}
-                    onChange={(e) => handleInputChange("requirements", e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Salary Range */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range (Optional)</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Step 1: Basic Info */}
+                {activeStep === 1 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
                     <div>
-                      <input
-                        type="number"
-                        placeholder="Min"
-                        value={formData.salaryMin}
-                        onChange={(e) => handleInputChange("salaryMin", e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <h2 className="text-lg font-bold text-gray-900">Basic Information</h2>
+                      <p className="text-sm text-gray-500">Enter the core job details</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Job/Internship Title <span className="text-red-500">*</span></label>
+                        <input type="text" placeholder="e.g., Senior Software Engineer" value={formData.jobTitle} onChange={(e) => handleInputChange('jobTitle', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Company Name <span className="text-red-500">*</span></label>
+                        <input type="text" placeholder="e.g., TechCorp Inc." value={formData.companyName} onChange={(e) => handleInputChange('companyName', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" required />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Location <span className="text-red-500">*</span></label>
+                        <input type="text" placeholder="e.g., San Francisco, CA" value={formData.location} onChange={(e) => handleInputChange('location', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" required />
+                      </div>
+                      <div className="flex items-center pt-8">
+                        <Checkbox id="remote" checked={formData.remoteAvailable} onCheckedChange={(checked) => handleInputChange('remoteAvailable', checked as boolean)} />
+                        <label htmlFor="remote" className="ml-2 text-sm text-gray-700">Remote work available</label>
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-4 border-t border-gray-200">
+                      <button type="button" onClick={() => setActiveStep(2)} className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl">Next: Details</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Details */}
+                {activeStep === 2 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">Job Details</h2>
+                      <p className="text-sm text-gray-500">Describe the role and requirements</p>
                     </div>
                     <div>
-                      <input
-                        type="number"
-                        placeholder="Max"
-                        value={formData.salaryMax}
-                        onChange={(e) => handleInputChange("salaryMax", e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Job Description <span className="text-red-500">*</span></label>
+                      <textarea placeholder="Provide a detailed description of the role..." value={formData.jobDescription} onChange={(e) => handleInputChange('jobDescription', e.target.value)} rows={5} className="w-full px-4 py-3 border border-gray-300 rounded-md" required />
                     </div>
                     <div>
-                      <Select value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Key Responsibilities <span className="text-red-500">*</span></label>
+                      <textarea placeholder="List the main responsibilities..." value={formData.responsibilities} onChange={(e) => handleInputChange('responsibilities', e.target.value)} rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-md" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Requirements/Qualifications <span className="text-red-500">*</span></label>
+                      <textarea placeholder="List required skills, experience, education..." value={formData.requirements} onChange={(e) => handleInputChange('requirements', e.target.value)} rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-md" required />
+                    </div>
+                    <div className="flex justify-between pt-4 border-t border-gray-200">
+                      <button type="button" onClick={() => setActiveStep(1)} className="px-6 py-2.5 bg-gray-100 rounded-xl">Back</button>
+                      <button type="button" onClick={() => setActiveStep(3)} className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl">Next: Compensation</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Compensation */}
+                {activeStep === 3 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">Compensation</h2>
+                      <p className="text-sm text-gray-500">Set salary range and currency (optional)</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <input type="number" placeholder="Min" value={formData.salaryMin} onChange={(e) => handleInputChange('salaryMin', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" />
+                      </div>
+                      <div>
+                        <input type="number" placeholder="Max" value={formData.salaryMax} onChange={(e) => handleInputChange('salaryMax', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" />
+                      </div>
+                      <div>
+                        <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+                          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                          <SelectContent>{currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex justify-between pt-4 border-t border-gray-200">
+                      <button type="button" onClick={() => setActiveStep(2)} className="px-6 py-2.5 bg-gray-100 rounded-xl">Back</button>
+                      <button type="button" onClick={() => setActiveStep(4)} className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl">Next: Application</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Application */}
+                {activeStep === 4 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">Application</h2>
+                      <p className="text-sm text-gray-500">How should applicants apply?</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Application Deadline</label>
+                      <input type="date" value={formData.applicationDeadline} onChange={(e) => handleInputChange('applicationDeadline', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Contact Person</label>
+                      <input type="text" placeholder="Contact person name" value={formData.contactPerson} onChange={(e) => handleInputChange('contactPerson', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Application Method</label>
+                      <Select value={formData.applicationMethod} onValueChange={(v) => handleInputChange('applicationMethod', v)}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {currencies.map((currency) => (
-                            <SelectItem key={currency} value={currency}>
-                              {currency}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="company">Apply on company site</SelectItem>
+                          <SelectItem value="email">Apply via email</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Application URL or Email</label>
+                      <input type="text" placeholder="https://... or email@company.com" value={formData.applicationUrl} onChange={(e) => handleInputChange('applicationUrl', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Benefits & Tags</label>
+                      <textarea placeholder="Benefits, perks..." value={formData.benefits} onChange={(e) => handleInputChange('benefits', e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-300 rounded-md" />
+                      <input type="text" placeholder="Tags (comma separated)" value={formData.tags} onChange={(e) => handleInputChange('tags', e.target.value)} className="w-full mt-3 px-4 py-3 border border-gray-300 rounded-md" />
+                    </div>
 
-                {/* Application Details */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Application Deadline</label>
-                  <input
-                    type="date"
-                    value={formData.applicationDeadline}
-                    onChange={(e) => handleInputChange("applicationDeadline", e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                    {/* Status Messages */}
+                    {submitStatus === 'success' && (<div className="p-4 bg-green-50 border border-green-200 rounded-md"><p className="text-green-800">{successMessage}</p></div>)}
+                    {submitStatus === 'error' && (<div className="p-4 bg-red-50 border border-red-200 rounded-md"><p className="text-red-800">{errorMessage}</p></div>)}
 
-                {/* Contact Person */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contact Person</label>
-                  <input
-                    type="text"
-                    placeholder="Contact person name"
-                    value={formData.contactPerson}
-                    onChange={(e) => handleInputChange("contactPerson", e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Benefits */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Benefits & Perks</label>
-                  <textarea
-                    placeholder="Health insurance, flexible hours, etc..."
-                    value={formData.benefits}
-                    onChange={(e) => handleInputChange("benefits", e.target.value)}
-                    rows={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
-                  <input
-                    type="text"
-                    placeholder="Separate tags with commas (e.g., React, Remote, Full-time)"
-                    value={formData.tags}
-                    onChange={(e) => handleInputChange("tags", e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Status Messages */}
-                {submitStatus === "success" && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-green-800">{successMessage}</p>
+                    <div className="flex justify-between pt-4 border-t border-gray-200">
+                      <button type="button" onClick={() => setActiveStep(3)} className="px-6 py-2.5 bg-gray-100 rounded-xl">Back</button>
+                      <div className="flex gap-4">
+                        <button type="button" onClick={handleSaveAsDraft} disabled={isDraftSaving} className="px-6 py-2.5 bg-gray-100 rounded-xl">{isDraftSaving ? 'Saving...' : 'Save as Draft'}</button>
+                        <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl">{isSubmitting ? 'Posting...' : 'Post Job'}</button>
+                      </div>
+                    </div>
                   </div>
                 )}
-
-                {submitStatus === "error" && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-red-800">{errorMessage}</p>
-                  </div>
-                )}
-
-                {successMessage && submitStatus !== "success" && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-green-800">{successMessage}</p>
-                  </div>
-                )}
-
-                {/* Form Actions */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-6 py-3 rounded-md font-medium flex items-center justify-center"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Posting Job...
-                      </>
-                    ) : (
-                      "Post Job"
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveAsDraft}
-                    disabled={isDraftSaving}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-100 text-gray-700 px-6 py-3 rounded-md font-medium flex items-center justify-center"
-                  >
-                    {isDraftSaving ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Saving Draft...
-                      </>
-                    ) : (
-                      "Save as Draft"
-                    )}
-                  </button>
-                </div>
               </form>
             </div>
           </div>

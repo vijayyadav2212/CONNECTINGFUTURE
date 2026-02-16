@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminNavigation from '../AdminNavigation';
 import { 
   Calendar, Search, Filter, CheckCircle, XCircle, 
@@ -8,99 +8,152 @@ import {
   Video, ExternalLink 
 } from 'lucide-react';
 import Link from 'next/link';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useAuth0Token } from '../../../hooks/useAuth0Token';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
 interface Event {
   id: number;
   title: string;
   description: string;
-  eventType: 'webinar' | 'workshop' | 'networking' | 'meetup' | 'conference';
+  event_type: string;
   location?: string;
-  isVirtual: boolean;
-  virtualLink?: string;
-  startDate: string;
-  endDate?: string;
-  maxAttendees?: number;
-  registrationUrl?: string;
-  postedBy: string;
-  postedByEmail: string;
-  approvalStatus: 'pending' | 'approved' | 'rejected';
-  isActive: boolean;
+  is_virtual: boolean;
+  virtual_link?: string;
+  start_date: string;
+  end_date?: string;
+  max_attendees?: number;
+  registration_url?: string;
+  posted_by: string;
+  status: string;
 }
 
 export default function EventManagementPage() {
+  const { user } = useUser();
+  const { token: accessToken } = useAuth0Token();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: 1,
-      title: 'Tech Talk: AI in Industry',
-      description: 'Join us for an insightful discussion on how AI is transforming various industries.',
-      eventType: 'webinar',
-      isVirtual: true,
-      virtualLink: 'https://meet.google.com/xyz',
-      startDate: 'Feb 15, 2026 • 6:00 PM',
-      maxAttendees: 100,
-      registrationUrl: 'https://events.com/register',
-      postedBy: 'John Doe',
-      postedByEmail: 'john@example.com',
-      approvalStatus: 'pending',
-      isActive: true
-    },
-    {
-      id: 2,
-      title: 'Alumni Networking Meetup',
-      description: 'Connect with fellow alumni in your city over coffee and conversations.',
-      eventType: 'networking',
-      location: 'Starbucks, Bandra, Mumbai',
-      isVirtual: false,
-      startDate: 'Feb 20, 2026 • 4:00 PM',
-      endDate: 'Feb 20, 2026 • 7:00 PM',
-      maxAttendees: 50,
-      postedBy: 'Jane Smith',
-      postedByEmail: 'jane@example.com',
-      approvalStatus: 'pending',
-      isActive: true
-    },
-    {
-      id: 3,
-      title: 'Career Workshop: Resume Building',
-      description: 'Learn expert tips on creating impactful resumes that get noticed.',
-      eventType: 'workshop',
-      isVirtual: true,
-      virtualLink: 'https://zoom.us/j/12345',
-      startDate: 'Feb 18, 2026 • 5:00 PM',
-      postedBy: 'Mike Johnson',
-      postedByEmail: 'mike@example.com',
-      approvalStatus: 'approved',
-      isActive: true
-    },
-  ]);
+  // Load events from backend
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!user || !accessToken) return;
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_BASE}/api/events?limit=100`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setEvents(data.events || []);
+        }
+      } catch (error) {
+        console.error('Error loading events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEvents();
+  }, [user, accessToken]);
 
-  const handleApprove = (eventId: number) => {
-    setEvents(events.map(e => 
-      e.id === eventId ? { ...e, approvalStatus: 'approved' as const } : e
-    ));
+  const handleApprove = async (eventId: number) => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/events/${eventId}/approval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: 'Approved' }),
+      });
+      if (response.ok) {
+        setEvents(events.map(e => 
+          e.id === eventId ? { ...e, status: 'Approved' } : e
+        ));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to approve event');
+      }
+    } catch (error) {
+      console.error('Error approving event:', error);
+      alert('Failed to approve event');
+    }
   };
 
-  const handleReject = (eventId: number) => {
-    setEvents(events.map(e => 
-      e.id === eventId ? { ...e, approvalStatus: 'rejected' as const } : e
-    ));
+  const handleReject = async (eventId: number) => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/events/${eventId}/approval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: 'Rejected' }),
+      });
+      if (response.ok) {
+        setEvents(events.map(e => 
+          e.id === eventId ? { ...e, status: 'Rejected' } : e
+        ));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to reject event');
+      }
+    } catch (error) {
+      console.error('Error rejecting event:', error);
+      alert('Failed to reject event');
+    }
   };
 
-  const handleDelete = (eventId: number) => {
-    setEvents(events.filter(e => e.id !== eventId));
+  const handleDelete = async (eventId: number) => {
+    if (!accessToken || !confirm('Are you sure you want to delete this event?')) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/events/${eventId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (response.ok) {
+        setEvents(events.filter(e => e.id !== eventId));
+      } else {
+        alert('Failed to delete event');
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event');
+    }
   };
 
   const filteredEvents = events.filter(event => {
-    const matchesFilter = filter === 'all' || event.approvalStatus === filter;
+    const status = event.status.toLowerCase().replace(' review', '').replace('pending ', 'pending');
+    const matchesFilter = filter === 'all' || 
+      (filter === 'pending' && status === 'pending') ||
+      (filter === 'approved' && status === 'approved') ||
+      (filter === 'rejected' && status === 'rejected');
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.eventType.toLowerCase().includes(searchQuery.toLowerCase());
+                         event.event_type.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const getApprovalStatus = (status: string): 'pending' | 'approved' | 'rejected' => {
+    const normalized = status.toLowerCase();
+    if (normalized.includes('pending')) return 'pending';
+    if (normalized.includes('approved')) return 'approved';
+    if (normalized.includes('rejected')) return 'rejected';
+    return 'pending';
+  };
+
+  const countByStatus = (status: 'pending' | 'approved' | 'rejected') => {
+    return events.filter(e => getApprovalStatus(e.status) === status).length;
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -176,7 +229,7 @@ export default function EventManagementPage() {
                   filter === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Pending ({events.filter(e => e.approvalStatus === 'pending').length})
+                Pending ({countByStatus('pending')})
               </button>
               <button
                 onClick={() => setFilter('approved')}
@@ -184,7 +237,7 @@ export default function EventManagementPage() {
                   filter === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Approved ({events.filter(e => e.approvalStatus === 'approved').length})
+                Approved ({countByStatus('approved')})
               </button>
               <button
                 onClick={() => setFilter('rejected')}
@@ -192,7 +245,7 @@ export default function EventManagementPage() {
                   filter === 'rejected' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Rejected ({events.filter(e => e.approvalStatus === 'rejected').length})
+                Rejected ({countByStatus('rejected')})
               </button>
             </div>
           </div>
@@ -200,7 +253,12 @@ export default function EventManagementPage() {
 
         {/* Events List */}
         <div className="grid grid-cols-1 gap-4">
-          {filteredEvents.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading events...</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No events found</h3>
@@ -223,9 +281,9 @@ export default function EventManagementPage() {
                           <h3 className="text-xl font-bold text-gray-900">{event.title}</h3>
                           <div className="flex items-center space-x-3 mt-2">
                             <span className="flex items-center text-gray-700 font-medium">
-                              <Calendar className="w-4 h-4 mr-1" />{event.startDate}
+                              <Calendar className="w-4 h-4 mr-1" />{new Date(event.start_date).toLocaleString()}
                             </span>
-                            {event.isVirtual ? (
+                            {event.is_virtual ? (
                               <span className="flex items-center text-blue-600">
                                 <Video className="w-4 h-4 mr-1" />Virtual Event
                               </span>
@@ -237,16 +295,16 @@ export default function EventManagementPage() {
                           </div>
                         </div>
                         <div className="ml-4">
-                          {getStatusBadge(event.approvalStatus)}
+                          {getStatusBadge(getApprovalStatus(event.status))}
                         </div>
                       </div>
 
                       {/* Event Details */}
                       <div className="flex items-center space-x-3 mt-3">
-                        {getEventTypeBadge(event.eventType)}
-                        {event.maxAttendees && (
+                        {getEventTypeBadge(event.event_type)}
+                        {event.max_attendees && (
                           <span className="flex items-center text-gray-600 text-sm">
-                            <Users className="w-4 h-4 mr-1" />Max {event.maxAttendees} attendees
+                            <Users className="w-4 h-4 mr-1" />Max {event.max_attendees} attendees
                           </span>
                         )}
                       </div>
@@ -256,16 +314,16 @@ export default function EventManagementPage() {
 
                       {/* Posted Info */}
                       <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
-                        <span>Posted by {event.postedBy}</span>
+                        <span>Posted by {event.posted_by}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
                   <div className="flex items-center space-x-2 ml-4">
-                    {(event.registrationUrl || event.virtualLink) && (
+                    {(event.registration_url || event.virtual_link) && (
                       <a
-                        href={event.registrationUrl || event.virtualLink}
+                        href={event.registration_url || event.virtual_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors text-sm flex items-center"
@@ -273,13 +331,7 @@ export default function EventManagementPage() {
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
-                    <button className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm flex items-center">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors text-sm flex items-center">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    {event.approvalStatus === 'pending' && (
+                    {getApprovalStatus(event.status) === 'pending' && (
                       <>
                         <button
                           onClick={() => handleApprove(event.id)}

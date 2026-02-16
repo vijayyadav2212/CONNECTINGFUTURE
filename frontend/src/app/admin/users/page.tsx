@@ -29,142 +29,78 @@ export default function UsersPage() {
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'alumni' | 'student' | 'admin'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
-  // Mock data
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      userType: 'alumni',
-      role: 'user',
-      approvalStatus: 'approved',
-      graduationYear: 2020,
-      major: 'Computer Science',
-      company: 'Google',
-      jobTitle: 'Software Engineer',
-      location: 'Mumbai, India',
-      registrationCompleted: true,
-      createdAt: '2025-12-15'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      userType: 'alumni',
-      role: 'user',
-      approvalStatus: 'pending',
-      graduationYear: 2019,
-      major: 'Mechanical Engineering',
-      registrationCompleted: true,
-      createdAt: '2026-01-10'
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      email: 'mike.j@example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'approved',
-      major: 'Electrical Engineering',
-      registrationCompleted: true,
-      createdAt: '2025-11-20'
-    },
-    {
-      id: 5,
-      name: 'Aisha Khan',
-      email: 'aisha.khan@student.example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'pending',
-      graduationYear: 2027,
-      major: 'Computer Science',
-      location: 'Pune, India',
-      registrationCompleted: true,
-      createdAt: '2026-01-18'
-    },
-    {
-      id: 6,
-      name: 'Rohan Mehta',
-      email: 'rohan.mehta@student.example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'approved',
-      graduationYear: 2026,
-      major: 'Information Technology',
-      location: 'Delhi, India',
-      registrationCompleted: true,
-      createdAt: '2025-10-02'
-    },
-    {
-      id: 7,
-      name: 'Sara Patel',
-      email: 'sara.patel@student.example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'pending',
-      graduationYear: 2028,
-      major: 'Data Science',
-      location: 'Ahmedabad, India',
-      registrationCompleted: true,
-      createdAt: '2026-02-01'
-    },
-    {
-      id: 8,
-      name: 'Arjun Singh',
-      email: 'arjun.singh@student.example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'rejected',
-      graduationYear: 2027,
-      major: 'Civil Engineering',
-      location: 'Jaipur, India',
-      registrationCompleted: true,
-      createdAt: '2026-01-05'
-    },
-    {
-      id: 9,
-      name: 'Neha Sharma',
-      email: 'neha.sharma@student.example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'approved',
-      graduationYear: 2026,
-      major: 'Business Administration',
-      location: 'Bengaluru, India',
-      registrationCompleted: true,
-      createdAt: '2025-09-15'
-    },
-    {
-      id: 10,
-      name: 'Vikram Iyer',
-      email: 'vikram.iyer@student.example.com',
-      userType: 'student',
-      role: 'user',
-      approvalStatus: 'pending',
-      graduationYear: 2028,
-      major: 'Mechanical Engineering',
-      location: 'Chennai, India',
-      registrationCompleted: true,
-      createdAt: '2026-01-28'
-    },
-    {
-      id: 4,
-      name: 'Admin User',
-      email: 'admin@example.com',
-      userType: 'admin',
-      role: 'admin',
-      approvalStatus: 'approved',
-      registrationCompleted: true,
-      createdAt: '2025-01-01'
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+
+  // Fetch users from backend via proxy
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await fetch('/api/admin/users', { cache: 'no-store' });
+        if (!resp.ok) {
+          console.warn('Failed to load users', resp.status);
+          return;
+        }
+        const data = await resp.json();
+        const list = data.users || data.users || [];
+        if (!mounted) return;
+        // Normalize to local shape
+        const mapped = (list || []).map((u: any) => ({
+          id: u.id,
+          name: u.name || u.email || 'Unknown',
+          email: u.email || '',
+          userType: u.user_type || u.userType || 'alumni',
+          role: u.role || 'user',
+          approvalStatus: (u.approval_status || 'approved') as 'pending' | 'approved' | 'rejected',
+          graduationYear: u.graduation_year,
+          major: u.major,
+          company: u.company,
+          jobTitle: u.job_title,
+          location: u.location,
+          registrationCompleted: !!u.registration_completed,
+          createdAt: u.created_at || u.createdAt || new Date().toISOString()
+        }));
+        setUsers(mapped);
+      } catch (e) {
+        console.warn('Error fetching users', e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleRoleChange = (userId: number, newRole: 'user' | 'admin' | 'moderator') => {
     setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
   };
 
-  const handleStatusChange = (userId: number, newStatus: 'pending' | 'approved' | 'rejected') => {
+  const handleStatusChange = async (userId: number, newStatus: 'pending' | 'approved' | 'rejected') => {
+    // Optimistic update
     setUsers(users.map(u => u.id === userId ? { ...u, approvalStatus: newStatus } : u));
+    try {
+      const resp = await fetch('/api/admin/users', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: userId, approval_status: newStatus }) });
+      if (!resp.ok) {
+        console.warn('Approval update failed', resp.status);
+        // revert by refetching
+        const r = await fetch('/api/admin/users', { cache: 'no-store' });
+        const data = await r.json();
+        setUsers((data.users || []).map((u: any) => ({
+          id: u.id,
+          name: u.name || u.email || 'Unknown',
+          email: u.email || '',
+          userType: u.user_type || u.userType || 'alumni',
+          role: u.role || 'user',
+          approvalStatus: (u.approval_status || 'approved') as 'pending' | 'approved' | 'rejected',
+          graduationYear: u.graduation_year,
+          major: u.major,
+          company: u.company,
+          jobTitle: u.job_title,
+          location: u.location,
+          registrationCompleted: !!u.registration_completed,
+          createdAt: u.created_at || u.createdAt || new Date().toISOString()
+        })));
+      }
+    } catch (e) {
+      console.warn('Approval update error', e);
+    }
   };
 
   const handleDeleteUser = (userId: number) => {
