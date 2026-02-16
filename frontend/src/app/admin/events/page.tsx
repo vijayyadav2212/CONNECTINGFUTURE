@@ -1,104 +1,118 @@
 "use client";
 
-import React, { useState } from 'react';
-import AdminNavigation from '../AdminNavigation';
-import { 
-  Calendar, Search, Filter, CheckCircle, XCircle, 
-  Clock, Eye, Plus, Edit, Trash2, MapPin, Users, 
-  Video, ExternalLink 
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import AdminNavigation from '../AdminNavigation';
+import { Plus, AlertCircle, CheckCircle, Clock, XCircle, Search, Filter, Calendar, Video, MapPin, Users, ExternalLink, Eye, Edit, Trash2 } from 'lucide-react';
 
 interface Event {
   id: number;
   title: string;
   description: string;
-  eventType: 'webinar' | 'workshop' | 'networking' | 'meetup' | 'conference';
-  location?: string;
-  isVirtual: boolean;
-  virtualLink?: string;
-  startDate: string;
-  endDate?: string;
-  maxAttendees?: number;
-  registrationUrl?: string;
-  postedBy: string;
-  postedByEmail: string;
-  approvalStatus: 'pending' | 'approved' | 'rejected';
-  isActive: boolean;
+  event_date: string;
+  event_time: string;
+  duration: string;
+  location: string;
+  event_type: string;
+  is_virtual: boolean;
+  tags: string;
+  organizer: string;
+  max_attendees: number;
+  current_attendees: number;
+  price: number;
+  approval_status: string;
 }
 
 export default function EventManagementPage() {
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [eventsLoading, setEventsLoading] = useState(true);
 
-  // Mock data
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: 1,
-      title: 'Tech Talk: AI in Industry',
-      description: 'Join us for an insightful discussion on how AI is transforming various industries.',
-      eventType: 'webinar',
-      isVirtual: true,
-      virtualLink: 'https://meet.google.com/xyz',
-      startDate: 'Feb 15, 2026 • 6:00 PM',
-      maxAttendees: 100,
-      registrationUrl: 'https://events.com/register',
-      postedBy: 'John Doe',
-      postedByEmail: 'john@example.com',
-      approvalStatus: 'pending',
-      isActive: true
-    },
-    {
-      id: 2,
-      title: 'Alumni Networking Meetup',
-      description: 'Connect with fellow alumni in your city over coffee and conversations.',
-      eventType: 'networking',
-      location: 'Starbucks, Bandra, Mumbai',
-      isVirtual: false,
-      startDate: 'Feb 20, 2026 • 4:00 PM',
-      endDate: 'Feb 20, 2026 • 7:00 PM',
-      maxAttendees: 50,
-      postedBy: 'Jane Smith',
-      postedByEmail: 'jane@example.com',
-      approvalStatus: 'pending',
-      isActive: true
-    },
-    {
-      id: 3,
-      title: 'Career Workshop: Resume Building',
-      description: 'Learn expert tips on creating impactful resumes that get noticed.',
-      eventType: 'workshop',
-      isVirtual: true,
-      virtualLink: 'https://zoom.us/j/12345',
-      startDate: 'Feb 18, 2026 • 5:00 PM',
-      postedBy: 'Mike Johnson',
-      postedByEmail: 'mike@example.com',
-      approvalStatus: 'approved',
-      isActive: true
-    },
-  ]);
+  // Fetch events from backend
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
-  const handleApprove = (eventId: number) => {
-    setEvents(events.map(e => 
-      e.id === eventId ? { ...e, approvalStatus: 'approved' as const } : e
-    ));
+  const fetchEvents = async () => {
+    try {
+      setEventsLoading(true);
+      const response = await fetch('http://localhost:4000/api/events');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('admin fetched events:', data);
+        setEvents(data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err);
+    } finally {
+      setEventsLoading(false);
+    }
   };
 
-  const handleReject = (eventId: number) => {
-    setEvents(events.map(e => 
-      e.id === eventId ? { ...e, approvalStatus: 'rejected' as const } : e
-    ));
+  const handleApprove = async (eventId: number) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_status: 'approved' })
+      });
+      if (response.ok) {
+        await fetchEvents();
+        setMessage({ type: 'success', text: 'Event approved successfully!' });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to approve event' });
+      }
+    } catch (err) {
+      console.error('Error approving event:', err);
+      setMessage({ type: 'error', text: 'Error approving event' });
+    }
   };
 
-  const handleDelete = (eventId: number) => {
-    setEvents(events.filter(e => e.id !== eventId));
+  const handleReject = async (eventId: number) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_status: 'rejected' })
+      });
+      if (response.ok) {
+        await fetchEvents();
+        setMessage({ type: 'success', text: 'Event rejected successfully!' });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to reject event' });
+      }
+    } catch (err) {
+      console.error('Error rejecting event:', err);
+      setMessage({ type: 'error', text: 'Error rejecting event' });
+    }
+  };
+
+  const handleDelete = async (eventId: number) => {
+    if (confirm('Are you sure you want to delete this event?')) {
+      try {
+        const response = await fetch(`http://localhost:4000/api/events/${eventId}`, {
+          method: 'DELETE'
+        });
+        if (response.ok) {
+          await fetchEvents();
+          setMessage({ type: 'success', text: 'Event deleted successfully!' });
+        } else {
+          setMessage({ type: 'error', text: 'Failed to delete event' });
+        }
+      } catch (err) {
+        console.error('Error deleting event:', err);
+        setMessage({ type: 'error', text: 'Error deleting event' });
+      }
+    }
   };
 
   const filteredEvents = events.filter(event => {
-    const matchesFilter = filter === 'all' || event.approvalStatus === filter;
-    const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.eventType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filter === 'all' || event.approval_status === filter;
+    const matchesSearch = (event.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (event.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (event.event_type || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -129,6 +143,30 @@ export default function EventManagementPage() {
   return (
     <AdminNavigation>
       <div className="space-y-6">
+        {/* Message Alert */}
+        {message && (
+          <div className={`p-4 rounded-lg flex items-center space-x-3 ${
+            message.type === 'success' 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            {message.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            )}
+            <p className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+              {message.text}
+            </p>
+            <button
+              onClick={() => setMessage(null)}
+              className="ml-auto text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -176,7 +214,7 @@ export default function EventManagementPage() {
                   filter === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Pending ({events.filter(e => e.approvalStatus === 'pending').length})
+                Pending ({events.filter(e => e.approval_status === 'pending').length})
               </button>
               <button
                 onClick={() => setFilter('approved')}
@@ -184,7 +222,7 @@ export default function EventManagementPage() {
                   filter === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Approved ({events.filter(e => e.approvalStatus === 'approved').length})
+                Approved ({events.filter(e => e.approval_status === 'approved').length})
               </button>
               <button
                 onClick={() => setFilter('rejected')}
@@ -192,7 +230,7 @@ export default function EventManagementPage() {
                   filter === 'rejected' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Rejected ({events.filter(e => e.approvalStatus === 'rejected').length})
+                Rejected ({events.filter(e => e.approval_status === 'rejected').length})
               </button>
             </div>
           </div>
@@ -200,7 +238,12 @@ export default function EventManagementPage() {
 
         {/* Events List */}
         <div className="grid grid-cols-1 gap-4">
-          {filteredEvents.length === 0 ? (
+          {eventsLoading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading events...</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No events found</h3>
@@ -223,9 +266,9 @@ export default function EventManagementPage() {
                           <h3 className="text-xl font-bold text-gray-900">{event.title}</h3>
                           <div className="flex items-center space-x-3 mt-2">
                             <span className="flex items-center text-gray-700 font-medium">
-                              <Calendar className="w-4 h-4 mr-1" />{event.startDate}
+                              <Calendar className="w-4 h-4 mr-1" />{event.event_date}
                             </span>
-                            {event.isVirtual ? (
+                            {event.is_virtual ? (
                               <span className="flex items-center text-blue-600">
                                 <Video className="w-4 h-4 mr-1" />Virtual Event
                               </span>
@@ -237,16 +280,16 @@ export default function EventManagementPage() {
                           </div>
                         </div>
                         <div className="ml-4">
-                          {getStatusBadge(event.approvalStatus)}
+                          {getStatusBadge(event.approval_status)}
                         </div>
                       </div>
 
                       {/* Event Details */}
                       <div className="flex items-center space-x-3 mt-3">
-                        {getEventTypeBadge(event.eventType)}
-                        {event.maxAttendees && (
+                        {getEventTypeBadge(event.event_type)}
+                        {event.max_attendees && (
                           <span className="flex items-center text-gray-600 text-sm">
-                            <Users className="w-4 h-4 mr-1" />Max {event.maxAttendees} attendees
+                            <Users className="w-4 h-4 mr-1" />Max {event.max_attendees} attendees
                           </span>
                         )}
                       </div>
@@ -256,30 +299,20 @@ export default function EventManagementPage() {
 
                       {/* Posted Info */}
                       <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
-                        <span>Posted by {event.postedBy}</span>
+                        <span>Posted by {event.organizer}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
                   <div className="flex items-center space-x-2 ml-4">
-                    {(event.registrationUrl || event.virtualLink) && (
-                      <a
-                        href={event.registrationUrl || event.virtualLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors text-sm flex items-center"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
                     <button className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm flex items-center">
                       <Eye className="w-4 h-4" />
                     </button>
                     <button className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors text-sm flex items-center">
                       <Edit className="w-4 h-4" />
                     </button>
-                    {event.approvalStatus === 'pending' && (
+                    {event.approval_status === 'pending' && (
                       <>
                         <button
                           onClick={() => handleApprove(event.id)}

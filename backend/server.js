@@ -1,531 +1,4 @@
-/* Legacy MySQL server block disabled
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { expressjwt: jwt } = require('express-jwt');
-const jwksRsa = require('jwks-rsa');
-const mysql = require('mysql2');
 
-require('dotenv').config({ path: __dirname + '/.env' });
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// MySQL connection
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'mockapp_db',
-  port: process.env.DB_PORT || 3306,
-});
-
-db.connect((err) => {
-  if (err) {
-    console.error('MySQL connection error:', err);
-    console.log('Please check your MySQL configuration in .env file');
-    console.log('Current config:', {
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      database: process.env.DB_NAME || 'connectingfuture',
-      port: process.env.DB_PORT || 3306,
-      passwordSet: !!process.env.DB_PASSWORD
-    });
-  } else {
-    console.log('Connected to MySQL database');
-    // Initialize tables if they don't exist
-    initializeTables();
-  }
-});
-
-// Initialize database tables
-function initializeTables() {
-  // Check if the donations table has the right structure
-  db.query('DESCRIBE donations', (err, results) => {
-    if (err) {
-      console.log('Donations table does not exist, creating new one...');
-      createNewDonationsTable();
-    } else {
-      console.log('Existing donations table found with structure:', results.map(r => r.Field));
-      
-      // Check if it has the columns we need
-      const existingColumns = results.map(r => r.Field);
-      const requiredColumns = ['donor_name', 'donor_email'];
-      const hasRequiredColumns = requiredColumns.every(col => existingColumns.includes(col));
-      
-      if (!hasRequiredColumns) {
-        console.log('Existing table structure is different. Adding missing columns...');
-        alterExistingTable();
-      } else {
-        console.log('Donations table structure is compatible');
-      }
-    }
-  });
-}
-
-// Alter existing table to add missing columns
-function alterExistingTable() {
-  const alterQueries = [
-    "ALTER TABLE donations ADD COLUMN donor_name VARCHAR(255) DEFAULT ''",
-    "ALTER TABLE donations ADD COLUMN donor_email VARCHAR(255) DEFAULT ''", 
-    "ALTER TABLE donations ADD COLUMN donor_phone VARCHAR(20)",
-    "ALTER TABLE donations ADD COLUMN currency VARCHAR(3) DEFAULT 'INR'",
-    "ALTER TABLE donations ADD COLUMN payment_method VARCHAR(50) DEFAULT 'razorpay'",
-    "ALTER TABLE donations ADD COLUMN razorpay_order_id VARCHAR(255)",
-    "ALTER TABLE donations ADD COLUMN razorpay_payment_id VARCHAR(255)",
-    "ALTER TABLE donations ADD COLUMN razorpay_signature VARCHAR(255)",
-    "ALTER TABLE donations ADD COLUMN transaction_status VARCHAR(20) DEFAULT 'completed'",
-    "ALTER TABLE donations ADD COLUMN donation_type VARCHAR(20) DEFAULT 'one-time'",
-    "ALTER TABLE donations ADD COLUMN cause_category VARCHAR(100)",
-    "ALTER TABLE donations ADD COLUMN anonymous BOOLEAN DEFAULT FALSE",
-    "ALTER TABLE donations ADD COLUMN message TEXT",
-    "ALTER TABLE donations ADD COLUMN receipt_sent BOOLEAN DEFAULT FALSE"
-  ];
-
-  let completed = 0;
-  alterQueries.forEach((query, index) => {
-    db.query(query, (err) => {
-      if (err && !err.message.includes('Duplicate column name')) {
-        console.error(`Error in alter query ${index + 1}:`, err.message);
-      } else if (!err) {
-        console.log(`Added column ${index + 1} successfully`);
-      }
-      completed++;
-      if (completed === alterQueries.length) {
-        console.log('Table structure update completed');
-        // Update existing records to have donor_email = user_email if empty
-        updateExistingRecords();
-      }
-    });
-  });
-}
-
-// Update existing records to map user_email to donor_email
-function updateExistingRecords() {
-  // First check if both columns exist
-  db.query('DESCRIBE donations', (err, results) => {
-    if (err) {
-      console.error('Error checking table structure:', err.message);
-      return;
-    }
-    
-    const columns = results.map(r => r.Field);
-    const hasUserEmail = columns.includes('user_email');
-    const hasDonorEmail = columns.includes('donor_email');
-    
-    if (hasUserEmail && hasDonorEmail) {
-      // Update donor_email from user_email where donor_email is empty
-      db.query(`
-        UPDATE donations 
-        SET donor_email = user_email, 
-            donor_name = COALESCE(NULLIF(donor_name, ''), 'Anonymous Donor'),
-            transaction_status = CASE 
-              WHEN status = 'completed' THEN 'completed'
-              WHEN status = 'pending' THEN 'pending'
-              WHEN status = 'failed' THEN 'failed'
-              ELSE 'completed'
-            END
-        WHERE donor_email = '' OR donor_email IS NULL
-      `, (err, result) => {
-        if (err) {
-          console.error('Error updating existing records:', err.message);
-        } else {
-          console.log(`Updated ${result.affectedRows} existing donation records`);
-        }
-      });
-    } else {
-      console.log('Table structure update complete - no existing records to migrate');
-    }
-  });
-}
-
-// Create new donations table (fallback)
-function createNewDonationsTable() {
-  const createDonationsTable = `
-    CREATE TABLE IF NOT EXISTS donations (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      donor_name VARCHAR(255) NOT NULL,
-      donor_email VARCHAR(255) NOT NULL,
-      donor_phone VARCHAR(20),
-      amount DECIMAL(10, 2) NOT NULL,
-      currency VARCHAR(3) DEFAULT 'INR',
-      payment_method VARCHAR(50) NOT NULL,
-      payment_id VARCHAR(255) UNIQUE,
-      razorpay_order_id VARCHAR(255),
-      razorpay_payment_id VARCHAR(255),
-      razorpay_signature VARCHAR(255),
-      transaction_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
-      donation_type ENUM('one-time', 'monthly', 'yearly') DEFAULT 'one-time',
-      cause_category VARCHAR(100),
-      anonymous BOOLEAN DEFAULT FALSE,
-      message TEXT,
-      receipt_sent BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_donor_email (donor_email),
-      INDEX idx_payment_id (payment_id),
-      INDEX idx_transaction_status (transaction_status),
-      INDEX idx_created_at (created_at)
-    )
-  `;
-
-  db.query(createDonationsTable, (err) => {
-    if (err) {
-      console.error('Error creating donations table:', err);
-    } else {
-      console.log('New donations table created successfully');
-    }
-  });
-}
-
-// Auth0 JWT middleware
-const checkJwt = jwt({
-  secret: jwksRsa.expressJwtSecret({
-    cache: true,
-    rateLimit: true,
-    jwksRequestsPerMinute: 5,
-    jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
-  }),
-  audience: process.env.AUTH0_AUDIENCE,
-  issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-  algorithms: ['RS256'],
-});
-
-// Public routes (no authentication required)
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Alumni Portal API',
-    status: 'running',
-    version: '1.0.0',
-    endpoints: {
-      public: ['/api/health'],
-      protected: ['/api/protected', '/api/users', '/api/users/profile', '/api/data/:table']
-    }
-  });
-});
-
-app.get('/api/health', (req, res) => {
-  const dbStatus = dbHelpers ? 'connected' : 'disconnected';
-  res.json({ 
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    database: dbStatus,
-    auth0: {
-      domain: process.env.AUTH0_DOMAIN ? 'configured' : 'not configured',
-      audience: process.env.AUTH0_AUDIENCE ? 'configured' : 'not configured'
-    }
-  });
-});
-
-// Protected route example
-app.get('/api/protected', checkJwt, (req, res) => {
-  res.json({ message: 'You are authenticated', user: req.auth });
-});
-
-// Store user info after login (example endpoint)
-app.post('/api/users', checkJwt, (req, res) => {
-  const { sub, email } = req.body;
-  if (!sub || !email) {
-    return res.status(400).json({ error: 'Missing user info' });
-  }
-  db.query(
-    'INSERT INTO users (auth0_id, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE email = VALUES(email)',
-    [sub, email],
-    (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error', details: err });
-      }
-      res.json({ message: 'User stored/updated', results });
-    }
-  );
-});
-
-// Donation endpoints
-app.get('/api/donations', (req, res) => {
-  const { page = 1, limit = 10, status, donor_email } = req.query;
-  const offset = (page - 1) * limit;
-  
-  let query = 'SELECT * FROM donations';
-  let countQuery = 'SELECT COUNT(*) as total FROM donations';
-  let params = [];
-  let countParams = [];
-  
-  const whereConditions = [];
-  
-  if (status) {
-    whereConditions.push('transaction_status = ?');
-    params.push(status);
-    countParams.push(status);
-  }
-  
-  if (donor_email) {
-    whereConditions.push('donor_email = ?');
-    params.push(donor_email);
-    countParams.push(donor_email);
-  }
-  
-  if (whereConditions.length > 0) {
-    const whereClause = ' WHERE ' + whereConditions.join(' AND ');
-    query += whereClause;
-    countQuery += whereClause;
-  }
-  
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-  params.push(parseInt(limit), parseInt(offset));
-  
-  // Get total count
-  db.query(countQuery, countParams, (err, countResult) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    
-    const total = countResult[0].total;
-    
-    // Get paginated results
-    db.query(query, params, (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      
-      res.json({
-        donations: results,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      });
-    });
-  });
-});
-
-app.post('/api/donations', (req, res) => {
-  const {
-    donor_name,
-    donor_email,
-    donor_phone,
-    amount,
-    currency = 'INR',
-    payment_method,
-    payment_id,
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-    transaction_status = 'pending',
-    donation_type = 'one-time',
-    cause_category,
-    anonymous = false,
-    message
-  } = req.body;
-
-  // Validation
-  if (!donor_name || !donor_email || !amount || !payment_method) {
-    return res.status(400).json({ 
-      error: 'Missing required fields: donor_name, donor_email, amount, payment_method' 
-    });
-  }
-
-  const query = `
-    INSERT INTO donations (
-      donor_name, donor_email, user_email, donor_phone, amount, currency, payment_method,
-      payment_id, order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-      transaction_status, donation_type, cause_category, anonymous, message, description
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  const values = [
-    donor_name, donor_email, donor_email, donor_phone, amount, currency, payment_method,
-    payment_id, razorpay_order_id || payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-    transaction_status, donation_type, cause_category, anonymous, message, message
-  ];
-
-  db.query(query, values, (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    
-    res.status(201).json({
-      id: result.insertId,
-      donor_name,
-      donor_email,
-      amount,
-      transaction_status,
-      created_at: new Date().toISOString()
-    });
-  });
-});
-
-app.get('/api/donations/:id', (req, res) => {
-  const { id } = req.params;
-  
-  db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Donation not found' });
-    }
-    
-    res.json(results[0]);
-  });
-});
-
-app.put('/api/donations/:id', (req, res) => {
-  const { id } = req.params;
-  const updates = req.body;
-  
-  // Get current donation
-  db.query('SELECT * FROM donations WHERE id = ?', [id], (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Donation not found' });
-    }
-    
-    // Build update query
-    const allowedFields = [
-      'donor_name', 'donor_email', 'donor_phone', 'transaction_status',
-      'razorpay_payment_id', 'razorpay_signature', 'receipt_sent', 'message'
-    ];
-    
-    const updateFields = [];
-    const values = [];
-    
-    allowedFields.forEach(field => {
-      if (updates[field] !== undefined) {
-        updateFields.push(`${field} = ?`);
-        values.push(updates[field]);
-      }
-    });
-    
-    if (updateFields.length === 0) {
-      return res.status(400).json({ error: 'No valid fields to update' });
-    }
-    
-    values.push(id);
-    const query = `UPDATE donations SET ${updateFields.join(', ')} WHERE id = ?`;
-    
-    db.query(query, values, (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      
-      res.json({ message: 'Donation updated successfully' });
-    });
-  });
-});
-
-app.delete('/api/donations/:id', (req, res) => {
-  const { id } = req.params;
-  
-  db.query('DELETE FROM donations WHERE id = ?', [id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Donation not found' });
-    }
-    
-    res.json({ message: 'Donation deleted successfully' });
-  });
-});
-
-// Analytics endpoint
-app.get('/api/donations/analytics/summary', (req, res) => {
-  const queries = {
-    totalAmount: 'SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE transaction_status = "completed"',
-    totalDonations: 'SELECT COUNT(*) as count FROM donations WHERE transaction_status = "completed"',
-    monthlyAmount: `
-      SELECT COALESCE(SUM(amount), 0) as total 
-      FROM donations 
-      WHERE transaction_status = "completed" 
-      AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-    `,
-    monthlyDonations: `
-      SELECT COUNT(*) as count 
-      FROM donations 
-      WHERE transaction_status = "completed" 
-      AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-    `
-  };
-
-  const results = {};
-  let completed = 0;
-  const totalQueries = Object.keys(queries).length;
-
-  Object.entries(queries).forEach(([key, query]) => {
-    db.query(query, (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      
-      results[key] = result[0];
-      completed++;
-      
-      if (completed === totalQueries) {
-        res.json({
-          totalDonationAmount: results.totalAmount.total,
-          totalDonations: results.totalDonations.count,
-          monthlyDonationAmount: results.monthlyAmount.total,
-          monthlyDonations: results.monthlyDonations.count
-        });
-      }
-    });
-  });
-});
-
-
-// 1. GET ALL EVENTS
-app.get('/api/events', (req, res) => {
-  // matches your NEW database schema names
-  const query = "SELECT * FROM events ORDER BY event_date DESC";
-  
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Database Error:", err);
-      return res.status(500).json({ error: "Failed to fetch events" });
-    }
-    res.json(results);
-  });
-});
-
-// 2. CREATE EVENT
-app.post('/api/events', (req, res) => {
-  // We use the NEW variable names from your schema
-  const { title, description, event_date, location, event_type, is_virtual } = req.body;
-  
-  // Temporary: Use a fake Admin ID until login is finished
-  const user_auth0_id = 'auth0|test_admin_123'; 
-
-  const sql = `
-    INSERT INTO events 
-    (user_auth0_id, title, description, event_date, location, event_type, is_virtual)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
-  
-  const values = [user_auth0_id, title, description, event_date, location, event_type, is_virtual];
-
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error("Save Error:", err);
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ message: "Success", id: result.insertId });
-  });
-});
-
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check available at: http://localhost:${PORT}/api/health`);
-}); 
-*/
 
 const express = require('express');
 const cors = require('cors');
@@ -534,11 +7,12 @@ const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const nodemailer = require('nodemailer'); // For sending emails
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const crypto = require('crypto');
 // Use global fetch if available (Node >= 18); otherwise lazy-load node-fetch
-const fetchFn = (global.fetch ? global.fetch : ((...args) => import('node-fetch').then(({default: f}) => f(...args))));
+const fetchFn = (global.fetch ? global.fetch : ((...args) => import('node-fetch').then(({ default: f }) => f(...args))));
 const fetch = (...args) => fetchFn(...args);
 
 // Modularized DB schema creators
@@ -546,10 +20,10 @@ const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
-  const { createJobsSchema } = require('./database/jobs');
-  const { createApplicationsSchema } = require('./database/applications');
-  const { createMentorshipSchema } = require('./database/mentorship');
-  const { createAcademicProgressSchema } = require('./database/academicProgress');
+const { createJobsSchema } = require('./database/jobs');
+const { createApplicationsSchema } = require('./database/applications');
+const { createMentorshipSchema } = require('./database/mentorship');
+const { createAcademicProgressSchema } = require('./database/academicProgress');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -562,8 +36,62 @@ const resumesDir = path.join(uploadsRoot, 'resumes');
 try {
   if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
   if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
-} catch {}
+} catch { }
 app.use('/uploads', express.static(uploadsRoot));
+
+// Event image upload configuration
+const eventImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(uploadsRoot, 'events');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '';
+    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
+    cb(null, `${base}_${Date.now()}${ext}`);
+  }
+});
+const eventImageUpload = multer({
+  storage: eventImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) return cb(null, true);
+    return cb(new Error('Only image files allowed'));
+  }
+});
+
+app.post('/api/uploads/event-image', eventImageUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Image file is required' });
+  const url = `${req.protocol}://${req.get('host')}/uploads/events/${req.file.filename}`;
+  return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+});
+
+// 1. GET ALL EVENTS
+app.get('/api/events', async (req, res) => {
+  const { user_email } = req.query;
+  const query = "SELECT * FROM events ORDER BY event_date DESC";
+
+  try {
+    const eventsRes = await dbQuery(query);
+    let events = eventsRes.rows;
+
+    if (user_email) {
+      const registrationsRes = await dbQuery('SELECT event_id FROM event_registrations WHERE user_email = ?', [user_email]);
+      const registeredEventIds = new Set(registrationsRes.rows.map(r => r.event_id));
+
+      events = events.map(event => ({
+        ...event,
+        isRegistered: registeredEventIds.has(event.id)
+      }));
+    }
+
+    res.json(events);
+  } catch (err) {
+    console.error("Database Error:", err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
+});
 
 /**
  * Auth0 Management API helpers
@@ -589,9 +117,9 @@ async function getManagementToken() {
     client_id: MGMT_CLIENT_ID,
     client_secret: MGMT_CLIENT_SECRET,
     audience: `https://${AUTH0_DOMAIN}/api/v2/`,
-  grant_type: 'client_credentials',
-  // Ensure token has required scopes for user reads
-  scope: process.env.AUTH0_MGMT_SCOPES || 'read:users read:users_app_metadata'
+    grant_type: 'client_credentials',
+    // Ensure token has required scopes for user reads
+    scope: process.env.AUTH0_MGMT_SCOPES || 'read:users read:users_app_metadata'
   };
   const resp = await fetch(url, {
     method: 'POST',
@@ -656,24 +184,31 @@ function deriveRole(email) {
 const useConnectionString = !!process.env.DATABASE_URL;
 const db = useConnectionString
   ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    })
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  })
   : new Pool({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'mockapp_db',
-      port: Number(process.env.DB_PORT) || 5432,
-      ssl: /true|require/i.test(String(process.env.DB_SSL || 'false')) ? { rejectUnauthorized: false } : undefined,
-    });
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'mockapp_db',
+    port: Number(process.env.DB_PORT) || 5432,
+    ssl: /true|require/i.test(String(process.env.DB_SSL || 'false')) ? { rejectUnauthorized: false } : undefined,
+  });
+
+// Prevent unhandled pool errors from crashing the process; log and continue
+try {
+  db.on && db.on('error', (err) => {
+    console.warn('Postgres pool error:', err && err.message ? err.message : err);
+  });
+} catch (e) { }
 
 // Ensure DB session timezone is IST for all connections (affects SQL timezone-sensitive functions)
 try {
   db.on('connect', (client) => {
-    client.query("SET TIME ZONE 'Asia/Kolkata'").catch(() => {});
+    client.query("SET TIME ZONE 'Asia/Kolkata'").catch(() => { });
   });
-} catch {}
+} catch { }
 
 async function dbQuery(text, params = []) {
   // Convert MySQL-style '?' placeholders to Postgres-style $1, $2 ...
@@ -700,7 +235,7 @@ checkDb((ok) => {
     console.warn('Postgres not connected at startup. Will continue and serve limited features.');
     console.log('Please check your Postgres/Neon configuration in .env file');
     if (useConnectionString) {
-      const redacted = (process.env.DATABASE_URL || '').replace(/:\\?[^:@/]+@/,'://***@');
+      const redacted = (process.env.DATABASE_URL || '').replace(/:\\?[^:@/]+@/, '://***@');
       console.log('Using DATABASE_URL:', redacted);
     } else {
       console.log('Current config:', {
@@ -746,14 +281,63 @@ async function initializeTables() {
     `);
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_email ON users(email)');
-  await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
-  // Initialize modularized schemas 
-  await createMessagesSchema(dbQuery);
-  await createDonationsSchema(dbQuery);
-  await createRoadmapsSchema(dbQuery);
-  await createConnectionsSchema(dbQuery);
+    await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
+    // Initialize modularized schemas 
+    await createMessagesSchema(dbQuery);
+    await createDonationsSchema(dbQuery);
+    await createRoadmapsSchema(dbQuery);
+    await createConnectionsSchema(dbQuery);
+    // Create events table (Postgres) if missing
+    await dbQuery(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      user_auth0_id VARCHAR(255) NULL,
+      title VARCHAR(1024) NOT NULL,
+      description TEXT,
+      event_date TIMESTAMPTZ,
+      event_time VARCHAR(64),
+      duration VARCHAR(64),
+      location VARCHAR(512),
+      event_type VARCHAR(128),
+      is_virtual BOOLEAN DEFAULT FALSE,
+      image_url TEXT,
+      tags TEXT,
+      organizer VARCHAR(255),
+      max_attendees INT,
+      current_attendees INT DEFAULT 0,
+      price NUMERIC(10,2) DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
-  console.log('Tables are ready');
+    // Ensure columns exist (migration for existing tables)
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_time VARCHAR(64)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS duration VARCHAR(64)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location VARCHAR(512)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type VARCHAR(128)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_virtual BOOLEAN DEFAULT FALSE`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS tags TEXT`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer VARCHAR(255)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS approval_status VARCHAR(64) DEFAULT 'pending'`);
+    // Auto-approve existing pending events to match new policy
+    await dbQuery(`UPDATE events SET approval_status = 'approved' WHERE approval_status = 'pending'`);
+
+    // Create event_registrations table
+    await dbQuery(`
+    CREATE TABLE IF NOT EXISTS event_registrations (
+      id SERIAL PRIMARY KEY,
+      event_id INT NOT NULL,
+      user_email VARCHAR(255) NOT NULL,
+      user_name VARCHAR(255),
+      registered_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(event_id, user_email)
+    )`);
+
+
+
+    console.log('Tables are ready');
   } catch (e) {
     console.error('DB init error:', e.message);
   }
@@ -791,6 +375,91 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// GET all events for frontend
+app.get('/api/events', async (req, res) => {
+  try {
+    const q = `SELECT id, title, description, event_date, event_time, duration, location, is_virtual, event_type, image_url, tags, organizer, max_attendees, current_attendees, price, approval_status FROM events ORDER BY created_at DESC`;
+    const { rows } = await dbQuery(q, []);
+    const mapped = (rows || []).map(r => ({
+      id: r.id ? String(r.id) : '',
+      title: r.title || '',
+      description: r.description || '',
+      event_date: r.event_date ? new Date(r.event_date).toISOString() : null,
+      event_time: r.event_time || '',
+      duration: r.duration || '',
+      location: r.location || '',
+      is_virtual: !!r.is_virtual,
+      event_type: r.event_type || '',
+      image_url: r.image_url || '',
+      tags: r.tags ? (Array.isArray(r.tags) ? r.tags : String(r.tags).split(',').map(s => s.trim()).filter(Boolean)) : [],
+      organizer: r.organizer || '',
+      max_attendees: r.max_attendees || null,
+      current_attendees: r.current_attendees || 0,
+      price: r.price || 0,
+      approval_status: r.approval_status || 'pending'
+    }));
+    return res.json(mapped);
+  } catch (e) {
+    console.error('Events fetch error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to fetch events' });
+  }
+});
+
+// PATCH update event (partial updates) - supports approval_status updates
+app.patch('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body || {};
+    const allowed = ['approval_status', 'title', 'description', 'event_date', 'event_time', 'duration', 'location', 'is_virtual', 'event_type', 'image_url', 'tags', 'organizer', 'max_attendees', 'current_attendees', 'price'];
+    const fields = [];
+    const params = [];
+    Object.keys(updates).forEach(key => {
+      if (allowed.includes(key)) {
+        fields.push(`${key} = ?`);
+        params.push(updates[key]);
+      }
+    });
+    if (fields.length === 0) return res.status(400).json({ error: 'No updatable fields provided' });
+    params.push(id);
+    const q = `UPDATE events SET ${fields.join(', ')} WHERE id = ? RETURNING id`;
+    const { rows } = await dbQuery(q, params);
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    return res.json({ message: 'Event updated', id });
+  } catch (e) {
+    console.error('Event update error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to update event' });
+  }
+});
+
+// DELETE all events (development/admin only)
+app.delete('/api/events/clear-all/confirm', async (req, res) => {
+  try {
+    await dbQuery('DELETE FROM events');
+    return res.json({ message: 'All events cleared successfully' });
+  } catch (e) {
+    console.error('Events clear error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to clear events' });
+  }
+});
+
+
+
+// DELETE single event
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const q = `DELETE FROM events WHERE id = ? RETURNING id`;
+    const { rows } = await dbQuery(q, [id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    return res.json({ message: 'Event deleted successfully', id });
+  } catch (e) {
+    console.error('Event deletion error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to delete event' });
+  }
+});
+
 // Protected route example
 app.get('/api/protected', checkJwt, (req, res) => {
   res.json({ message: 'You are authenticated', user: req.auth });
@@ -808,7 +477,7 @@ const upload = multer({
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname) || '';
       const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-      const fname = `${Date.now()}_${Math.random().toString(36).slice(2,8)}_${base}${ext}`;
+      const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`;
       cb(null, fname);
     },
   }),
@@ -851,7 +520,7 @@ app.post('/api/users', checkJwt, (req, res) => {
 
 // Get current user's profile (requires Auth0 JWT)
 app.get('/api/users/profile', checkJwt, (req, res) => {
-  try { console.log('Profile request auth:', req.auth); } catch {}
+  try { console.log('Profile request auth:', req.auth); } catch { }
   const auth0Id = req.auth && req.auth.sub;
   const email = req.auth && req.auth["https://schemas.quickstart/email"] || req.auth && req.auth.email; // best-effort
   if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
@@ -871,7 +540,7 @@ app.get('/api/users/profile', checkJwt, (req, res) => {
     }
 
     // If not present locally, attempt to fetch from Auth0 Management API and seed the DB
-  if (!rows || rows.length === 0) {
+    if (!rows || rows.length === 0) {
       try {
         const auth0User = await fetchAuth0User(auth0Id);
         let seeded = null;
@@ -909,13 +578,13 @@ app.get('/api/users/profile', checkJwt, (req, res) => {
     // Backfill role if missing
     if (!u.user_type && email) {
       const role = deriveRole(email);
-      dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [role, auth0Id]).catch(()=>{});
+      dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [role, auth0Id]).catch(() => { });
       u.user_type = role;
     } else if (email) {
       // Auto-correct role based on domain/email rules (don't downgrade admins)
       const expected = deriveRole(email);
       if (u.user_type !== expected && u.user_type !== 'admin') {
-        dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [expected, auth0Id]).catch(()=>{});
+        dbQuery('UPDATE users SET user_type = ? WHERE auth0_id = ?', [expected, auth0Id]).catch(() => { });
         u.user_type = expected;
       }
     }
@@ -1085,8 +754,8 @@ app.post('/api/donations', (req, res) => {
 
   // Validation
   if (!donor_name || !donor_email || !amount || !payment_method) {
-    return res.status(400).json({ 
-      error: 'Missing required fields: donor_name, donor_email, amount, payment_method' 
+    return res.status(400).json({
+      error: 'Missing required fields: donor_name, donor_email, amount, payment_method'
     });
   }
 
@@ -1122,7 +791,7 @@ app.post('/api/donations', (req, res) => {
 
 app.get('/api/donations/:id', (req, res) => {
   const { id } = req.params;
-  
+
   dbQuery(`SELECT donations.*, (donations.created_at AT TIME ZONE 'Asia/Kolkata') AS created_at_ist, (donations.updated_at AT TIME ZONE 'Asia/Kolkata') AS updated_at_ist FROM donations WHERE id = ?`, [id])
     .then(({ rows }) => {
       if (!rows || rows.length === 0) return res.status(404).json({ error: 'Donation not found' });
@@ -1134,7 +803,7 @@ app.get('/api/donations/:id', (req, res) => {
 app.put('/api/donations/:id', (req, res) => {
   const { id } = req.params;
   const updates = req.body;
-  
+
   // Get current donation
   dbQuery('SELECT * FROM donations WHERE id = ?', [id]).then(({ rows }) => {
     if (!rows || rows.length === 0) {
@@ -1145,21 +814,21 @@ app.put('/api/donations/:id', (req, res) => {
       'donor_name', 'donor_email', 'donor_phone', 'transaction_status',
       'razorpay_payment_id', 'razorpay_signature', 'receipt_sent', 'message'
     ];
-    
+
     const updateFields = [];
     const values = [];
-    
+
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) {
         updateFields.push(`${field} = ?`);
         values.push(updates[field]);
       }
     });
-    
+
     if (updateFields.length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
-    
+
     values.push(id);
     const query = `UPDATE donations SET ${updateFields.join(', ')} WHERE id = ?`;
     dbQuery(query, values)
@@ -1170,7 +839,7 @@ app.put('/api/donations/:id', (req, res) => {
 
 app.delete('/api/donations/:id', (req, res) => {
   const { id } = req.params;
-  
+
   dbQuery('DELETE FROM donations WHERE id = ?', [id])
     .then(({ rowCount }) => {
       if (!rowCount) return res.status(404).json({ error: 'Donation not found' });
@@ -1204,14 +873,16 @@ app.get('/api/donations/analytics/summary', (req, res) => {
 
   Object.entries(queries).forEach(([key, query]) => {
     dbQuery(query)
-      .then(({ rows }) => { results[key] = rows[0]; completed++; if (completed === totalQueries) {
-        res.json({
-          totalDonationAmount: Number(results.totalAmount.total || 0),
-          totalDonations: Number(results.totalDonations.count || 0),
-          monthlyDonationAmount: Number(results.monthlyAmount.total || 0),
-          monthlyDonations: Number(results.monthlyDonations.count || 0)
-        });
-      }})
+      .then(({ rows }) => {
+        results[key] = rows[0]; completed++; if (completed === totalQueries) {
+          res.json({
+            totalDonationAmount: Number(results.totalAmount.total || 0),
+            totalDonations: Number(results.totalDonations.count || 0),
+            monthlyDonationAmount: Number(results.monthlyAmount.total || 0),
+            monthlyDonations: Number(results.monthlyDonations.count || 0)
+          });
+        }
+      })
       .catch(err => res.status(500).json({ error: err.message }));
   });
 });
@@ -1287,7 +958,7 @@ app.get('/api/roadmaps/:id', async (req, res) => {
 app.put('/api/roadmaps/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ['title','description','category','level','duration','phases','tags','is_published'];
+    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'is_published'];
     const updates = [];
     const values = [];
     for (const key of allowed) {
@@ -1440,9 +1111,9 @@ app.put('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const allowed = [
-      'title','company','location','description','responsibilities','requirements','benefits',
-      'salary_min','salary_max','currency','tags','status','featured','logo','industry','job_type',
-      'is_remote','application_deadline','contact_person','application_method','application_url'
+      'title', 'company', 'location', 'description', 'responsibilities', 'requirements', 'benefits',
+      'salary_min', 'salary_max', 'currency', 'tags', 'status', 'featured', 'logo', 'industry', 'job_type',
+      'is_remote', 'application_deadline', 'contact_person', 'application_method', 'application_url'
     ];
     const updates = [];
     const values = [];
@@ -1581,7 +1252,7 @@ app.put('/api/applications/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
-    const allowed = ['applied','withdrawn','accepted','rejected'];
+    const allowed = ['applied', 'withdrawn', 'accepted', 'rejected'];
     if (!allowed.includes(String(status))) return res.status(400).json({ error: 'Invalid status' });
     // Adjust jobs.applied count only when moving to withdrawn
     if (status === 'withdrawn') {
@@ -1601,7 +1272,7 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check available at: http://localhost:${PORT}/api/health`);
-}); 
+});
 
 /**
  * Messaging with AES-256-GCM encryption at rest
@@ -1684,11 +1355,11 @@ app.get('/api/messages', async (req, res) => {
   }
   const thread_key = buildThreadKey(user, other);
   try {
-  const { rows } = await dbQuery('SELECT * FROM messages WHERE thread_key = ? ORDER BY created_at ASC LIMIT ?', [thread_key, Number(limit)]);
+    const { rows } = await dbQuery('SELECT * FROM messages WHERE thread_key = ? ORDER BY created_at ASC LIMIT ?', [thread_key, Number(limit)]);
 
     // Optionally mark messages addressed to the requester as read (fire-and-forget)
     if (markRead === '1' || markRead === 'true') {
-      dbQuery('UPDATE messages SET read_at = NOW() WHERE thread_key = ? AND receiver_email = ? AND read_at IS NULL', [thread_key, user]).catch(() => {});
+      dbQuery('UPDATE messages SET read_at = NOW() WHERE thread_key = ? AND receiver_email = ? AND read_at IS NULL', [thread_key, user]).catch(() => { });
     }
 
     const messages = (rows || []).map((r) => {
@@ -1822,7 +1493,7 @@ app.post('/api/connections/request', async (req, res) => {
 // Accept / Reject connection
 app.post('/api/connections/respond', async (req, res) => {
   const { user_email, other_email, action } = req.body || {};
-  if (!user_email || !other_email || !['accept','reject'].includes(action)) {
+  if (!user_email || !other_email || !['accept', 'reject'].includes(action)) {
     return res.status(400).json({ error: 'user_email, other_email and action (accept|reject) required' });
   }
   try {
@@ -1874,7 +1545,7 @@ app.post('/api/connections/remove', async (req, res) => {
     const { rows } = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
     if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
     const conn = rows[0];
-    if (!['pending','accepted','rejected'].includes(conn.status)) {
+    if (!['pending', 'accepted', 'rejected'].includes(conn.status)) {
       return res.status(400).json({ error: 'Cannot remove in current state' });
     }
     const { rows: updated } = await dbQuery(`
@@ -1954,7 +1625,7 @@ app.get('/api/users', async (req, res) => {
     const offset = (p - 1) * l;
     const where = [];
     const params = [];
-    if (type && ['student','alumni','admin'].includes(String(type))) {
+    if (type && ['student', 'alumni', 'admin'].includes(String(type))) {
       where.push('user_type = ?');
       params.push(type);
     }
@@ -1985,3 +1656,149 @@ app.get('/api/users/by-email', async (req, res) => {
     return res.status(500).json({ error: e.message });
   }
 });
+
+// --- Events API ---
+
+
+
+
+app.post('/api/events', async (req, res) => {
+  try {
+    const { title, description, event_date, event_time, duration, location, event_type, is_virtual, image_url, tags, organizer } = req.body;
+    console.log("POST /api/events received:", { title, image_url, organizer });
+
+    const user_auth0_id = req.auth?.sub || 'anonymous';
+
+    // Convert array tags to string if needed, or keep as string
+    const tagsVal = Array.isArray(tags) ? tags.join(',') : tags;
+
+    const sqlHelper = `
+      INSERT INTO events 
+      (user_auth0_id, title, description, event_date, event_time, duration, location, event_type, is_virtual, image_url, tags, organizer, approval_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
+    `;
+
+    const values = [
+      user_auth0_id,
+      title,
+      description,
+      event_date,
+      event_time,
+      duration,
+      location,
+      event_type,
+      is_virtual,
+      image_url,
+      tagsVal,
+      organizer,
+      'approved' // Auto-approve all new events
+    ];
+
+    const result = await dbQuery(sqlHelper, values);
+    res.json({ message: "Success", id: result.rows[0].id });
+  } catch (e) {
+    console.error("Event Create Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Register for event
+app.post('/api/events/:id/register', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_email, user_name } = req.body;
+
+    if (!user_email) return res.status(400).json({ error: 'Email is required' });
+
+    // Check if event exists
+    const eventRes = await dbQuery('SELECT * FROM events WHERE id = ?', [id]);
+    const event = eventRes.rows[0];
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    // Check if already registered
+    const check = await dbQuery('SELECT * FROM event_registrations WHERE event_id = ? AND user_email = ?', [id, user_email]);
+    if (check.rows.length > 0) return res.status(400).json({ error: 'Already registered' });
+
+    // Register
+    await dbQuery('INSERT INTO event_registrations (event_id, user_email, user_name) VALUES (?, ?, ?)', [id, user_email, user_name]);
+
+    // Update attendee count
+    await dbQuery('UPDATE events SET current_attendees = current_attendees + 1 WHERE id = ?', [id]);
+
+    // Send Email
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const mode = event.is_virtual ? 'Virtual (Online)' : 'Offline (In-person)';
+      const locationLabel = event.is_virtual ? 'Meeting Link' : 'Venue';
+      const locationValue = event.location || 'TBD';
+      const organizer = event.organizer || 'Alumni Coordinator';
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user_email,
+        subject: `Registration Confirmed: ${event.title}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #4F46E5; padding: 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 24px;">Event Registration Confirmed</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+              <p style="font-size: 16px; color: #333;">Hi ${user_name || 'Student'},</p>
+              <p style="font-size: 16px; color: #333;">You have successfully registered for <strong>${event.title}</strong>.</p>
+              
+              <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <p style="margin: 8px 0; color: #555; font-style: italic;">"${event.description || 'Join us for this exciting event!'}"</p>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;" />
+                <p style="margin: 8px 0;"><strong>📅 Date:</strong> ${new Date(event.event_date).toDateString()}</p>
+                <p style="margin: 8px 0;"><strong>⏰ Time:</strong> ${event.event_time || 'TBD'}</p>
+                <p style="margin: 8px 0;"><strong>📍 Mode:</strong> ${mode}</p>
+                <p style="margin: 8px 0;"><strong>🔗 ${locationLabel}:</strong> ${event.is_virtual ? `<a href="${locationValue}" style="color: #4F46E5;">${locationValue}</a>` : locationValue}</p>
+                <p style="margin: 8px 0;"><strong>👤 Posted By:</strong> ${organizer}</p>
+              </div>
+
+              <p style="font-size: 14px; color: #666;">We look forward to seeing you there!</p>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #999;">
+              ConnectingFuture Alumni Portal
+            </div>
+          </div>
+        `
+      };
+
+      try {
+        await new Promise((resolve, reject) => {
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error('Email error:', error);
+              reject(error);
+            } else {
+              console.log('Email sent:', info.response);
+              resolve(info);
+            }
+          });
+        });
+      } catch (emailErr) {
+        console.error("Failed to send email but registration recorded:", emailErr);
+        // Decide if we want to fail the request or just warn. 
+        // For now, let's keep registration as success but log heavily.
+        // Or actually, let's return a warning in the JSON.
+      }
+    } else {
+      console.log('Skipping email: EMAIL_USER/PASS not set');
+    }
+
+    res.json({ message: 'Registration successful' });
+  } catch (e) {
+    console.error('Registration error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+

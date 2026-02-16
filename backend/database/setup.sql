@@ -1,3 +1,17 @@
+-- Create events table
+CREATE TABLE IF NOT EXISTS events (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	user_auth0_id VARCHAR(128) NOT NULL,
+	title VARCHAR(255) NOT NULL,
+	description TEXT,
+	event_date DATETIME NOT NULL,
+	location VARCHAR(255),
+	event_type VARCHAR(64),
+	is_virtual BOOLEAN DEFAULT FALSE,
+	image_url VARCHAR(512),
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 -- -- ConnectingFuture Database Setup Script
 -- -- Run this script to set up the database and tables for donation management
 
