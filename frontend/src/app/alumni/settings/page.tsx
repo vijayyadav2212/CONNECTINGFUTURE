@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import AlumniNavigation from '../AluminaNavigation';
 import {
   User,
@@ -60,17 +61,24 @@ export default function SettingsPage() {
     allowMessages: true
   });
 
+
+
+  const { token, tokenLoading: authLoading } = useAuthToken();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   React.useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (!authLoading && token) {
+      fetchProfile();
+    } else if (!authLoading && !token) {
+        setLoading(false); // Stop loading if no token (auth will handle redirect or we show empty)
+    }
+  }, [authLoading, token]);
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
+      if (!token) return;
       const res = await fetch('http://localhost:4000/api/users/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -109,8 +117,9 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setSaving(true);
     setMessage(null);
+    setMessage(null);
     try {
-      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
       const payload = {
         name: profileData.fullName,
         phone: profileData.phone,
