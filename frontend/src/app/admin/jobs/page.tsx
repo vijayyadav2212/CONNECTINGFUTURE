@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminNavigation from '../AdminNavigation';
 import { 
   Briefcase, Search, Filter, CheckCircle, XCircle, 
@@ -8,108 +8,154 @@ import {
   DollarSign, Calendar, ExternalLink 
 } from 'lucide-react';
 import Link from 'next/link';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useAuth0Token } from '../../../hooks/useAuth0Token';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
 interface JobPosting {
   id: number;
   title: string;
   company: string;
   location: string;
-  jobType: 'full-time' | 'part-time' | 'contract' | 'internship';
-  experienceLevel: 'entry' | 'mid' | 'senior';
+  job_type?: string;
   description: string;
-  requirements: string;
-  salaryRange?: string;
-  applicationUrl?: string;
-  postedBy: string;
-  postedByEmail: string;
-  postedDate: string;
-  expiresAt?: string;
-  approvalStatus: 'pending' | 'approved' | 'rejected';
-  isActive: boolean;
+  requirements?: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  application_url?: string;
+  posted_by: string;
+  posted_date?: string;
+  status: string;
+  industry?: string;
 }
 
 export default function JobManagementPage() {
+  const { user } = useUser();
+  const { token: accessToken } = useAuth0Token();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [jobs, setJobs] = useState<JobPosting[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const [jobs, setJobs] = useState<JobPosting[]>([
-    {
-      id: 1,
-      title: 'Senior Software Engineer',
-      company: 'Google',
-      location: 'Mumbai, India',
-      jobType: 'full-time',
-      experienceLevel: 'senior',
-      description: 'We are looking for an experienced software engineer to join our team...',
-      requirements: 'BS in Computer Science, 5+ years experience in full-stack development',
-      salaryRange: '₹25-35 LPA',
-      applicationUrl: 'https://google.com/careers',
-      postedBy: 'John Doe',
-      postedByEmail: 'john@example.com',
-      postedDate: '2 days ago',
-      expiresAt: '30 days',
-      approvalStatus: 'pending',
-      isActive: true
-    },
-    {
-      id: 2,
-      title: 'Frontend Developer Intern',
-      company: 'Microsoft',
-      location: 'Bangalore, India',
-      jobType: 'internship',
-      experienceLevel: 'entry',
-      description: 'Exciting internship opportunity for frontend developers...',
-      requirements: 'Knowledge of React, TypeScript, and modern web development',
-      salaryRange: '₹30,000/month',
-      applicationUrl: 'https://careers.microsoft.com',
-      postedBy: 'Jane Smith',
-      postedByEmail: 'jane@example.com',
-      postedDate: '1 day ago',
-      approvalStatus: 'pending',
-      isActive: true
-    },
-    {
-      id: 3,
-      title: 'Data Scientist',
-      company: 'Amazon',
-      location: 'Hyderabad, India',
-      jobType: 'full-time',
-      experienceLevel: 'mid',
-      description: 'Join our data science team to build ML models...',
-      requirements: 'MS in Data Science or related field, 3+ years experience',
-      salaryRange: '₹20-30 LPA',
-      postedBy: 'Mike Johnson',
-      postedByEmail: 'mike@example.com',
-      postedDate: '1 week ago',
-      approvalStatus: 'approved',
-      isActive: true
-    },
-  ]);
+  // Load jobs from backend
+  useEffect(() => {
+    const loadJobs = async () => {
+      if (!user || !accessToken) return;
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_BASE}/api/jobs?limit=100`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setJobs(data.jobs || []);
+        }
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadJobs();
+  }, [user, accessToken]);
 
-  const handleApprove = (jobId: number) => {
-    setJobs(jobs.map(j => 
-      j.id === jobId ? { ...j, approvalStatus: 'approved' as const } : j
-    ));
+  const handleApprove = async (jobId: number) => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/jobs/${jobId}/approval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: 'Approved' }),
+      });
+      if (response.ok) {
+        setJobs(jobs.map(j => 
+          j.id === jobId ? { ...j, status: 'Approved' } : j
+        ));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to approve job');
+      }
+    } catch (error) {
+      console.error('Error approving job:', error);
+      alert('Failed to approve job');
+    }
   };
 
-  const handleReject = (jobId: number) => {
-    setJobs(jobs.map(j => 
-      j.id === jobId ? { ...j, approvalStatus: 'rejected' as const } : j
-    ));
+  const handleReject = async (jobId: number) => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/jobs/${jobId}/approval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: 'Rejected' }),
+      });
+      if (response.ok) {
+        setJobs(jobs.map(j => 
+          j.id === jobId ? { ...j, status: 'Rejected' } : j
+        ));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to reject job');
+      }
+    } catch (error) {
+      console.error('Error rejecting job:', error);
+      alert('Failed to reject job');
+    }
   };
 
-  const handleDelete = (jobId: number) => {
-    setJobs(jobs.filter(j => j.id !== jobId));
+  const handleDelete = async (jobId: number) => {
+    if (!accessToken || !confirm('Are you sure you want to delete this job?')) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (response.ok) {
+        setJobs(jobs.filter(j => j.id !== jobId));
+      } else {
+        alert('Failed to delete job');
+      }
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      alert('Failed to delete job');
+    }
   };
 
   const filteredJobs = jobs.filter(job => {
-    const matchesFilter = filter === 'all' || job.approvalStatus === filter;
+    const status = job.status.toLowerCase().replace(' review', '').replace('pending ', 'pending');
+    const matchesFilter = filter === 'all' || 
+      (filter === 'pending' && status === 'pending') ||
+      (filter === 'approved' && status === 'approved') ||
+      (filter === 'rejected' && status === 'rejected');
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          job.location.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const getApprovalStatus = (status: string): 'pending' | 'approved' | 'rejected' => {
+    const normalized = status.toLowerCase();
+    if (normalized.includes('pending')) return 'pending';
+    if (normalized.includes('approved')) return 'approved';
+    if (normalized.includes('rejected')) return 'rejected';
+    return 'pending';
+  };
+
+  const countByStatus = (status: 'pending' | 'approved' | 'rejected') => {
+    return jobs.filter(j => getApprovalStatus(j.status) === status).length;
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -184,7 +230,7 @@ export default function JobManagementPage() {
                   filter === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Pending ({jobs.filter(j => j.approvalStatus === 'pending').length})
+                Pending ({countByStatus('pending')})
               </button>
               <button
                 onClick={() => setFilter('approved')}
@@ -192,7 +238,7 @@ export default function JobManagementPage() {
                   filter === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Approved ({jobs.filter(j => j.approvalStatus === 'approved').length})
+                Approved ({countByStatus('approved')})
               </button>
               <button
                 onClick={() => setFilter('rejected')}
@@ -200,7 +246,7 @@ export default function JobManagementPage() {
                   filter === 'rejected' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Rejected ({jobs.filter(j => j.approvalStatus === 'rejected').length})
+                Rejected ({countByStatus('rejected')})
               </button>
             </div>
           </div>
@@ -208,7 +254,12 @@ export default function JobManagementPage() {
 
         {/* Jobs List */}
         <div className="grid grid-cols-1 gap-4">
-          {filteredJobs.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading jobs...</p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
               <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No jobs found</h3>
@@ -239,17 +290,18 @@ export default function JobManagementPage() {
                           </div>
                         </div>
                         <div className="ml-4">
-                          {getStatusBadge(job.approvalStatus)}
+                          {getStatusBadge(getApprovalStatus(job.status))}
                         </div>
                       </div>
 
                       {/* Job Details */}
                       <div className="flex items-center space-x-3 mt-3">
-                        {getJobTypeBadge(job.jobType)}
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium capitalize">{job.experienceLevel} Level</span>
-                        {job.salaryRange && (
+                        {job.job_type && getJobTypeBadge(job.job_type)}
+                        {job.industry && <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">{job.industry}</span>}
+                        {(job.salary_min || job.salary_max) && (
                           <span className="flex items-center text-gray-600 text-sm">
-                            <DollarSign className="w-4 h-4 mr-1" />{job.salaryRange}
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            {job.currency || '₹'}{job.salary_min ? `${job.salary_min}` : ''}{job.salary_max ? `-${job.salary_max}` : ''}
                           </span>
                         )}
                       </div>
@@ -259,17 +311,17 @@ export default function JobManagementPage() {
 
                       {/* Posted Info */}
                       <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
-                        <span>Posted by {job.postedBy} • {job.postedDate}</span>
-                        {job.expiresAt && <span>Expires in {job.expiresAt}</span>}
+                        <span>Posted by {job.posted_by}</span>
+                        {job.posted_date && <span>• {new Date(job.posted_date).toLocaleDateString()}</span>}
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
                   <div className="flex items-center space-x-2 ml-4">
-                    {job.applicationUrl && (
+                    {job.application_url && (
                       <a
-                        href={job.applicationUrl}
+                        href={job.application_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors text-sm flex items-center"
@@ -277,13 +329,7 @@ export default function JobManagementPage() {
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
-                    <button className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm flex items-center">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors text-sm flex items-center">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    {job.approvalStatus === 'pending' && (
+                    {getApprovalStatus(job.status) === 'pending' && (
                       <>
                         <button
                           onClick={() => handleApprove(job.id)}

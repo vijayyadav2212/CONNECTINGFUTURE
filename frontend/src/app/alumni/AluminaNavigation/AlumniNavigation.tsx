@@ -39,8 +39,32 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   const [messageUnread, setMessageUnread] = useState<number>(0);
   const [jobNewBadge, setJobNewBadge] = useState<number>(0);
   const prevJobIdsRef = React.useRef<Set<number>>(new Set());
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const API_ROOT = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
+
+  // Fetch user profile to check approval status
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setProfileLoading(true);
+        const resp = await fetch('/api/user/profile', { cache: 'no-store' });
+        if (resp.ok) {
+          const data = await resp.json();
+          const status = data?.user?.approval_status || 'pending';
+          setApprovalStatus(status);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
 
   // Sample alumni data
   const alumniData: AlumniData = {
@@ -129,6 +153,162 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
       setJobNewBadge(0);
     }
   }, [pathname]);
+
+  // If approval is pending or rejected, show message instead of navigation
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (approvalStatus === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8 md:p-12">
+          <div className="text-center">
+            {/* Icon */}
+            <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+            {/* Title */}
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Application Under Review
+            </h1>
+            
+            {/* Message */}
+            <p className="text-lg text-gray-600 mb-6">
+              Thank you for registering! Your alumni application is currently being reviewed by our admin team.
+            </p>
+            
+            {/* Details */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+              <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
+              <ul className="text-left text-blue-800 space-y-2">
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Our admin team will verify your information</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>You'll receive an email notification once approved</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Approval typically takes 1-2 business days</span>
+                </li>
+              </ul>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => router.push('/alumni/settings')}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                Update Profile
+              </button>
+              <button
+                onClick={() => router.push('/login')}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (approvalStatus === 'rejected') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8 md:p-12">
+          <div className="text-center">
+            {/* Icon */}
+            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            
+            {/* Title */}
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Application Not Approved
+            </h1>
+            
+            {/* Message */}
+            <p className="text-lg text-gray-600 mb-6">
+              Unfortunately, your alumni application was not approved at this time.
+            </p>
+            
+            {/* Details */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+              <h3 className="font-semibold text-red-900 mb-3">What can you do?</h3>
+              <ul className="text-left text-red-800 space-y-2">
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Review and update your profile information</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>Contact our admin team for more details</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>You may reapply after updating your information</span>
+                </li>
+              </ul>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => router.push('/alumni/settings')}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              >
+                Update Profile
+              </button>
+              <button
+                onClick={() => {
+                  // Contact admin
+                  window.location.href = 'mailto:admin@vppcoe.ac.in';
+                }}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Contact Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Only show navigation if approved
+  if (approvalStatus !== 'approved') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">Unable to load your profile. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

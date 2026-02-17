@@ -1,4 +1,5 @@
 
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -6,6 +7,7 @@ const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const nodemailer = require('nodemailer'); // For sending emails
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const crypto = require('crypto');
@@ -18,7 +20,6 @@ const { createMessagesSchema } = require('./database/messages');
 const { createDonationsSchema } = require('./database/donations');
 const { createRoadmapsSchema } = require('./database/roadmaps');
 const { createConnectionsSchema } = require('./database/connections');
-const { createMemoriesSchema } = require('./database/memories');
 const { createJobsSchema } = require('./database/jobs');
 const { createApplicationsSchema } = require('./database/applications');
 const { createMentorshipSchema } = require('./database/mentorship');
@@ -32,13 +33,65 @@ app.use(express.json());
 // Serve uploaded files statically
 const uploadsRoot = path.join(__dirname, 'uploads');
 const resumesDir = path.join(uploadsRoot, 'resumes');
-const memoriesDir = path.join(uploadsRoot, 'memories');
 try {
   if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
   if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
-  if (!fs.existsSync(memoriesDir)) fs.mkdirSync(memoriesDir);
 } catch { }
 app.use('/uploads', express.static(uploadsRoot));
+
+// Event image upload configuration
+const eventImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(uploadsRoot, 'events');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '';
+    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
+    cb(null, `${base}_${Date.now()}${ext}`);
+  }
+});
+const eventImageUpload = multer({
+  storage: eventImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) return cb(null, true);
+    return cb(new Error('Only image files allowed'));
+  }
+});
+
+app.post('/api/uploads/event-image', eventImageUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Image file is required' });
+  const url = `${req.protocol}://${req.get('host')}/uploads/events/${req.file.filename}`;
+  return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+});
+
+// 1. GET ALL EVENTS
+app.get('/api/events', async (req, res) => {
+  const { user_email } = req.query;
+  const query = "SELECT * FROM events ORDER BY event_date DESC";
+
+  try {
+    const eventsRes = await dbQuery(query);
+    let events = eventsRes.rows;
+
+    if (user_email) {
+      const registrationsRes = await dbQuery('SELECT event_id FROM event_registrations WHERE user_email = ?', [user_email]);
+      const registeredEventIds = new Set(registrationsRes.rows.map(r => r.event_id));
+
+      events = events.map(event => ({
+        ...event,
+        isRegistered: registeredEventIds.has(event.id)
+      }));
+    }
+
+    res.json(events);
+  } catch (err) {
+    console.error("Database Error:", err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
+});
 
 /**
  * Auth0 Management API helpers
@@ -143,6 +196,13 @@ const db = useConnectionString
     ssl: /true|require/i.test(String(process.env.DB_SSL || 'false')) ? { rejectUnauthorized: false } : undefined,
   });
 
+// Prevent unhandled pool errors from crashing the process; log and continue
+try {
+  db.on && db.on('error', (err) => {
+    console.warn('Postgres pool error:', err && err.message ? err.message : err);
+  });
+} catch (e) { }
+
 // Ensure DB session timezone is IST for all connections (affects SQL timezone-sensitive functions)
 try {
   db.on('connect', (client) => {
@@ -240,6 +300,55 @@ async function initializeTables() {
     await createMentorshipSchema(dbQuery);
     await createAcademicProgressSchema(dbQuery);
     await createMemoriesSchema(dbQuery);
+    // Create events table (Postgres) if missing
+    await dbQuery(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      user_auth0_id VARCHAR(255) NULL,
+      title VARCHAR(1024) NOT NULL,
+      description TEXT,
+      event_date TIMESTAMPTZ,
+      event_time VARCHAR(64),
+      duration VARCHAR(64),
+      location VARCHAR(512),
+      event_type VARCHAR(128),
+      is_virtual BOOLEAN DEFAULT FALSE,
+      image_url TEXT,
+      tags TEXT,
+      organizer VARCHAR(255),
+      max_attendees INT,
+      current_attendees INT DEFAULT 0,
+      price NUMERIC(10,2) DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+    // Ensure columns exist (migration for existing tables)
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_time VARCHAR(64)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS duration VARCHAR(64)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location VARCHAR(512)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type VARCHAR(128)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_virtual BOOLEAN DEFAULT FALSE`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS tags TEXT`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer VARCHAR(255)`);
+    await dbQuery(`ALTER TABLE events ADD COLUMN IF NOT EXISTS approval_status VARCHAR(64) DEFAULT 'pending'`);
+    // Auto-approve existing pending events to match new policy
+    await dbQuery(`UPDATE events SET approval_status = 'approved' WHERE approval_status = 'pending'`);
+
+    // Create event_registrations table
+    await dbQuery(`
+    CREATE TABLE IF NOT EXISTS event_registrations (
+      id SERIAL PRIMARY KEY,
+      event_id INT NOT NULL,
+      user_email VARCHAR(255) NOT NULL,
+      user_name VARCHAR(255),
+      registered_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(event_id, user_email)
+    )`);
+
+
 
     console.log('Tables are ready');
   } catch (e) {
@@ -277,6 +386,91 @@ app.get('/api/health', (req, res) => {
       }
     });
   });
+});
+
+// GET all events for frontend
+app.get('/api/events', async (req, res) => {
+  try {
+    const q = `SELECT id, title, description, event_date, event_time, duration, location, is_virtual, event_type, image_url, tags, organizer, max_attendees, current_attendees, price, approval_status FROM events ORDER BY created_at DESC`;
+    const { rows } = await dbQuery(q, []);
+    const mapped = (rows || []).map(r => ({
+      id: r.id ? String(r.id) : '',
+      title: r.title || '',
+      description: r.description || '',
+      event_date: r.event_date ? new Date(r.event_date).toISOString() : null,
+      event_time: r.event_time || '',
+      duration: r.duration || '',
+      location: r.location || '',
+      is_virtual: !!r.is_virtual,
+      event_type: r.event_type || '',
+      image_url: r.image_url || '',
+      tags: r.tags ? (Array.isArray(r.tags) ? r.tags : String(r.tags).split(',').map(s => s.trim()).filter(Boolean)) : [],
+      organizer: r.organizer || '',
+      max_attendees: r.max_attendees || null,
+      current_attendees: r.current_attendees || 0,
+      price: r.price || 0,
+      approval_status: r.approval_status || 'pending'
+    }));
+    return res.json(mapped);
+  } catch (e) {
+    console.error('Events fetch error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to fetch events' });
+  }
+});
+
+// PATCH update event (partial updates) - supports approval_status updates
+app.patch('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body || {};
+    const allowed = ['approval_status', 'title', 'description', 'event_date', 'event_time', 'duration', 'location', 'is_virtual', 'event_type', 'image_url', 'tags', 'organizer', 'max_attendees', 'current_attendees', 'price'];
+    const fields = [];
+    const params = [];
+    Object.keys(updates).forEach(key => {
+      if (allowed.includes(key)) {
+        fields.push(`${key} = ?`);
+        params.push(updates[key]);
+      }
+    });
+    if (fields.length === 0) return res.status(400).json({ error: 'No updatable fields provided' });
+    params.push(id);
+    const q = `UPDATE events SET ${fields.join(', ')} WHERE id = ? RETURNING id`;
+    const { rows } = await dbQuery(q, params);
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+    return res.json({ message: 'Event updated', id });
+  } catch (e) {
+    console.error('Event update error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to update event' });
+  }
+});
+
+// DELETE all events (development/admin only)
+app.delete('/api/events/clear-all/confirm', async (req, res) => {
+  try {
+    await dbQuery('DELETE FROM events');
+    return res.json({ message: 'All events cleared successfully' });
+  } catch (e) {
+    console.error('Events clear error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to clear events' });
+  }
+});
+
+
+
+// DELETE single event
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const q = `DELETE FROM events WHERE id = ? RETURNING id`;
+    const { rows } = await dbQuery(q, [id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    return res.json({ message: 'Event deleted successfully', id });
+  } catch (e) {
+    console.error('Event deletion error:', e.message || e);
+    return res.status(500).json({ error: e.message || 'Failed to delete event' });
+  }
 });
 
 // Protected route example
@@ -539,125 +733,6 @@ app.post('/api/users/sync-self', checkJwt, async (req, res) => {
   }
 });
 
-// --- ACADEMIC PROGRESS ROUTES ---
-
-// Compose academic progress response for a user
-async function buildAcademicProgressResponse(auth0Id) {
-  const { rows: semRows } = await dbQuery(
-    'SELECT semester_key, name, gpa, total_credits, is_current FROM academic_semesters WHERE student_auth0_id = ? ORDER BY created_at DESC',
-    [auth0Id]
-  );
-  const { rows: courseRows } = await dbQuery(
-    'SELECT semester_key, course_key, name, code, credits, grade, status, progress FROM academic_courses WHERE student_auth0_id = ?',
-    [auth0Id]
-  );
-
-  const courseBySemester = new Map();
-  for (const c of (courseRows || [])) {
-    const arr = courseBySemester.get(c.semester_key) || [];
-    arr.push({
-      id: c.course_key,
-      name: c.name,
-      code: c.code,
-      credits: Number(c.credits || 0),
-      grade: c.grade || '',
-      status: c.status || 'upcoming',
-      progress: Number(c.progress || 0),
-    });
-    courseBySemester.set(c.semester_key, arr);
-  }
-
-  const semesters = (semRows || []).map((s) => ({
-    id: s.semester_key,
-    name: s.name,
-    gpa: Number(s.gpa || 0),
-    totalCredits: Number(s.total_credits || 0),
-    courses: courseBySemester.get(s.semester_key) || [],
-    is_current: !!s.is_current,
-  }));
-
-  // Compute overall stats
-  const allCourses = (courseRows || []).map((c) => ({ credits: Number(c.credits || 0), status: c.status || 'upcoming' }));
-  const totalCredits = allCourses.reduce((sum, c) => sum + c.credits, 0);
-  const creditsCompleted = allCourses.filter((c) => c.status === 'completed').reduce((sum, c) => sum + c.credits, 0);
-  const gpaValues = (semRows || []).map((s) => Number(s.gpa || 0)).filter((v) => Number.isFinite(v));
-  const gpa = gpaValues.length ? Number((gpaValues.reduce((a, b) => a + b, 0) / gpaValues.length).toFixed(2)) : 0;
-  const completionRate = totalCredits > 0 ? Number(((creditsCompleted / totalCredits) * 100).toFixed(1)) : 0;
-  const current = semesters.find((s) => s.is_current);
-  const overallStats = {
-    gpa,
-    creditsCompleted,
-    totalCredits,
-    completionRate,
-    currentSemesterLabel: current ? current.name : null,
-  };
-
-  return { overallStats, semesters };
-}
-
-// Get current user's academic progress
-app.get('/api/academic-progress/me', checkJwt, async (req, res) => {
-  try {
-    const auth0Id = req.auth && req.auth.sub;
-    if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
-    const payload = await buildAcademicProgressResponse(auth0Id);
-    return res.json(payload);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Replace current user's academic progress with provided semesters/courses
-app.put('/api/academic-progress/me', checkJwt, async (req, res) => {
-  const auth0Id = req.auth && req.auth.sub;
-  if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
-  const semesters = Array.isArray(req.body && req.body.semesters) ? req.body.semesters : [];
-  try {
-    await dbQuery('BEGIN');
-    // Clear existing
-    await dbQuery('DELETE FROM academic_courses WHERE student_auth0_id = ?', [auth0Id]);
-    await dbQuery('DELETE FROM academic_semesters WHERE student_auth0_id = ?', [auth0Id]);
-
-    for (const s of semesters) {
-      const semester_key = String(s.id || s.name || `sem-${Date.now()}`);
-      const name = String(s.name || semester_key);
-      const gpa = Number(s.gpa || 0);
-      const totalCredits = Number(s.totalCredits || 0);
-      const isCurrent = s.id === 'current' ? true : false;
-      await dbQuery(
-        'INSERT INTO academic_semesters (student_auth0_id, semester_key, name, gpa, total_credits, is_current) VALUES (?, ?, ?, ?, ?, ?)',
-        [auth0Id, semester_key, name, gpa, totalCredits, isCurrent]
-      );
-
-      const courses = Array.isArray(s.courses) ? s.courses : [];
-      for (const c of courses) {
-        const course_key = String(c.id || `${semester_key}-${Date.now()}`);
-        await dbQuery(
-          'INSERT INTO academic_courses (student_auth0_id, semester_key, course_key, name, code, credits, grade, status, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            auth0Id,
-            semester_key,
-            course_key,
-            String(c.name || ''),
-            c.code || null,
-            Number(c.credits || 0),
-            c.grade || null,
-            String(c.status || 'upcoming'),
-            Number(c.progress || 0),
-          ]
-        );
-      }
-    }
-
-    await dbQuery('COMMIT');
-    const payload = await buildAcademicProgressResponse(auth0Id);
-    return res.json(payload);
-  } catch (e) {
-    try { await dbQuery('ROLLBACK'); } catch { }
-    return res.status(500).json({ error: e.message });
-  }
-});
-
 // --- DONATIONS ROUTES ---
 
 app.get('/api/donations', async (req, res) => {
@@ -861,7 +936,6 @@ app.post('/api/roadmaps', async (req, res) => {
       duration,
       phases,
       tags,
-      modules_link,
       is_published = false
     } = req.body || {};
 
@@ -870,10 +944,10 @@ app.post('/api/roadmaps', async (req, res) => {
     }
 
     const { rows } = await dbQuery(`
-      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, modules_link, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
-    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, modules_link || null, !!is_published]);
+    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, !!is_published]);
 
     return res.status(201).json(rows && rows[0]);
   } catch (e) {
@@ -881,35 +955,20 @@ app.post('/api/roadmaps', async (req, res) => {
   }
 });
 
-// List roadmaps (optionally filter by owner or published status)
+// List roadmaps (optionally filter by owner)
 app.get('/api/roadmaps', async (req, res) => {
   try {
-    const { owner_email, is_published, page = 1, limit = 20 } = req.query || {};
+    const { owner_email, page = 1, limit = 20 } = req.query || {};
     const p = Math.max(1, parseInt(page, 10));
     const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
     const offset = (p - 1) * l;
 
-    const conditions = [];
-    const params = [];
-
     if (owner_email) {
-      conditions.push('owner_email = ?');
-      params.push(owner_email);
+      const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?', [owner_email, l, offset]);
+      return res.json({ roadmaps: rows, page: p, limit: l });
     }
 
-    if (is_published !== undefined) {
-      conditions.push('is_published = ?');
-      params.push(is_published === 'true');
-    }
-
-    let query = 'SELECT * FROM roadmaps';
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-    query += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
-    params.push(l, offset);
-
-    const { rows } = await dbQuery(query, params);
+    const { rows } = await dbQuery('SELECT * FROM roadmaps ORDER BY updated_at DESC LIMIT ? OFFSET ?', [l, offset]);
     return res.json({ roadmaps: rows, page: p, limit: l });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -932,7 +991,7 @@ app.get('/api/roadmaps/:id', async (req, res) => {
 app.put('/api/roadmaps/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'modules_link', 'is_published'];
+    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'is_published'];
     const updates = [];
     const values = [];
     for (const key of allowed) {
@@ -1631,88 +1690,51 @@ app.get('/api/users/by-email', async (req, res) => {
   }
 });
 
-/**
- * Mentorship Endpoints
- */
+// --- Events API ---
 
-// List available mentors with optional filters
-app.get('/api/mentors', async (req, res) => {
+
+
+
+app.post('/api/events', async (req, res) => {
   try {
-    const { q, min_experience, max_price, min_rating, page = 1, limit = 30 } = req.query || {};
-    const p = Math.max(1, parseInt(page, 10));
-    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
-    const offset = (p - 1) * l;
+    const { title, description, event_date, event_time, duration, location, event_type, is_virtual, image_url, tags, organizer } = req.body;
+    console.log("POST /api/events received:", { title, image_url, organizer });
 
-    const where = [];
-    const params = [];
+    const user_auth0_id = req.auth?.sub || 'anonymous';
 
-    if (q) {
-      const like = `%${String(q).toLowerCase()}%`;
-      where.push('(LOWER(skills) LIKE ? OR LOWER(topics) LIKE ? OR LOWER(availability) LIKE ?)');
-      params.push(like, like, like);
-    }
-    if (min_experience !== undefined && min_experience !== null && String(min_experience) !== '') {
-      where.push('experience_years >= ?');
-      params.push(parseInt(min_experience, 10));
-    }
-    if (max_price !== undefined && max_price !== null && String(max_price) !== '') {
-      where.push('price <= ?');
-      params.push(Number(max_price));
-    }
-    if (min_rating !== undefined && min_rating !== null && String(min_rating) !== '') {
-      where.push('rating_avg >= ?');
-      params.push(Number(min_rating));
-    }
+    // Convert array tags to string if needed, or keep as string
+    const tagsVal = Array.isArray(tags) ? tags.join(',') : tags;
 
-    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
-    const { rows } = await dbQuery(
-      `SELECT mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count FROM mentors${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
-      [...params, l, offset]
-    );
-    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) AS total FROM mentors${whereSql}`, params);
-    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
-    return res.json({ mentors: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Get one mentor profile by email
-app.get('/api/mentors/profile', async (req, res) => {
-  try {
-    const { email } = req.query || {};
-    if (!email) return res.status(400).json({ error: 'email required' });
-    const { rows } = await dbQuery('SELECT mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count FROM mentors WHERE LOWER(mentor_email) = LOWER(?) LIMIT 1', [email]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
-    return res.json({ mentor: rows[0] });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Create/update mentor profile (alumni)
-app.post('/api/mentors/profile', async (req, res) => {
-  try {
-    const { email, skills, topics, availability, experience_years, price } = req.body || {};
-    if (!email) return res.status(400).json({ error: 'email required' });
-    const exp = experience_years === '' || experience_years == null ? 0 : parseInt(experience_years, 10);
-    const pr = price === '' || price == null ? 0 : Number(price);
-    const sql = `
-      INSERT INTO mentors (mentor_email, skills, topics, availability, experience_years, price, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, NOW())
-      ON CONFLICT (mentor_email) DO UPDATE SET
-        skills = EXCLUDED.skills,
-        topics = EXCLUDED.topics,
-        availability = EXCLUDED.availability,
-        experience_years = EXCLUDED.experience_years,
-        price = EXCLUDED.price,
-        updated_at = NOW()
-      RETURNING mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count
+    const sqlHelper = `
+      INSERT INTO events 
+      (user_auth0_id, title, description, event_date, event_time, duration, location, event_type, is_virtual, image_url, tags, organizer, approval_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
     `;
-    const { rows } = await dbQuery(sql, [email, skills || null, topics || null, availability || null, exp, pr]);
-    return res.status(201).json({ mentor: rows && rows[0] });
+
+    const values = [
+      user_auth0_id,
+      title,
+      description,
+      event_date,
+      event_time,
+      duration,
+      location,
+      event_type,
+      is_virtual,
+      image_url,
+      tagsVal,
+      organizer,
+      'approved' // Auto-approve all new events
+    ];
+
+    if (!title) return res.status(400).json({ error: 'Title is required' });
+
+    const result = await dbQuery(sqlHelper, values);
+    res.json({ message: "Success", id: result.rows[0].id });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error("Event Create Error:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -1943,10 +1965,11 @@ app.post('/api/memories', async (req, res) => {
       location,
       tags,
       category,
-      type = 'photo',
+      type
     } = req.body || {};
 
     if (!title) return res.status(400).json({ error: 'Title is required' });
+
     const tagsStr = Array.isArray(tags) ? tags.join(',') : (tags || null);
     const { rows } = await dbQuery(`
       INSERT INTO memories (
@@ -1962,48 +1985,107 @@ app.post('/api/memories', async (req, res) => {
     try { broadcastSse('memory-create', created); } catch { }
     return res.status(201).json(created);
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error("Memory Create Error:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// List memories with filters
-app.get('/api/memories', async (req, res) => {
+// Register for event
+app.post('/api/events/:id/register', async (req, res) => {
   try {
-    const {
-      q,
-      category,
-      sort = 'recent',
-      page = 1,
-      limit = 20
-    } = req.query || {};
+    const { id } = req.params;
+    const { user_email, user_name } = req.body;
 
-    const p = Math.max(1, parseInt(page, 10));
-    const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
-    const offset = (p - 1) * l;
+    if (!user_email) return res.status(400).json({ error: 'Email is required' });
 
-    const where = [];
-    const params = [];
-    if (q) {
-      const like = `%${String(q).toLowerCase()}%`;
-      where.push('(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(tags) LIKE ? OR LOWER(author_name) LIKE ?)');
-      params.push(like, like, like, like);
+    // Check if event exists
+    const eventRes = await dbQuery('SELECT * FROM events WHERE id = ?', [id]);
+    const event = eventRes.rows[0];
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    // Check if already registered
+    const check = await dbQuery('SELECT * FROM event_registrations WHERE event_id = ? AND user_email = ?', [id, user_email]);
+    if (check.rows.length > 0) return res.status(400).json({ error: 'Already registered' });
+
+    // Register
+    await dbQuery('INSERT INTO event_registrations (event_id, user_email, user_name) VALUES (?, ?, ?)', [id, user_email, user_name]);
+
+    // Update attendee count
+    await dbQuery('UPDATE events SET current_attendees = current_attendees + 1 WHERE id = ?', [id]);
+
+    // Send Email
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const mode = event.is_virtual ? 'Virtual (Online)' : 'Offline (In-person)';
+      const locationLabel = event.is_virtual ? 'Meeting Link' : 'Venue';
+      const locationValue = event.location || 'TBD';
+      const organizer = event.organizer || 'Alumni Coordinator';
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user_email,
+        subject: `Registration Confirmed: ${event.title}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #4F46E5; padding: 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 24px;">Event Registration Confirmed</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+              <p style="font-size: 16px; color: #333;">Hi ${user_name || 'Student'},</p>
+              <p style="font-size: 16px; color: #333;">You have successfully registered for <strong>${event.title}</strong>.</p>
+              
+              <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <p style="margin: 8px 0; color: #555; font-style: italic;">"${event.description || 'Join us for this exciting event!'}"</p>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;" />
+                <p style="margin: 8px 0;"><strong>📅 Date:</strong> ${new Date(event.event_date).toDateString()}</p>
+                <p style="margin: 8px 0;"><strong>⏰ Time:</strong> ${event.event_time || 'TBD'}</p>
+                <p style="margin: 8px 0;"><strong>📍 Mode:</strong> ${mode}</p>
+                <p style="margin: 8px 0;"><strong>🔗 ${locationLabel}:</strong> ${event.is_virtual ? `<a href="${locationValue}" style="color: #4F46E5;">${locationValue}</a>` : locationValue}</p>
+                <p style="margin: 8px 0;"><strong>👤 Posted By:</strong> ${organizer}</p>
+              </div>
+
+              <p style="font-size: 14px; color: #666;">We look forward to seeing you there!</p>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #999;">
+              ConnectingFuture Alumni Portal
+            </div>
+          </div>
+        `
+      };
+
+      try {
+        await new Promise((resolve, reject) => {
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error('Email error:', error);
+              reject(error);
+            } else {
+              console.log('Email sent:', info.response);
+              resolve(info);
+            }
+          });
+        });
+      } catch (emailErr) {
+        console.error("Failed to send email but registration recorded:", emailErr);
+        // Decide if we want to fail the request or just warn. 
+        // For now, let's keep registration as success but log heavily.
+        // Or actually, let's return a warning in the JSON.
+      }
+    } else {
+      console.log('Skipping email: EMAIL_USER/PASS not set');
     }
-    if (category && category !== 'all') { where.push('category = ?'); params.push(category); }
 
-    const whereSql = where.length ? (' WHERE ' + where.join(' AND ')) : '';
-    let orderBy = 'created_at DESC';
-    if (sort === 'trending') orderBy = 'likes DESC, created_at DESC';
-    else if (sort === 'popular') orderBy = 'views DESC, created_at DESC';
-
-    const { rows } = await dbQuery(
-      `SELECT * FROM memories${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-      [...params, l, offset]
-    );
-    const { rows: countRows } = await dbQuery(`SELECT COUNT(*) AS total FROM memories${whereSql}`, params);
-    const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
-    return res.json({ memories: rows || [], page: p, limit: l, total, totalPages: Math.ceil(total / l) });
+    res.json({ message: 'Registration successful' });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('Registration error:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 

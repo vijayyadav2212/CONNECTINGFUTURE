@@ -85,7 +85,14 @@ export default function AlumniDashboard() {
           throw new Error(txt || `Failed: ${resp.status}`);
         }
         const data = await resp.json();
-        setProfile(data.user || data);
+        const p = data.user || data;
+        setProfile(p);
+        // If user exists and is alumni but not approved, show a message instead of dashboard
+        if (p && (p.user_type === 'alumni' || p.userType === 'alumni') && p.approval_status && p.approval_status !== 'approved') {
+          setError('Your account is pending admin approval. You will get access once an admin approves your account.');
+          setLoading(false);
+          return;
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to load profile');
       } finally {

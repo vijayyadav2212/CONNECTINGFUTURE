@@ -132,12 +132,12 @@ export default function MentorshipRequests() {
   async function loadRequestsAndSessions() {
     if (!user?.email) return;
     try {
-      const rq = await fetch(`${API_BASE}/api/mentorship/requests?student_email=${encodeURIComponent(user.email)}`);
+      const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
       const rj = await rq.json();
       setRequests(rj.requests || []);
     } catch { }
     try {
-      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}`);
+      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
       const sj = await sq.json();
       setSessions(sj.sessions || []);
     } catch { }
@@ -157,7 +157,7 @@ export default function MentorshipRequests() {
     const interval = setInterval(async () => {
       if (!user?.email) return;
       try {
-        const rq = await fetch(`${API_BASE}/api/mentorship/requests?student_email=${encodeURIComponent(user.email)}`);
+        const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
         const rj = await rq.json();
         const newRequests: Request[] = rj.requests || [];
         // Detect status changes
@@ -178,7 +178,7 @@ export default function MentorshipRequests() {
       } catch { }
 
       try {
-        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}`);
+        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
         const sj = await sq.json();
         const newSessions: Session[] = sj.sessions || [];
         // Reminders: first time we see a scheduled session in <24h
@@ -360,9 +360,6 @@ export default function MentorshipRequests() {
                     </div>
                     <p className="text-gray-700 text-sm md:text-base">Discover mentors, request guidance, purchase sessions, and track progress</p>
                   </div>
-                  <div className="hidden md:block">
-                    <div className="bg-white/70 backdrop-blur-md text-gray-900 px-6 py-3 rounded-2xl font-bold border border-white/40">Student Hub</div>
-                  </div>
                 </div>
               </div>
             </motion.div>
@@ -396,144 +393,6 @@ export default function MentorshipRequests() {
               </div>
             </motion.div>
 
-            {/* Available Mentors */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="mb-6"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Available Mentors</h2>
-                <div className="text-sm text-gray-600 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">{mentors.length} found</div>
-              </div>
-            </motion.div>
-
-            {/* Mentors Grid */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10"
-            >
-              {mentors.length === 0 ? (
-                <div className="md:col-span-2 lg:col-span-3">
-                  <div className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/30 p-8 text-center">
-                    <div className="text-4xl mb-2">🧭</div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">No mentors found</h3>
-                    <p className="text-gray-600">Try adjusting filters or searching different skills/topics.</p>
-                  </div>
-                </div>
-              ) : null}
-              {mentors.map((m) => {
-                const prof = profiles[m.mentor_email];
-                const name = prof?.name || m.mentor_email;
-                const initials = String(name).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                const available = true; // treat listed mentors as available
-                const skillChips = (m.skills || '')
-                  .split(/[,\n]/)
-                  .map(s => s.trim())
-                  .filter(Boolean)
-                  .slice(0, 6);
-                const reqForMentor = requests.find((r) => r.mentor_email === m.mentor_email);
-                const reqStatus = reqForMentor?.status;
-                const isPending = reqStatus === 'pending';
-                const isAccepted = reqStatus === 'accepted';
-                const btnDisabled = !user?.email || requesting === m.mentor_email || isPending || isAccepted;
-                const btnText = requesting === m.mentor_email
-                  ? 'Requesting...'
-                  : isPending
-                    ? 'Request Sent'
-                    : isAccepted
-                      ? 'Connected'
-                      : 'Request Mentorship';
-                return (
-                  <motion.div
-                    key={m.mentor_email}
-                    whileHover={{ y: -5, scale: 1.02 }}
-                    className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40 group relative overflow-hidden flex flex-col min-h-[420px] md:min-h-[460px]"
-                  >
-                    {available && (
-                      <div className="absolute top-4 right-4 z-10">
-                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                          Available 🟢
-                        </div>
-                      </div>
-                    )}
-                    <div className="p-6 lg:p-8 flex flex-col h-full">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="relative">
-                          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg lg:text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            {prof?.picture ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={prof.picture} alt={name} className="w-full h-full rounded-full object-cover" />
-                            ) : initials}
-                          </div>
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg lg:text-xl group-hover:text-blue-600 transition-colors duration-200 mb-1">
-                            {name}
-                          </h3>
-                          {prof?.job_title || prof?.company ? (
-                            <p className="text-gray-700 text-sm">{prof?.job_title} {prof?.company ? `• ${prof.company}` : ''}</p>
-                          ) : null}
-                          {m.experience_years ? <p className="text-xs text-gray-500 font-medium">Experience: {m.experience_years}+ years</p> : null}
-                          {m.availability ? <p className="text-xs text-gray-500 font-medium">Availability: {m.availability}</p> : null}
-                          {prof?.location ? (
-                            <div className="mt-2"><Badge className="bg-gray-50 text-gray-700 border border-gray-200">{prof.location}</Badge></div>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl mb-4 border border-green-100">
-                        {skillChips.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {skillChips.map((s) => (
-                              <Badge key={s} className="bg-white text-slate-700 border border-slate-200">{s}</Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          m.skills ? <p className="text-sm"><span className="font-medium">Skills:</span> {m.skills}</p> : null
-                        )}
-                        {m.topics ? <p className="text-sm mt-2"><span className="font-medium">Topics:</span> {m.topics}</p> : null}
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-3 rounded-lg border border-yellow-200">
-                          <div className="flex items-center gap-2 mb-1">
-                            <StarRating value={Number(m.rating_avg || 0)} readOnly size={16} />
-                            <span className="font-bold text-yellow-800 text-sm">{m.rating_avg ?? '—'}</span>
-                          </div>
-                          <p className="text-xs text-yellow-700 font-medium">Avg Rating ({m.rating_count || 0})</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-blue-50 to-green-50 p-3 rounded-lg border border-blue-200">
-                          <div className="mb-1">
-                            <span className="font-bold text-blue-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
-                          </div>
-                          <p className="text-xs text-blue-700 font-medium">Session Price</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto pt-4 border-t border-gray-200">
-                        <Button
-                          className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-600 text-white hover:from-green-600 hover:to-blue-700 disabled:opacity-70 font-semibold text-sm px-4 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
-                          onClick={() => sendRequest(m.mentor_email)}
-                          disabled={btnDisabled}
-                        >
-                          {btnText}
-                        </Button>
-                        {m.price ? (
-                          <Button variant="outline" className="w-full h-12 border-2 hover:border-blue-300 font-semibold text-sm px-4" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number(m.price) })}>
-                            Purchase Session
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-
             {purchaseFor ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8">
                 <RazorpayPayment
@@ -549,264 +408,371 @@ export default function MentorshipRequests() {
                 />
               </div>
             ) : null}
-
-            {/* My Mentors */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30 mb-8"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-slate-900">My Mentors</h2>
-                <div className="text-sm text-slate-600">
-                  {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length} connected
-                </div>
-              </div>
-              <div>
-                {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length > 0 ? (
-                  <div className="space-y-4">
-                    {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).map((r) => {
-                      const prof = profiles[r.mentor_email];
-                      const name = prof?.name || r.mentor_email;
-                      return (
-                        <motion.div
-                          key={`conn-${r.id}`}
-                          whileHover={{ scale: 1.01 }}
-                          className="flex items-center justify-between p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
-                        >
-                          <div className="flex items-center space-x-6">
-                            <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                              <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-xl">{name}</p>
-                              <div className="flex items-center mt-2 space-x-4">
-                                <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Connected</span>
-                              </div>
-                            </div>
-                          </div>
-                          <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="h-12 px-8 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-red-400 to-rose-500 text-white hover:from-red-500 hover:to-rose-600 transition-all min-w-[140px] shadow-md hover:shadow-lg">Remove Mentor</Button>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-slate-600">No connected mentors yet.</div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* My Mentorship Requests */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30 mb-8"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-slate-900">My Mentorship Requests</h2>
-              </div>
-              <div>
-                {requests.length > 0 ? (
-                  <div className="space-y-4">
-                    {requests.map((r) => {
-                      const prof = profiles[r.mentor_email];
-                      const name = prof?.name || r.mentor_email;
-                      return (
-                        <motion.div
-                          key={r.id}
-                          whileHover={{ scale: 1.01 }}
-                          className="flex items-center justify-between p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
-                        >
-                          <div className="flex items-center space-x-6">
-                            <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                              <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-xl">{name}</p>
-                              <div className="flex items-center mt-2 space-x-4">
-                                <span className={`text-xs px-3 py-1 rounded-full font-medium ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{r.status}</span>
-                              </div>
-                              <div className="text-sm text-slate-600 mt-1">Updated: {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</div>
-                              {r.message ? <div className="mt-2 text-sm text-slate-700">{r.message}</div> : null}
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-slate-600">No requests yet.</div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* My Sessions */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-slate-900">My Sessions</h2>
-              </div>
-              <div>
-                {sessions.length > 0 ? (
-                  <div className="space-y-4">
-                    {sessions.map((s) => {
-                      const prof = profiles[s.mentor_email];
-                      const name = prof?.name || s.mentor_email;
-                      return (
-                        <motion.div
-                          key={s.id}
-                          whileHover={{ scale: 1.01 }}
-                          className="p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                                <span className="text-white font-bold">{String(name).charAt(0).toUpperCase()}</span>
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900">Mentor: {name}</p>
-                                <p className="text-slate-600 text-sm">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
-                              </div>
-                            </div>
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
-                          </div>
-                          <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
-                          {(() => {
-                            if (!s.meeting_link || !s.scheduled_at) return null;
-                            const start = new Date(s.scheduled_at).getTime();
-                            const durMs = (s.duration_minutes || 60) * 60 * 1000;
-                            const now = Date.now();
-                            const isActive = s.status === 'scheduled' && now >= start && now < start + durMs;
-                            if (!isActive) return null;
-                            return (
-                              <div className="mt-1 text-sm">
-                                <a href={s.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-semibold">Join Now</a>
-                              </div>
-                            );
-                          })()}
-                          {(() => {
-                            const start = s.scheduled_at ? new Date(s.scheduled_at).getTime() : null;
-                            const durMs = (s.duration_minutes || 60) * 60 * 1000;
-                            const ended = start ? (Date.now() >= start + durMs) : false;
-                            return s.status === 'completed' || ended;
-                          })() ? (
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <div className="flex items-center gap-2">
-                                <StarRating
-                                  value={ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}
-                                  onChange={(val) => setRatingForm({ session_id: s.id, rating: val, feedback: ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : '' })}
-                                  size={18}
-                                />
-                                <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
-                              </div>
-                              <Input
-                                className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                                placeholder="Optional feedback"
-                                value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
-                                onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
-                              />
-                              <Button
-                                className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg"
-                                onClick={() => {
-                                  if (!ratingForm || ratingForm.session_id !== s.id) return;
-                                  const r = ratingForm.rating;
-                                  if (r < 1 || r > 5) { toast({ title: 'Invalid rating', description: 'Pick 1-5 stars.', variant: 'destructive' }); return; }
-                                  submitRating(s.id, s.mentor_email, r, ratingForm.feedback);
-                                }}
-                                disabled={!ratingForm || ratingForm.session_id !== s.id || (ratingForm.rating < 1 || ratingForm.rating > 5)}
-                              >
-                                Submit Rating
-                              </Button>
-                            </div>
-                          ) : null}
-                          {s.status === 'paid' ? (
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <Input
-                                className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                                type="datetime-local"
-                                value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : ''}
-                                onChange={(e) => setScheduleForm({
-                                  session_id: s.id,
-                                  scheduled_at: e.target.value,
-                                  duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
-                                  meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
-                                })}
-                              />
-                              <Input
-                                className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                                type="number"
-                                placeholder="Duration (mins)"
-                                value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.duration_minutes as number) : (60 as number)}
-                                onChange={(e) => setScheduleForm({
-                                  session_id: s.id,
-                                  scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
-                                  duration_minutes: Number(e.target.value) || 60,
-                                  meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
-                                })}
-                              />
-                              <Input
-                                className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                                type="url"
-                                placeholder="Google Meet link (https://meet.google.com/...)"
-                                value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : ''}
-                                onChange={(e) => setScheduleForm({
-                                  session_id: s.id,
-                                  scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
-                                  duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
-                                  meeting_link: e.target.value,
-                                })}
-                              />
-                              <Button
-                                className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg"
-                                onClick={() => {
-                                  if (!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at)) return;
-                                  const when = new Date(scheduleForm.scheduled_at);
-                                  const validFuture = when.getTime() > Date.now();
-                                  const dur = Number(scheduleForm.duration_minutes) || 60;
-                                  const link = scheduleForm.meeting_link || '';
-                                  const isUrl = /^https?:\/\//.test(link);
-                                  const isMeet = link.includes('meet.google.com');
-                                  if (!validFuture) {
-                                    toast({ title: 'Invalid time', description: 'Pick a future date/time.', variant: 'destructive' });
-                                    return;
-                                  }
-                                  if (dur < 15 || dur > 240) {
-                                    toast({ title: 'Invalid duration', description: 'Duration must be 15-240 minutes.', variant: 'destructive' });
-                                    return;
-                                  }
-                                  if (!isUrl || !isMeet) {
-                                    toast({ title: 'Invalid meeting link', description: 'Provide a valid Google Meet URL.', variant: 'destructive' });
-                                    return;
-                                  }
-                                  scheduleSession(scheduleForm.session_id, scheduleForm.scheduled_at, dur, link);
-                                }}
-                                disabled={!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at && scheduleForm.meeting_link)}
-                              >
-                                Schedule
-                              </Button>
-                            </div>
-                          ) : null}
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-gray-600">No sessions yet.</div>
-                )}
-              </div>
-            </motion.div>
           </div>
-        </div >
-      </div >
-    </StudentNavigation >
+        </div>
+
+        {/* My Mentors */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-slate-900">My Mentors</h2>
+            <div className="text-sm text-slate-600">
+              {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length} connected
+            </div>
+          </div>
+          <div>
+            {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length > 0 ? (
+              <div className="space-y-4">
+                {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).map((r) => {
+                  const prof = profiles[r.mentor_email];
+                  const name = prof?.name || r.mentor_email;
+                  return (
+                    <div key={`conn-${r.id}`} className="flex items-center justify-between p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-xl">{name}</p>
+                          <div className="flex items-center mt-2 space-x-4">
+                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Connected</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-red-400 to-rose-500 text-white hover:from-red-500 hover:to-rose-600 transition-all">Remove Mentor</Button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-slate-600">No connected mentors yet.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Available Mentors */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mb-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Available Mentors</h2>
+            <div className="text-sm text-gray-600 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">{mentors.length} found</div>
+          </div>
+        </motion.div>
+
+        {/* Mentors Grid */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10"
+        >
+          {mentors.length === 0 ? (
+            <div className="md:col-span-2 lg:col-span-3">
+              <div className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/30 p-8 text-center">
+                <div className="text-4xl mb-2">🧭</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No mentors found</h3>
+                <p className="text-gray-600">Try adjusting filters or searching different skills/topics.</p>
+              </div>
+            </div>
+          ) : null}
+          {mentors.map((m) => {
+            const prof = profiles[m.mentor_email];
+            const name = prof?.name || m.mentor_email;
+            const initials = String(name).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+            const available = true; // treat listed mentors as available
+            const skillChips = (m.skills || '')
+              .split(/[,\n]/)
+              .map(s => s.trim())
+              .filter(Boolean)
+              .slice(0, 6);
+            const reqForMentor = requests.find((r) => r.mentor_email === m.mentor_email);
+            const reqStatus = reqForMentor?.status;
+            const isPending = reqStatus === 'pending';
+            const isAccepted = reqStatus === 'accepted';
+            const btnDisabled = !user?.email || requesting === m.mentor_email || isPending || isAccepted;
+            const btnText = requesting === m.mentor_email
+              ? 'Requesting...'
+              : isPending
+                ? 'Request Sent'
+                : isAccepted
+                  ? 'Connected'
+                  : 'Request Mentorship';
+            return (
+              <motion.div
+                key={m.mentor_email}
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40 group relative overflow-hidden flex flex-col min-h-[420px] md:min-h-[460px]"
+              >
+                {available && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                      Available 🟢
+                    </div>
+                  </div>
+                )}
+                <div className="p-6 lg:p-8 flex flex-col h-full">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative">
+                      <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg lg:text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        {prof?.picture ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={prof.picture} alt={name} className="w-full h-full rounded-full object-cover" />
+                        ) : initials}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900 text-lg lg:text-xl group-hover:text-blue-600 transition-colors duration-200 mb-1">
+                        {name}
+                      </h3>
+                      {prof?.job_title || prof?.company ? (
+                        <p className="text-gray-700 text-sm">{prof?.job_title} {prof?.company ? `• ${prof.company}` : ''}</p>
+                      ) : null}
+                      {m.experience_years ? <p className="text-xs text-gray-500 font-medium">Experience: {m.experience_years}+ years</p> : null}
+                      {m.availability ? <p className="text-xs text-gray-500 font-medium">Availability: {m.availability}</p> : null}
+                      {prof?.location ? (
+                        <div className="mt-2"><Badge className="bg-slate-50 text-slate-700 border border-slate-200">{prof.location}</Badge></div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl mb-4 border border-gray-100">
+                    {skillChips.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {skillChips.map((s) => (
+                          <Badge key={s} className="bg-white text-slate-700 border border-slate-200">{s}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      m.skills ? <p className="text-sm"><span className="font-medium">Skills:</span> {m.skills}</p> : null
+                    )}
+                    {m.topics ? <p className="text-sm mt-2"><span className="font-medium">Topics:</span> {m.topics}</p> : null}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <StarRating value={Number(m.rating_avg || 0)} readOnly size={16} />
+                        <span className="font-bold text-yellow-800 text-sm">{m.rating_avg ?? '—'}</span>
+                      </div>
+                      <p className="text-xs text-yellow-700 font-medium">Avg Rating ({m.rating_count || 0})</p>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <div className="mb-1">
+                        <span className="font-bold text-blue-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
+                      </div>
+                      <p className="text-xs text-blue-700 font-medium">Session Price</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-auto pt-4 border-t border-gray-100">
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-70" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                      {btnText}
+                    </Button>
+                    {m.price ? ( 
+                      <Button variant="outline" className="w-full border-2 hover:border-blue-300" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number(m.price) })}>
+                        Purchase Session
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+
+        {/* My Mentorship Requests */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30 mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-slate-900">My Mentorship Requests</h2>
+          </div>
+          <div>
+            {requests.length > 0 ? (
+              <div className="space-y-4">
+                {requests.map((r) => {
+                  const prof = profiles[r.mentor_email];
+                  const name = prof?.name || r.mentor_email;
+                  return (
+                    <motion.div
+                      key={r.id}
+                      whileHover={{ scale: 1.01 }}
+                      className="flex items-center justify-between p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-xl">{name}</p>
+                          <div className="flex items-center mt-2 space-x-4">
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{r.status}</span>
+                          </div>
+                          <div className="text-sm text-slate-600 mt-1">Updated: {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</div>
+                          {r.message ? <div className="mt-2 text-sm text-slate-700">{r.message}</div> : null}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-slate-600">No requests yet.</div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* My Sessions */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black text-slate-900">My Sessions</h2>
+          </div>
+          <div>
+            {sessions.length > 0 ? (
+              <div className="space-y-4">
+                {sessions.map((s) => {
+                  const prof = profiles[s.mentor_email];
+                  const name = prof?.name || s.mentor_email;
+                  return (
+                    <motion.div
+                      key={s.id}
+                      whileHover={{ scale: 1.01 }}
+                      className="p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                            <span className="text-white font-bold">{String(name).charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">Mentor: {name}</p>
+                            <p className="text-slate-600 text-sm">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                      </div>
+                      <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
+                      {(() => {
+                        if (!s.meeting_link || !s.scheduled_at) return null;
+                        const start = new Date(s.scheduled_at).getTime();
+                        const durMs = (s.duration_minutes || 60) * 60 * 1000;
+                        const now = Date.now();
+                        const isActive = s.status === 'scheduled' && now >= start && now < start + durMs;
+                        if (!isActive) return null;
+                        return (
+                          <div className="mt-1 text-sm">
+                            <a href={s.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-semibold">Join Now</a>
+                          </div>
+                        );
+                      })()}
+                      {(() => {
+                        const start = s.scheduled_at ? new Date(s.scheduled_at).getTime() : null;
+                        const durMs = (s.duration_minutes || 60) * 60 * 1000;
+                        const ended = start ? (Date.now() >= start + durMs) : false;
+                        return s.status === 'completed' || ended;
+                      })() ? (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <StarRating
+                              value={ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}
+                              onChange={(val) => setRatingForm({ session_id: s.id, rating: val, feedback: ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : '' })}
+                              size={18}
+                            />
+                            <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
+                          </div>
+                          <Input
+                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
+                            placeholder="Optional feedback"
+                            value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
+                            onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
+                          />
+                          <Button
+                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg"
+                            onClick={() => {
+                              if (!ratingForm || ratingForm.session_id !== s.id) return;
+                              const r = ratingForm.rating;
+                              if (r < 1 || r > 5) { toast({ title: 'Invalid rating', description: 'Pick 1-5 stars.', variant: 'destructive' }); return; }
+                              submitRating(s.id, s.mentor_email, r, ratingForm.feedback);
+                            }}
+                            disabled={!ratingForm || ratingForm.session_id !== s.id || (ratingForm.rating < 1 || ratingForm.rating > 5)}
+                          >
+                            Submit Rating
+                          </Button>
+                        </div>
+                      ) : null}
+                      {s.status === 'paid' ? (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <Input
+                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
+                            type="datetime-local"
+                            value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : ''}
+                            onChange={(e) => setScheduleForm({
+                              session_id: s.id,
+                              scheduled_at: e.target.value,
+                              duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
+                              meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
+                            })}
+                          />
+                          <Input
+                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
+                            type="number"
+                            placeholder="Duration (mins)"
+                            value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.duration_minutes as number) : (60 as number)}
+                            onChange={(e) => setScheduleForm({
+                              session_id: s.id,
+                              scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
+                              duration_minutes: Number(e.target.value) || 60,
+                              meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
+                            })}
+                          />
+                          <Input
+                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
+                            type="url"
+                            placeholder="Google Meet link (https://meet.google.com/...)"
+                            value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : ''}
+                            onChange={(e) => setScheduleForm({
+                              session_id: s.id,
+                              scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
+                              duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
+                              meeting_link: e.target.value,
+                            })}
+                          />
+                          <Button
+                            className="h-12 px-6 font-semibold text-sm min-w-[140px] bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg"
+                            onClick={() => {
+                              if (!scheduleForm || scheduleForm.session_id !== s.id) return;
+                              scheduleSession(s.id, scheduleForm.scheduled_at, scheduleForm.duration_minutes, scheduleForm.meeting_link);
+                            }}
+                            disabled={!scheduleForm || scheduleForm.session_id !== s.id || !scheduleForm.scheduled_at || !scheduleForm.meeting_link}
+                          >
+                            Schedule
+                          </Button>
+                        </div>
+                      ) : null}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-gray-600">No sessions yet.</div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+  </StudentNavigation>
   );
 }
