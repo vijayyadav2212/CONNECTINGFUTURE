@@ -309,8 +309,11 @@ export default function AdminDashboard() {
       let body = {};
       
       if (approval.type === 'alumni') {
-        endpoint = `${API_BASE}/api/admin/users/${approval.id}/approval`;
-        body = { approval_status: 'approved' };
+        // Use server-side proxy for alumni approvals (proxy will use admin token)
+        const auth0 = approval.raw_data && (approval.raw_data.auth0_id || approval.raw_data.auth0Id);
+        endpoint = '/api/admin/users';
+        body = { approval_status: 'approved' } as any;
+        if (auth0) body.auth0_id = auth0; else body.id = approval.id;
       } else if (approval.type === 'job') {
         endpoint = `${API_BASE}/api/admin/jobs/${approval.id}/approval`;
         body = { status: 'Approved' };
@@ -318,22 +321,22 @@ export default function AdminDashboard() {
         endpoint = `${API_BASE}/api/admin/events/${approval.id}/approval`;
         body = { status: 'Approved' };
       }
-      
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
+      const options: any = {
+        method: approval.type === 'alumni' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      });
-      
+      };
+      if (approval.type !== 'alumni') options.headers['Authorization'] = `Bearer ${accessToken}`;
+      const response = await fetch(endpoint, options);
       if (response.ok) {
         // Remove from pending list and refresh stats
         setPendingApprovals(prev => prev.filter(p => p.id !== approval.id || p.type !== approval.type));
         fetchDashboardData(true);
       } else {
-        throw new Error('Failed to approve');
+        let details = 'unknown error';
+        try { const d = await response.json(); details = d && (d.details || d.error || JSON.stringify(d)); } catch { try { details = await response.text(); } catch {} }
+        console.error('Quick approve upstream error', response.status, details);
+        alert('Approve failed: ' + details);
       }
     } catch (error) {
       console.error('Error approving:', error);
@@ -350,8 +353,10 @@ export default function AdminDashboard() {
       let body = {};
       
       if (approval.type === 'alumni') {
-        endpoint = `${API_BASE}/api/admin/users/${approval.id}/approval`;
-        body = { approval_status: 'rejected' };
+        endpoint = '/api/admin/users';
+        body = { approval_status: 'rejected' } as any;
+        const auth0 = approval.raw_data && (approval.raw_data.auth0_id || approval.raw_data.auth0Id);
+        if (auth0) body.auth0_id = auth0; else body.id = approval.id;
       } else if (approval.type === 'job') {
         endpoint = `${API_BASE}/api/admin/jobs/${approval.id}/approval`;
         body = { status: 'Rejected' };
@@ -359,22 +364,24 @@ export default function AdminDashboard() {
         endpoint = `${API_BASE}/api/admin/events/${approval.id}/approval`;
         body = { status: 'Rejected' };
       }
-      
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
+      const options2: any = {
+        method: approval.type === 'alumni' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      });
-      
+      };
+      if (approval.type !== 'alumni') {
+        options2.headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      const response = await fetch(endpoint, options2);
       if (response.ok) {
         // Remove from pending list and refresh stats
         setPendingApprovals(prev => prev.filter(p => p.id !== approval.id || p.type !== approval.type));
         fetchDashboardData(true);
       } else {
-        throw new Error('Failed to reject');
+        let details = 'unknown error';
+        try { const d = await response.json(); details = d && (d.details || d.error || JSON.stringify(d)); } catch { try { details = await response.text(); } catch {} }
+        console.error('Quick reject upstream error', response.status, details);
+        alert('Reject failed: ' + details);
       }
     } catch (error) {
       console.error('Error rejecting:', error);

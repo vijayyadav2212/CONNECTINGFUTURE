@@ -36,6 +36,9 @@ export async function middleware(request: NextRequest) {
       if (!session.user.registration_completed) {
         return NextResponse.redirect(new URL('/registration', request.url));
       }
+
+      // Allow alumni routes to proceed once registration is completed.
+      // The `AlumniNavigation` component will display pending/approved/rejected states to the user.
     }
   }
 

@@ -45,6 +45,12 @@ export default function RegistrationPage() {
         if (!resp.ok) return;
         const data = await resp.json();
         const u = data?.user || {};
+        // If user already completed registration, send them to alumni dashboard
+        const completed = !!u.registration_completed;
+        if (completed) {
+          router.push('/alumni/dashboard');
+          return;
+        }
         setFormData(prev => ({
           ...prev,
           fullName: (u.name ?? prev.fullName) || '',
@@ -92,8 +98,9 @@ export default function RegistrationPage() {
   console.log('Registration successful:', result);
   // Clear signup intent flag after successful registration
   try { document.cookie = 'signup_intent=; Max-Age=0; path=/'; } catch {}
-      
-      // Redirect to dashboard after successful registration
+
+  // After registration, always redirect to the alumni dashboard. The client navigation will display
+  // the appropriate pending/approved UI via `AlumniNavigation`.
   router.push(redirectTo || '/alumni/dashboard');
     } catch (error) {
       console.error('Registration error:', error);

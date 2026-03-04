@@ -475,12 +475,20 @@ export default function MemoriesPage() {
 
         <div className={`${isGridView ? '' : 'w-full sm:w-56 flex-shrink-0'} relative`}>
           <div className="relative overflow-hidden">
-            <img
-              src={memory.image}
-              alt={memory.title}
-              className={`${isGridView ? 'w-full h-56 sm:h-64' : 'w-full h-48 sm:h-full'
-                } object-cover group-hover:scale-110 transition-transform duration-700`}
-            />
+            {memory.image ? (
+              <img
+                src={memory.image}
+                alt={memory.title}
+                className={`${isGridView ? 'w-full h-56 sm:h-64' : 'w-full h-48 sm:h-full'} object-cover group-hover:scale-110 transition-transform duration-700`}
+              />
+            ) : (
+              <div className={`${isGridView ? 'w-full h-56 sm:h-64' : 'w-full h-48 sm:h-full'} bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-600`}>
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-blue-200 text-white grid place-items-center mx-auto mb-2">{(memory.title || '').charAt(0).toUpperCase()}</div>
+                  <div className="text-sm font-medium">No image</div>
+                </div>
+              </div>
+            )}
 
             {/* Modern Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

@@ -240,66 +240,12 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
 
       {/* Main Content Area */}
       <main className="ml-64 min-h-screen">
-        {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-          <div className="flex items-center justify-between px-8 py-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {navigationItems.find(item => isActiveRoute(item.route))?.label || 'Student Portal'}
-              </h2>
-              <p className="text-sm text-gray-600">Welcome back, {studentData.name}</p>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Notification Bell */}
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Bell className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                  5
-                </span>
-              </button>
-              
-              {/* Profile Picture */}
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold">SN</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
         {/* Page Content */}
         <div className="flex-1">
           {children}
         </div>
       </main>
 
-      {/* Notifications Panel */}
-      {showNotifications && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setShowNotifications(false)}>
-          <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl transform transition-transform">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm font-medium text-blue-900">New mentorship match available</p>
-                <p className="text-xs text-blue-700 mt-1">2 minutes ago</p>
-              </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <p className="text-sm font-medium text-green-900">Academic progress updated</p>
-                <p className="text-xs text-green-700 mt-1">1 hour ago</p>
-              </div>
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <p className="text-sm font-medium text-yellow-900">New job opportunity posted</p>
-                <p className="text-xs text-yellow-700 mt-1">3 hours ago</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

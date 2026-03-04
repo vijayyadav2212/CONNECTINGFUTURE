@@ -56,6 +56,15 @@ type Session = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
+function normalizeExternalLink(link?: string) {
+  if (!link) return '';
+  const l = link.trim();
+  if (/^https?:\/\//i.test(l)) return l;
+  if (/^\/\//.test(l)) return window.location.protocol + l;
+  if (/meet\.google\.com/i.test(l)) return 'https://' + l.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
+  return l.startsWith('/') ? l : 'https://' + l;
+}
+
 export default function MentorshipRequests() {
   const { user } = useUser();
   const [q, setQ] = useState("");
@@ -132,12 +141,12 @@ export default function MentorshipRequests() {
   async function loadRequestsAndSessions() {
     if (!user?.email) return;
     try {
-      const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
+      const rq = await fetch(`${API_BASE}/api/mentorship/requests?student_email=${encodeURIComponent(user.email)}&role=student`);
       const rj = await rq.json();
       setRequests(rj.requests || []);
     } catch { }
     try {
-      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
+      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}&role=student`);
       const sj = await sq.json();
       setSessions(sj.sessions || []);
     } catch { }
@@ -157,7 +166,7 @@ export default function MentorshipRequests() {
     const interval = setInterval(async () => {
       if (!user?.email) return;
       try {
-        const rq = await fetch(`${API_BASE}/api/mentorship/requests?user_email=${encodeURIComponent(user.email)}&role=student`);
+        const rq = await fetch(`${API_BASE}/api/mentorship/requests?student_email=${encodeURIComponent(user.email)}&role=student`);
         const rj = await rq.json();
         const newRequests: Request[] = rj.requests || [];
         // Detect status changes
@@ -178,7 +187,7 @@ export default function MentorshipRequests() {
       } catch { }
 
       try {
-        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=student`);
+        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}&role=student`);
         const sj = await sq.json();
         const newSessions: Session[] = sj.sessions || [];
         // Reminders: first time we see a scheduled session in <24h
@@ -665,20 +674,18 @@ export default function MentorshipRequests() {
                         </div>
                         <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
                       </div>
-                      <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
-                      {(() => {
-                        if (!s.meeting_link || !s.scheduled_at) return null;
-                        const start = new Date(s.scheduled_at).getTime();
-                        const durMs = (s.duration_minutes || 60) * 60 * 1000;
-                        const now = Date.now();
-                        const isActive = s.status === 'scheduled' && now >= start && now < start + durMs;
-                        if (!isActive) return null;
-                        return (
-                          <div className="mt-1 text-sm">
-                            <a href={s.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-semibold">Join Now</a>
-                          </div>
-                        );
-                      })()}
+                      <div className="flex items-center justify-between">
+                        <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
+                        {(() => {
+                          if (!s.meeting_link || !s.scheduled_at) return null;
+                          const href = normalizeExternalLink(s.meeting_link || undefined);
+                          return (
+                            <div className="ml-4">
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md">Join</a>
+                            </div>
+                          );
+                        })()}
+                      </div>
                       {(() => {
                         const start = s.scheduled_at ? new Date(s.scheduled_at).getTime() : null;
                         const durMs = (s.duration_minutes || 60) * 60 * 1000;
@@ -715,52 +722,9 @@ export default function MentorshipRequests() {
                         </div>
                       ) : null}
                       {s.status === 'paid' ? (
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <Input
-                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                            type="datetime-local"
-                            value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : ''}
-                            onChange={(e) => setScheduleForm({
-                              session_id: s.id,
-                              scheduled_at: e.target.value,
-                              duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
-                              meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
-                            })}
-                          />
-                          <Input
-                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                            type="number"
-                            placeholder="Duration (mins)"
-                            value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.duration_minutes as number) : (60 as number)}
-                            onChange={(e) => setScheduleForm({
-                              session_id: s.id,
-                              scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
-                              duration_minutes: Number(e.target.value) || 60,
-                              meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
-                            })}
-                          />
-                          <Input
-                            className="h-12 bg-white/50 backdrop-blur-sm border-white/60 focus:border-blue-400"
-                            type="url"
-                            placeholder="Google Meet link (https://meet.google.com/...)"
-                            value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : ''}
-                            onChange={(e) => setScheduleForm({
-                              session_id: s.id,
-                              scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
-                              duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
-                              meeting_link: e.target.value,
-                            })}
-                          />
-                          <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[140px] bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg"
-                            onClick={() => {
-                              if (!scheduleForm || scheduleForm.session_id !== s.id) return;
-                              scheduleSession(s.id, scheduleForm.scheduled_at, scheduleForm.duration_minutes, scheduleForm.meeting_link);
-                            }}
-                            disabled={!scheduleForm || scheduleForm.session_id !== s.id || !scheduleForm.scheduled_at || !scheduleForm.meeting_link}
-                          >
-                            Schedule
-                          </Button>
+                        <div className="mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-100 text-slate-700">
+                          <p className="font-medium">Session unlocked — waiting for mentor to schedule.</p>
+                          <p className="text-sm mt-2">The mentor will provide a Google Meet link and schedule time. You will see the session details here and be able to join once scheduled.</p>
                         </div>
                       ) : null}
                     </motion.div>

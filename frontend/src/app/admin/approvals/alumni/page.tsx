@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminNavigation from '../../AdminNavigation';
 import { 
   UserCheck, UserX, Search, Filter, CheckCircle, 
@@ -10,8 +10,10 @@ import {
 
 interface AlumniApproval {
   id: number;
+  auth0Id?: string;
   name: string;
   email: string;
+  userType?: string;
   phone?: string;
   graduationYear: number;
   major: string;
@@ -33,65 +35,99 @@ export default function AlumniApprovalsPage() {
   const [showRejectionModal, setShowRejectionModal] = useState(false);
 
   // Mock data
-  const [alumniList, setAlumniList] = useState<AlumniApproval[]>([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      phone: '+91 98765 43210',
-      graduationYear: 2020,
-      major: 'Computer Science',
-      company: 'Google',
-      jobTitle: 'Software Engineer',
-      location: 'Mumbai, India',
-      linkedinUrl: 'https://linkedin.com/in/johndoe',
-      bio: 'Passionate software engineer with 4 years of experience in full-stack development.',
-      skills: ['React', 'Node.js', 'Python', 'AWS'],
-      submittedAt: '2 hours ago',
-      status: 'pending'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      graduationYear: 2019,
-      major: 'Mechanical Engineering',
-      company: 'Tesla',
-      jobTitle: 'Mechanical Design Engineer',
-      location: 'Bangalore, India',
-      bio: 'Experienced mechanical engineer specializing in automotive design.',
-      skills: ['CAD', 'SolidWorks', 'FEA', 'Product Design'],
-      submittedAt: '5 hours ago',
-      status: 'pending'
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      email: 'mike.j@example.com',
-      graduationYear: 2018,
-      major: 'Electrical Engineering',
-      company: 'Intel',
-      jobTitle: 'Hardware Engineer',
-      location: 'Pune, India',
-      submittedAt: '1 day ago',
-      status: 'approved'
-    },
-  ]);
+  const [alumniList, setAlumniList] = useState<AlumniApproval[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleApprove = (alumniId: number) => {
-    setAlumniList(alumniList.map(a => 
-      a.id === alumniId ? { ...a, status: 'approved' as const } : a
-    ));
-    setSelectedAlumni(null);
+  const fetchAlumni = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/admin/users', { cache: 'no-store' });
+      if (!resp.ok) throw new Error('Failed to fetch alumni');
+      const data = await resp.json();
+      const users = data.alumni || data.users || [];
+      // Only consider users who are alumni
+      const alumniUsers = users.filter((u: any) => String(u.user_type || u.type || '').toLowerCase() === 'alumni');
+      const mapped = alumniUsers.map((u: any) => {
+        // Normalize skills to an array
+        let skills: string[] = [];
+        if (Array.isArray(u.skills)) skills = u.skills;
+        else if (typeof u.skills === 'string') skills = u.skills.split(',').map((s: string) => s.trim()).filter(Boolean);
+        else if (Array.isArray(u.tags)) skills = u.tags;
+        else if (typeof u.tags === 'string') skills = u.tags.split(',').map((s: string) => s.trim()).filter(Boolean);
+
+        return {
+          id: u.id,
+          auth0Id: u.auth0_id || u.auth0Id || null,
+          userType: u.user_type || u.type || '',
+          name: u.name || u.email || 'Unnamed',
+          email: u.email || '',
+          phone: u.phone || u.contact_number || '',
+          graduationYear: u.graduation_year || u.graduationYear || null,
+          major: u.major || u.branch || '',
+          company: u.company || u.current_company || '',
+          jobTitle: u.job_title || u.current_position || '',
+          location: u.location || u.city || '',
+          linkedinUrl: u.linkedin_url || u.linkedin || '',
+          bio: u.bio || u.summary || '',
+          skills,
+          submittedAt: u.created_at || u.submitted_at || '',
+          status: (u.approval_status || u.status || 'pending').toLowerCase()
+        };
+      });
+      setAlumniList(mapped);
+    } catch (e) {
+      console.error('Failed to load alumni approvals', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (alumniId: number, reason: string) => {
-    setAlumniList(alumniList.map(a => 
-      a.id === alumniId ? { ...a, status: 'rejected' as const } : a
-    ));
-    setShowRejectionModal(false);
-    setSelectedAlumni(null);
-    setRejectionReason('');
+  useEffect(() => { fetchAlumni(); }, []);
+
+  const handleApprove = async (alumniIdOrAuth0: number | string) => {
+    if (!confirm('Approve this alumni?')) return;
+    try {
+      // Use server-side proxy so it can attach admin/management token
+      const payload: any = { approval_status: 'approved' };
+      if (typeof alumniIdOrAuth0 === 'string') payload.auth0_id = alumniIdOrAuth0; else payload.id = alumniIdOrAuth0;
+      const resp = await fetch('/api/admin/users', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) {
+        let details = 'unknown error';
+        try { const d = await resp.json(); details = d && (d.details || d.error || JSON.stringify(d)); } catch { try { details = await resp.text(); } catch {} }
+        console.error('Approve failed upstream:', resp.status, details);
+        alert('Approve failed: ' + details);
+        return;
+      }
+      await fetchAlumni();
+      setSelectedAlumni(null);
+    } catch (e) {
+      console.error('Approve error', e);
+      alert('Failed to approve');
+    }
+  };
+
+  const handleReject = async (alumniIdOrAuth0: number | string, reason: string) => {
+    if (!confirm('Reject this alumni?')) return;
+    try {
+      // Use server-side proxy for reject as well
+      const payload: any = { approval_status: 'rejected', reason };
+      if (typeof alumniIdOrAuth0 === 'string') payload.auth0_id = alumniIdOrAuth0; else payload.id = alumniIdOrAuth0;
+      const resp = await fetch('/api/admin/users', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) {
+        let details = 'unknown error';
+        try { const d = await resp.json(); details = d && (d.details || d.error || JSON.stringify(d)); } catch { try { details = await resp.text(); } catch {} }
+        console.error('Reject failed upstream:', resp.status, details);
+        alert('Reject failed: ' + details);
+        return;
+      }
+      await fetchAlumni();
+      setShowRejectionModal(false);
+      setSelectedAlumni(null);
+      setRejectionReason('');
+    } catch (e) {
+      console.error('Reject error', e);
+      alert('Failed to reject');
+    }
   };
 
   const filteredAlumni = alumniList.filter(alumni => {
@@ -242,7 +278,7 @@ export default function AlumniApprovalsPage() {
                       )}
 
                       {/* Skills */}
-                      {alumni.skills && alumni.skills.length > 0 && (
+                      {Array.isArray(alumni.skills) && alumni.skills.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-3">
                           {alumni.skills.map((skill, idx) => (
                             <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
@@ -268,7 +304,7 @@ export default function AlumniApprovalsPage() {
                         View
                       </button>
                       <button
-                        onClick={() => handleApprove(alumni.id)}
+                        onClick={() => handleApprove(alumni.auth0Id ?? alumni.id)}
                         className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors font-medium text-sm flex items-center"
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
@@ -319,7 +355,7 @@ export default function AlumniApprovalsPage() {
                 Cancel
               </button>
               <button
-                onClick={() => handleReject(selectedAlumni.id, rejectionReason)}
+                onClick={() => handleReject(selectedAlumni.auth0Id ?? selectedAlumni.id, rejectionReason)}
                 disabled={!rejectionReason.trim()}
                 className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >

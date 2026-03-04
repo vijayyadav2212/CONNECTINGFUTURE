@@ -216,7 +216,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                 Update Profile
               </button>
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => router.push('/api/auth/logout')}
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
               >
                 Logout

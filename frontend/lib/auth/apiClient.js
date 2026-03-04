@@ -3,7 +3,8 @@ import tokenManager from './tokenManager';
 
 class ApiClient {
   constructor() {
-    const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+    const envRaw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL;
+    const raw = (envRaw && String(envRaw).trim()) ? String(envRaw) : 'http://localhost:4000';
     // Normalize trailing slashes so values like "http://localhost:4000/api/" don't become "/api/api"
     const normalized = String(raw).replace(/\/+$/, '');
     this.baseURL = normalized.endsWith('/api') ? normalized : `${normalized}/api`;

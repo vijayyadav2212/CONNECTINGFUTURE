@@ -45,7 +45,8 @@ export default function JobManagementPage() {
       if (!user || !accessToken) return;
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE}/api/jobs?limit=100`, {
+        // Request all jobs (include status=All Status so backend returns unfiltered list for admins)
+        const response = await fetch(`${API_BASE}/api/jobs?limit=100&status=All%20Status`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },
@@ -66,7 +67,7 @@ export default function JobManagementPage() {
   const handleApprove = async (jobId: number) => {
     if (!accessToken) return;
     try {
-      const response = await fetch(`${API_BASE}/api/admin/jobs/${jobId}/approval`, {
+      const response = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +92,7 @@ export default function JobManagementPage() {
   const handleReject = async (jobId: number) => {
     if (!accessToken) return;
     try {
-      const response = await fetch(`${API_BASE}/api/admin/jobs/${jobId}/approval`, {
+      const response = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

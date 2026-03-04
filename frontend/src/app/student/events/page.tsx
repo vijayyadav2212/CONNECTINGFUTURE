@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import StudentNavigation from '../StudentNavigation';
 import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus } from 'lucide-react';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+
 interface Event {
   id: string;
   title: string;
@@ -36,19 +38,34 @@ export default function Events() {
   const [successEventTitle, setSuccessEventTitle] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [registeringEventId, setRegisteringEventId] = useState<string | null>(null);
+  const [lastRegisterLog, setLastRegisterLog] = useState<string | null>(null);
   const { user } = useUser();
 
   const handleRegister = async (eventId: string, eventTitle: string) => {
     if (!user) {
-      toast.error("Please log in to register for events.");
+      console.log('handleRegister: no user', user);
+      setLastRegisterLog(`no-user:${eventId}@${new Date().toISOString()}`);
+      toast.error("Please log in to register — redirecting to login...");
+      // Redirect to Auth0 login route and return to the current page afterwards
+      try {
+        const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/api/auth/login?returnTo=${returnTo}`;
+      } catch (e) {
+        console.error('Redirect to login failed', e);
+      }
       return;
     }
 
     // Show loading on button only
     setRegisteringEventId(eventId);
+    const now = new Date().toISOString();
+    setLastRegisterLog(`attempt:${eventId}@${now}`);
+    console.log('handleRegister called', { eventId, userEmail: user.email, time: now });
 
     try {
-      const res = await fetch(`http://localhost:4000/api/events/${eventId}/register`, {
+      const url = `${API_BASE}/api/events/${encodeURIComponent(eventId)}/register`;
+      console.log('POST ->', url);
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -59,7 +76,7 @@ export default function Events() {
         })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         // First: Update button to "Registered" state
@@ -77,14 +94,20 @@ export default function Events() {
         // Fourth: Hide loading and show success modal
         setIsRegistering(false);
         setShowSuccessModal(true);
+        setLastRegisterLog(`success:${eventId}@${new Date().toISOString()}`);
+        console.log('Registration success', { eventId });
       } else {
         setRegisteringEventId(null);
-        toast.error(data.error || "Registration failed");
+        const errMsg = (data && data.error) ? data.error : `Registration failed (${res.status})`;
+        setLastRegisterLog(`fail:${eventId}@${new Date().toISOString()} ${errMsg}`);
+        console.warn('Registration failed', errMsg, data);
+        toast.error(errMsg);
       }
     } catch (err) {
       console.error("Registration error", err);
       setRegisteringEventId(null);
-      toast.error("Something went wrong");
+      setLastRegisterLog(`error:${eventId}@${new Date().toISOString()}`);
+      toast.error("Unable to reach server. Please try again later.");
     }
   };
 
@@ -136,8 +159,8 @@ export default function Events() {
     const fetchEvents = async () => {
       try {
         const url = user?.email
-          ? `http://localhost:4000/api/events?user_email=${encodeURIComponent(user.email)}`
-          : 'http://localhost:4000/api/events';
+          ? `${API_BASE}/api/events?user_email=${encodeURIComponent(user.email)}`
+          : `${API_BASE}/api/events`;
 
         const res = await fetch(url);
         if (res.ok) {
@@ -459,7 +482,16 @@ export default function Events() {
                       </span>
                       <span className="text-xs text-gray-500 font-medium">by {event.organizer}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3" onClickCapture={(ev) => {
+                      try {
+                        const clientX = (ev as any).clientX || 0;
+                        const clientY = (ev as any).clientY || 0;
+                        const el = document.elementFromPoint(clientX, clientY as any);
+                        console.log('click capture', { target: ev.target, elemAtPoint: el, userAtClick: user });
+                        const id = (ev.target as any)?.dataset?.eventId || (el as any)?.dataset?.eventId || '';
+                        if (id) setLastRegisterLog(`clicked:${id}@${new Date().toISOString()}`);
+                      } catch (e) { /* ignore */ }
+                    }}>
                       <button
                         className={`p-2 rounded-xl transition-all duration-200 shadow-sm ${event.isSaved
                           ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:scale-110'
@@ -476,6 +508,7 @@ export default function Events() {
                         <Share2 className="w-4 h-4" />
                       </button>
                       <button
+                        style={{ position: 'relative', zIndex: 60, pointerEvents: 'auto' }}
                         className={`px-6 py-2 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg flex items-center gap-2 ${event.isRegistered
                           ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white cursor-not-allowed'
                           : registeringEventId === event.id
@@ -483,7 +516,22 @@ export default function Events() {
                             : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-105'
                           }`}
                         disabled={event.isRegistered || registeringEventId === event.id}
+                        data-event-id={event.id}
+                        onPointerDown={() => console.log('pointerdown', event.id)}
+                        onMouseDown={() => console.log('mousedown', event.id)}
+                        onClickCapture={(ev) => {
+                          console.log('button click capture', event.id);
+                          // Guard to avoid double-submitting
+                          if (event.isRegistered || registeringEventId === event.id) return;
+                          try { handleRegister(event.id, event.title); } catch (e) { console.error(e); }
+                        }}
                         onClick={() => !event.isRegistered && handleRegister(event.id, event.title)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            if (!event.isRegistered) handleRegister(event.id, event.title);
+                          }
+                        }}
                       >
                         {registeringEventId === event.id ? (
                           <>

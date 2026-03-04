@@ -1832,6 +1832,30 @@ function AlumniJobBoard() {
                         <label htmlFor="remote" className="ml-2 text-sm text-gray-700">Remote work available</label>
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Job Type <span className="text-red-500">*</span></label>
+                        <Select value={formData.jobType} onValueChange={(v) => handleInputChange('jobType', v)}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Select job type" /></SelectTrigger>
+                          <SelectContent>
+                            {jobTypes.slice(1).map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Industry <span className="text-red-500">*</span></label>
+                        <Select value={formData.industry} onValueChange={(v) => handleInputChange('industry', v)}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Select industry" /></SelectTrigger>
+                          <SelectContent>
+                            {industries.map((ind) => (
+                              <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div className="flex justify-end pt-4 border-t border-gray-200">
                       <button type="button" onClick={() => setActiveStep(2)} className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl">Next: Details</button>
                     </div>

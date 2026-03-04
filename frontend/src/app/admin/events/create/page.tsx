@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useAuth0Token } from '../../../../hooks/useAuth0Token';
 import AdminNavigation from '../../AdminNavigation';
 import { 
   Calendar, MapPin, Clock, Users, Globe, Video, 
@@ -55,6 +57,9 @@ export default function CreateEventPage() {
     agenda: ''
   });
 
+  const { user } = useUser();
+  const { token: accessToken } = useAuth0Token();
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -76,11 +81,12 @@ export default function CreateEventPage() {
     e.preventDefault();
     const submitEvent = async () => {
       try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
         let image_url = '';
         if (formData.image) {
           const imgForm = new FormData();
           imgForm.append('image', formData.image);
-          const imgRes = await fetch('http://localhost:4000/api/uploads/event-image', {
+          const imgRes = await fetch(`${API_BASE}/api/uploads/event-image`, {
             method: 'POST',
             body: imgForm
           });
@@ -93,12 +99,16 @@ export default function CreateEventPage() {
           }
         }
         const { image, ...eventData } = formData;
-        const res = await fetch('http://localhost:4000/api/events', {
+        // Do not set 'status' here — new events should start as pending and be
+        // approved by an admin. Server will set approval_status = 'pending'.
+        const payload: any = { ...eventData, image_url, posted_by: user?.email };
+        const res = await fetch(`${API_BASE}/api/events`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
-          body: JSON.stringify({ ...eventData, image_url }),
+          body: JSON.stringify(payload),
         });
         if (res.ok) {
           setShowSuccess(true);

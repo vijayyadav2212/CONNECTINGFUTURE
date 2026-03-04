@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useAuth0Token } from '../../../../hooks/useAuth0Token';
 import AdminNavigation from '../../AdminNavigation';
 import { useRouter } from 'next/navigation';
 import { 
@@ -15,6 +17,7 @@ interface FormData {
   title: string;
   company: string;
   location: string;
+  industry: string;
   jobType: string;
   experienceLevel: string;
   description: string;
@@ -41,6 +44,7 @@ export default function CreateJobPage() {
     title: '',
     company: '',
     location: '',
+    industry: 'Technology',
     jobType: 'full-time',
     experienceLevel: 'mid',
     description: '',
@@ -59,14 +63,79 @@ export default function CreateJobPage() {
     vacancies: '1'
   });
 
+  const { user } = useUser();
+  const { token: accessToken } = useAuth0Token();
+
+  const industries = [
+    'Technology', 'Finance', 'Healthcare', 'Marketing', 'Consulting', 'Manufacturing', 'Education', 'Non-profit', 'Government', 'Retail', 'Media', 'Real Estate'
+  ];
+
+  const adminJobTypes = [
+    { value: 'full-time', label: 'Full-time' },
+    { value: 'part-time', label: 'Part-time' },
+    { value: 'contract', label: 'Contract' },
+    { value: 'temporary', label: 'Temporary' },
+    { value: 'internship-paid', label: 'Internship (Paid)' },
+    { value: 'internship-unpaid', label: 'Internship (Unpaid)' }
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API call to create job
-    console.log('Creating job:', formData);
-    setShowSuccess(true);
-    setTimeout(() => {
-      router.push('/admin/jobs');
-    }, 2000);
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+    
+
+    const payload: any = {
+      title: formData.title,
+      company: formData.company,
+      location: formData.location,
+      description: formData.description,
+      responsibilities: formData.responsibilities,
+      requirements: formData.requirements,
+      benefits: formData.benefits,
+      salary_min: formData.salaryMin || null,
+      salary_max: formData.salaryMax || null,
+      currency: formData.currency || null,
+      tags: formData.skills ? formData.skills.split(',').map((t) => t.trim()).filter(Boolean) : [],
+      status: 'Approved',
+      featured: false,
+      logo: `/placeholder.svg?height=40&width=40&text=${(formData.company || 'C').charAt(0)}`,
+      industry: formData.industry,
+      job_type: formData.jobType,
+      is_remote: formData.workMode === 'remote',
+      application_deadline: (() => {
+        const days = Number(formData.expiresAt || '30');
+        return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      })(),
+      contact_person: null,
+      application_method: formData.applicationUrl ? 'company' : (formData.applicationEmail ? 'email' : null),
+      application_url: formData.applicationUrl || null,
+      posted_by: user?.email || null,
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        console.error('Job create failed:', res.status, await res.text());
+        throw new Error(`Failed to create job: ${res.status}`);
+      }
+
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.push('/admin/jobs');
+      }, 1200);
+    } catch (err) {
+      console.error('Error creating job:', err);
+      // Show a simple inline error via console; keep UX minimal for now
+      alert('Failed to create job. Check console for details.');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -241,6 +310,21 @@ export default function CreateJobPage() {
                         <option value="other">Other</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">Job Type <span className="text-red-500 ml-1">*</span></label>
+                    <select name="jobType" value={formData.jobType} onChange={handleChange} required className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none bg-white cursor-pointer text-gray-900 font-medium">
+                      {adminJobTypes.map((jt) => <option key={jt.value} value={jt.value}>{jt.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">Industry <span className="text-red-500 ml-1">*</span></label>
+                    <select name="industry" value={(formData as any).industry} onChange={handleChange} required className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none bg-white cursor-pointer text-gray-900 font-medium">
+                      {industries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
+                    </select>
                   </div>
                 </div>
 

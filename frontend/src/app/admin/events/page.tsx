@@ -43,14 +43,26 @@ export default function EventManagementPage() {
       if (!user || !accessToken) return;
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE}/api/events?limit=100`, {
+        const response = await fetch(`${API_BASE}/api/events?limit=100&all=true`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },
         });
         if (response.ok) {
           const data = await response.json();
-          setEvents(data.events || []);
+          // backend may return an array or an object { events: [...] }
+          const list = Array.isArray(data) ? data : (data && data.events ? data.events : []);
+          // normalize fields (backend uses event_date; frontend expects start_date)
+          const normalized = (list || []).map((ev: any) => ({
+            ...ev,
+            start_date: ev.start_date || ev.event_date || ev.start || ev.date || null,
+            is_virtual: ev.is_virtual || Boolean(ev.virtual_link || ev.online || false),
+            event_type: ev.event_type || (ev.type || 'event'),
+            description: ev.description || ev.summary || '',
+            posted_by: ev.posted_by || ev.organizer || ev.organiser || null,
+            status: ev.status || ev.approval_status || 'pending'
+          }));
+          setEvents(normalized);
         }
       } catch (error) {
         console.error('Error loading events:', error);
@@ -64,13 +76,13 @@ export default function EventManagementPage() {
   const handleApprove = async (eventId: number) => {
     if (!accessToken) return;
     try {
-      const response = await fetch(`${API_BASE}/api/admin/events/${eventId}/approval`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE}/api/events/${eventId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ status: 'Approved' }),
+        body: JSON.stringify({ approval_status: 'approved' }),
       });
       if (response.ok) {
         setEvents(events.map(e => 
@@ -89,13 +101,13 @@ export default function EventManagementPage() {
   const handleReject = async (eventId: number) => {
     if (!accessToken) return;
     try {
-      const response = await fetch(`${API_BASE}/api/admin/events/${eventId}/approval`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE}/api/events/${eventId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ status: 'Rejected' }),
+        body: JSON.stringify({ approval_status: 'rejected' }),
       });
       if (response.ok) {
         setEvents(events.map(e => 

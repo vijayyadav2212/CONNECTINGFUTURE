@@ -51,18 +51,18 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
       badge: 1,
       route: "/admin/events" 
     },
-    { 
-      id: "users", 
-      label: "User Management", 
-      icon: <Users className="w-5 h-5" />, 
-      route: "/admin/users" 
-    },
-    { 
-      id: "reports", 
-      label: "Reports & Analytics", 
-      icon: <BarChart3 className="w-5 h-5" />, 
-      route: "/admin/reports" 
-    },
+    // { 
+    //   id: "users", 
+    //   label: "User Management", 
+    //   icon: <Users className="w-5 h-5" />, 
+    //   route: "/admin/users" 
+    // },
+    // { 
+    //   id: "reports", 
+    //   label: "Reports & Analytics", 
+    //   icon: <BarChart3 className="w-5 h-5" />, 
+    //   route: "/admin/reports" 
+    // },
     { 
       id: "notifications", 
       label: "Notifications", 
@@ -77,7 +77,7 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
     },
   ];
 
-  const isActiveRoute = (route: string): boolean => {
+  const isActiveRoute = (route: string): any => {
     return pathname === route || pathname?.startsWith(route + '/');
   };
 

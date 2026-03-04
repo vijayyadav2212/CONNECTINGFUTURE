@@ -27,7 +27,7 @@ const StatCard = ({ icon: Icon, count, suffix, label, color, delay, isVisible }:
   return (
     <div 
       className={`text-center transform transition-all duration-700 hover:scale-105 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+        isVisible ? 'opacity-100 translate-y-0 animate-fade-in-up' : 'opacity-0 translate-y-10'
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -68,7 +68,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, delay, isVisible }
   return (
     <Card 
       className={`group shadow-lg hover:shadow-2xl transition-all duration-500 border-0 bg-white transform hover:scale-105 hover:-translate-y-2 cursor-pointer ${backgroundGradients[color as keyof typeof backgroundGradients]} ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+        isVisible ? 'opacity-100 translate-y-0 animate-fade-in-up' : 'opacity-0 translate-y-10'
       }`}
       style={{ animationDelay: `${delay}ms` }}
       onMouseEnter={() => setIsHovered(true)}
@@ -117,7 +117,7 @@ const TestimonialCard = ({ name, role, initials, testimonial, color, delay, isVi
   return (
     <Card 
       className={`group shadow-lg hover:shadow-2xl transition-all duration-500 border-0 ${backgroundClasses[color as keyof typeof backgroundClasses]} transform hover:scale-105 hover:-translate-y-2 cursor-pointer ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+        isVisible ? 'opacity-100 translate-y-0 animate-fade-in-up' : 'opacity-0 translate-y-10'
       }`}
       style={{ animationDelay: `${delay}ms` }}
       onMouseEnter={() => setIsHovered(true)}
@@ -208,7 +208,17 @@ export default function HomePage() {
   const testimonialsRef = useRef<HTMLDivElement>(null);
   
   // Intersection observer hooks
-  const isHeroVisible = useIntersectionObserver(heroRef);
+  // hero visibility is intentionally always shown; observers used for other sections
+  const [forceStatsVisible, setForceStatsVisible] = useState(false);
+  const [forceFeaturesVisible, setForceFeaturesVisible] = useState(false);
+  const [forceTestimonialsVisible, setForceTestimonialsVisible] = useState(false);
+  useEffect(() => {
+    // Small staggered fallbacks so content becomes visible if observers fail
+    const s = setTimeout(() => setForceStatsVisible(true), 200);
+    const f = setTimeout(() => setForceFeaturesVisible(true), 400);
+    const t2 = setTimeout(() => setForceTestimonialsVisible(true), 600);
+    return () => { clearTimeout(s); clearTimeout(f); clearTimeout(t2); };
+  }, []);
   const isStatsVisible = useIntersectionObserver(statsRef);
   const isFeaturesVisible = useIntersectionObserver(featuresRef);
   const isTestimonialsVisible = useIntersectionObserver(testimonialsRef);
@@ -221,6 +231,16 @@ export default function HomePage() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // Animated counters (call hooks unconditionally before any early return)
+  const visibleStats = isStatsVisible || forceStatsVisible;
+  const visibleFeatures = isFeaturesVisible || forceFeaturesVisible;
+  const visibleTestimonials = isTestimonialsVisible || forceTestimonialsVisible;
+
+  const alumniCount = useAnimatedCounter(500, 2000, visibleStats);
+  const placementsCount = useAnimatedCounter(200, 2000, visibleStats);
+  const mentorshipCount = useAnimatedCounter(1000, 2000, visibleStats);
+  const successCount = useAnimatedCounter(50, 2000, visibleStats);
 
   if (isLoading) {
     return (
@@ -341,22 +361,22 @@ export default function HomePage() {
         ></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
-          <div className={`mb-8 transition-all duration-1000 ${isHeroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className={`w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl transform transition-all duration-700 hover:scale-110 hover:rotate-3 ${isHeroVisible ? 'animate-bounce' : ''}`}>
+          <div className="mb-8 transition-all duration-1000 opacity-100 translate-y-0 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl transform transition-all duration-700 hover:scale-110 hover:rotate-3 animate-bounce">
               <GraduationCap className="h-10 w-10 text-white" />
             </div>
-            <h2 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-6 transition-all duration-1000 ${isHeroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-6 transition-all duration-1000 opacity-100 translate-y-0 animate-fade-in-up"
                 style={{ animationDelay: '0.2s' }}>
               Connect Alumni with Students
             </h2>
-            <p className={`text-lg sm:text-xl lg:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed transition-all duration-1000 ${isHeroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+            <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed transition-all duration-1000 opacity-100 translate-y-0 animate-fade-in-up"
                style={{ animationDelay: '0.4s' }}>
               Bridge the gap between experienced alumni and current students. Share knowledge, 
               create opportunities, and build lasting connections that shape the future.
             </p>
           </div>
           {!user && (
-            <div className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-1000 ${isHeroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center transition-all duration-1000 opacity-100 translate-y-0"
                  style={{ animationDelay: '0.6s' }}>
               <a href="/api/auth/login?screen_hint=signup">
                 <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl hover:shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-1 text-white font-semibold px-8 py-4 rounded-xl">
@@ -392,39 +412,39 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <StatCard
               icon={Users}
-              count={useAnimatedCounter(500, 2000, isStatsVisible)}
+              count={alumniCount}
               suffix="+"
               label="Active Alumni"
               color="blue"
               delay="0"
-              isVisible={isStatsVisible}
+              isVisible={visibleStats}
             />
             <StatCard
               icon={Briefcase}
-              count={useAnimatedCounter(200, 2000, isStatsVisible)}
+              count={placementsCount}
               suffix="+"
               label="Job Placements"
               color="green"
               delay="200"
-              isVisible={isStatsVisible}
+              isVisible={visibleStats}
             />
             <StatCard
               icon={MessageCircle}
-              count={useAnimatedCounter(1000, 2000, isStatsVisible)}
+              count={mentorshipCount}
               suffix="+"
               label="Mentorship Sessions"
               color="purple"
               delay="400"
-              isVisible={isStatsVisible}
+              isVisible={visibleStats}
             />
             <StatCard
               icon={Award}
-              count={useAnimatedCounter(50, 2000, isStatsVisible)}
+              count={successCount}
               suffix="+"
               label="Success Stories"
               color="yellow"
               delay="600"
-              isVisible={isStatsVisible}
+              isVisible={visibleStats}
             />
           </div>
         </div>
@@ -436,7 +456,7 @@ export default function HomePage() {
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent)]"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className={`text-center mb-16 transition-all duration-1000 ${isFeaturesVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          <div className={`text-center mb-16 transition-all duration-1000 ${visibleFeatures ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <h3 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent mb-4">
               Why Choose Connecting Future?
             </h3>
@@ -451,7 +471,7 @@ export default function HomePage() {
               description="Connect with alumni from your field and build meaningful professional relationships that last throughout your career journey."
               color="blue"
               delay="0"
-              isVisible={isFeaturesVisible}
+              isVisible={visibleFeatures}
             />
             <FeatureCard
               icon={Briefcase}
@@ -459,7 +479,7 @@ export default function HomePage() {
               description="Discover job opportunities, internships, and career guidance from experienced professionals who have walked the same path."
               color="green"
               delay="200"
-              isVisible={isFeaturesVisible}
+              isVisible={visibleFeatures}
             />
             <FeatureCard
               icon={MessageCircle}
@@ -467,7 +487,7 @@ export default function HomePage() {
               description="Get mentored by alumni or become a mentor yourself. Share knowledge, experiences, and help shape the next generation of professionals."
               color="purple"
               delay="400"
-              isVisible={isFeaturesVisible}
+              isVisible={visibleFeatures}
             />
           </div>
         </div>
@@ -477,7 +497,7 @@ export default function HomePage() {
       <section ref={testimonialsRef} className="py-20 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 via-white to-purple-50/30"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className={`text-center mb-16 transition-all duration-1000 ${isTestimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          <div className={`text-center mb-16 transition-all duration-1000 ${visibleTestimonials ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <h3 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 to-purple-900 bg-clip-text text-transparent mb-4">
               What Our Community Says
             </h3>
@@ -493,7 +513,7 @@ export default function HomePage() {
               testimonial="Connecting Future helped me find my dream job. The mentorship program was invaluable in preparing me for technical interviews."
               color="blue"
               delay="0"
-              isVisible={isTestimonialsVisible}
+              isVisible={visibleTestimonials}
             />
             <TestimonialCard
               name="Sneha Kumar"
@@ -502,7 +522,7 @@ export default function HomePage() {
               testimonial="As an alumni, I love giving back to the community. The platform makes it easy to connect with students and share my experiences."
               color="green"
               delay="200"
-              isVisible={isTestimonialsVisible}
+              isVisible={visibleTestimonials}
             />
             <TestimonialCard
               name="Rahul Singh"
@@ -511,7 +531,7 @@ export default function HomePage() {
               testimonial="The mentorship I received through this platform was incredible. My mentor helped me understand industry expectations and prepare for interviews."
               color="purple"
               delay="400"
-              isVisible={isTestimonialsVisible}
+              isVisible={visibleTestimonials}
             />
           </div>
         </div>

@@ -56,8 +56,9 @@ export async function POST(request: NextRequest) {
     if (!accessToken) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
     const body = await request.json();
-    const { id, approval_status } = body || {};
-    if (!id || !approval_status) return NextResponse.json({ error: 'id and approval_status required' }, { status: 400 });
+    const { id, approval_status, auth0_id, reason, status } = body || {};
+    const resolvedStatus = (approval_status || status) ? String(approval_status || status).toLowerCase() : null;
+    if ((!id && !auth0_id) || !resolvedStatus) return NextResponse.json({ error: 'id/auth0_id and approval_status/status required' }, { status: 400 });
 
     const origin = new URL(request.url).origin;
     const candidates = [
@@ -68,17 +69,19 @@ export async function POST(request: NextRequest) {
 
     for (const c of candidates) {
       const raw = c.endsWith('/api') ? c : `${c.replace(/\/$/, '')}/api`;
-      const url = `${raw}/admin/users/${id}/approval`;
+      // If auth0_id is provided, call the alumni auth0 route which expects { status }
+      const url = auth0_id ? `${raw}/admin/alumni/${auth0_id}/approval` : `${raw}/admin/users/${id}/approval`;
       try {
+        const bodyToSend = auth0_id ? JSON.stringify({ status: resolvedStatus, reason }) : JSON.stringify({ approval_status: resolvedStatus, reason });
         const resp = await fetch(url, {
           method: 'PUT',
           headers: { 'content-type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ approval_status }),
+          body: bodyToSend,
           cache: 'no-store'
         });
         if (!resp.ok) {
           const text = await resp.text();
-          return NextResponse.json({ error: 'Upstream error', details: text }, { status: resp.status });
+          return NextResponse.json({ error: 'Upstream error', upstreamUrl: url, details: text }, { status: resp.status });
         }
         const data = await resp.json();
         return NextResponse.json(data);
