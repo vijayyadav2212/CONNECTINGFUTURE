@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import StudentNavigation from "../StudentNavigation";
+import { useAuthToken } from '../../../../contexts/AuthTokenContext';
+import apiClient from '../../../lib/apiClient';
 import { GraduationCap, Pencil, Briefcase, TrendingUp, Award, BookOpen, Clock, CheckCircle, Circle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -70,6 +73,7 @@ interface Course {
 
 interface Semester {
   id: string;
+  semester_key?: string;
   name: string;
   gpa: number;
   courses: Course[];
@@ -166,6 +170,27 @@ const CourseCard = ({ course, delay }: { course: Course, delay: number }) => {
 export default function AcademicProgress() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [editOpen, setEditOpen] = useState(false);
+  const [reloadCounter, setReloadCounter] = useState(0);
+
+  const [semesterForm, setSemesterForm] = useState({
+    semester_key: '',
+    name: '',
+    gpa: '',
+    total_credits: '',
+    is_current: true,
+  });
+  const [selectedSemesterKey, setSelectedSemesterKey] = useState('');
+  const [courseForm, setCourseForm] = useState({
+    course_key: '',
+    name: '',
+    code: '',
+    credits: '',
+    grade: '',
+    status: 'upcoming',
+    progress: '',
+  });
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [showCourseForm, setShowCourseForm] = useState(false);
 
   // Refs
 
@@ -179,25 +204,96 @@ export default function AcademicProgress() {
   const showSemester = useIntersectionObserver(semesterRef);
 
   // Data
-  const semesters: Semester[] = [
+  const { user, isAuthenticated } = useAuthToken();
+  const [semesters, setSemesters] = useState<Semester[]>([
     {
-      id: "sem6",
-      name: "Semester 6",
+      id: 'sem6',
+      semester_key: 'sem6',
+      name: 'Semester 6',
       gpa: 8.5,
       courses: [
-        { id: "c1", name: "Data Structures & Algorithms", code: "CS301", credits: 4, grade: "A", status: "completed" },
-        { id: "c2", name: "Database Management Systems", code: "CS302", credits: 3, grade: "B+", status: "in-progress" },
-        { id: "c3", name: "Operating Systems", code: "CS303", credits: 3, grade: "-", status: "in-progress" },
-        { id: "c4", name: "Computer Networks", code: "CS304", credits: 4, grade: "-", status: "upcoming" },
+        { id: 'c1', name: 'Data Structures & Algorithms', code: 'CS301', credits: 4, grade: 'A', status: 'completed' },
+        { id: 'c2', name: 'Database Management Systems', code: 'CS302', credits: 3, grade: 'B+', status: 'in-progress' },
+        { id: 'c3', name: 'Operating Systems', code: 'CS303', credits: 3, grade: '-', status: 'in-progress' },
+        { id: 'c4', name: 'Computer Networks', code: 'CS304', credits: 4, grade: '-', status: 'upcoming' },
       ],
     },
-  ];
+  ]);
 
-  const overallGpa = semesters.reduce((s, x) => s + x.gpa, 0) / semesters.length;
+  const overallGpa = semesters.length ? semesters.reduce((s, x) => s + (Number(x.gpa) || 0), 0) / semesters.length : 0;
   // Ensure animatedGpa is treated as number for StatCard, although useAnimatedCounter returns number
   const animatedGpa = useAnimatedCounter(overallGpa, 1500, showStats);
-  const totalCredits = 120; // Mock data
-  const creditsEarned = useAnimatedCounter(86, 2000, showStats);
+  const totalCredits = 120; // Keep as fallback
+  const creditsEarned = useAnimatedCounter(semesters.reduce((acc, s) => acc + (s.courses ? s.courses.reduce((a,c)=>a+(c.credits||0),0) : 0), 0), 2000, showStats);
+
+  // Fetch real data from backend when user is available
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!user) return;
+      try {
+        const auth0Id = user.sub || user.user_id || user?.id;
+        if (!auth0Id) return;
+        const resp = await apiClient.get(`/academic/semesters?auth0_id=${encodeURIComponent(auth0Id)}`);
+        if (cancelled) return;
+          if (resp && resp.semesters && Array.isArray(resp.semesters) && resp.semesters.length) {
+            const mapped = resp.semesters.map((s: any) => ({
+              id: s.id || s.semester_key || String(Math.random()),
+              semester_key: s.semester_key || (s.id ? String(s.id) : ''),
+              name: s.name || s.semester_key || '',
+              gpa: s.gpa != null ? Number(s.gpa) : 0,
+              courses: [],
+            }));
+            setSemesters(mapped);
+            // default select the first semester
+            setSelectedSemesterKey(mapped[0].semester_key || mapped[0].id);
+
+          // Fetch courses for the first semester as an initial load
+          const first = resp.semesters[0];
+            if (first && first.semester_key) {
+            try {
+              const cResp = await apiClient.get(`/academic/courses?auth0_id=${encodeURIComponent(auth0Id)}&semester_key=${encodeURIComponent(first.semester_key)}`);
+              if (!cancelled && cResp && Array.isArray(cResp.courses)) {
+                  setSemesters(prev => prev.map(p => ((p.semester_key === first.semester_key || p.id === (first.id || first.semester_key) || p.name === first.name) ? { ...p, courses: cResp.courses.map((c: any) => ({ id: String(c.id), name: c.name, code: c.code, credits: Number(c.credits || 0), grade: c.grade || '-', status: c.status || 'upcoming' })) } : p)));
+              }
+            } catch (e) {
+              console.error('Failed fetching courses for semester', e);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load academic progress:', e);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user, reloadCounter]);
+
+  const handleSemesterFormChange = (k: string, v: any) => setSemesterForm(s => ({ ...s, [k]: v }));
+
+  const submitSemester = async (e?: React.FormEvent) => {
+    e && e.preventDefault();
+    if (!user) return;
+    try {
+      const auth0Id = user.sub || user.user_id || user?.id;
+      if (!auth0Id) return;
+      const payload = {
+        auth0_id: auth0Id,
+        semester_key: String(semesterForm.semester_key || semesterForm.name || 'sem-' + Date.now()).trim(),
+        name: String(semesterForm.name || semesterForm.semester_key || '').trim(),
+        gpa: semesterForm.gpa ? Number(semesterForm.gpa) : null,
+        total_credits: semesterForm.total_credits ? Number(semesterForm.total_credits) : 0,
+        is_current: !!semesterForm.is_current,
+      };
+      await apiClient.post('/academic/semesters', payload);
+      setEditOpen(false);
+      setSemesterForm({ semester_key: '', name: '', gpa: '', total_credits: '', is_current: true });
+      setReloadCounter(c => c + 1);
+    } catch (err) {
+      console.error('Failed to save semester', err);
+      // keep modal open for retry
+    }
+  };
 
   // Mouse move effect for background
   useEffect(() => {
@@ -271,7 +367,12 @@ export default function AcademicProgress() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setEditOpen(true)}
+                    onClick={() => {
+                      // open modal and default-select currently loaded semester
+                      const first = semesters && semesters.length ? (semesters[0].semester_key || semesters[0].id) : '';
+                      setSelectedSemesterKey(first);
+                      setEditOpen(true);
+                    }}
                     className="hidden md:flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-white/40"
                   >
                     <Pencil className="w-4 h-4 text-gray-700" />
@@ -281,6 +382,355 @@ export default function AcademicProgress() {
               </div>
             </div>
           </motion.div>
+
+          {/* Edit Goals Modal */}
+          {editOpen && typeof window !== 'undefined' && createPortal(
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 z-[99999] flex items-start justify-center pt-8 px-4 overflow-y-auto"
+              style={{ zIndex: 99999 }}
+            >
+              <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-md" onClick={() => setEditOpen(false)} />
+              <motion.div 
+                initial={{ scale: 0.95, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="relative z-10 w-full max-w-5xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl mb-8 overflow-hidden border border-white/20"
+              >
+                {/* Header */}
+                <div className="bg-gradient-to-r from-indigo-600/90 to-purple-600/90 backdrop-blur-lg px-8 py-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                        <Pencil className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">Edit Academic Goals</h3>
+                        <p className="text-indigo-100 text-sm">Manage your semesters and courses</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setEditOpen(false)}
+                      className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                    >
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-8 bg-gradient-to-br from-white/50 to-gray-50/50 backdrop-blur-sm">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left Column: Semester Form */}
+                    <form onSubmit={submitSemester} className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <GraduationCap className="w-5 h-5 text-indigo-600" />
+                        <h4 className="text-lg font-semibold text-gray-800">Semester Information</h4>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Semester Key</label>
+                            <input 
+                              placeholder="e.g., sem7" 
+                              value={semesterForm.semester_key} 
+                              onChange={e => handleSemesterFormChange('semester_key', e.target.value)} 
+                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Semester Name</label>
+                            <input 
+                              placeholder="e.g., Semester 7" 
+                              value={semesterForm.name} 
+                              onChange={e => handleSemesterFormChange('name', e.target.value)} 
+                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Target GPA</label>
+                            <input 
+                              type="number"
+                              step="0.01"
+                              placeholder="e.g., 8.5" 
+                              value={semesterForm.gpa} 
+                              onChange={e => handleSemesterFormChange('gpa', e.target.value)} 
+                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Total Credits</label>
+                            <input 
+                              type="number"
+                              placeholder="e.g., 24" 
+                              value={semesterForm.total_credits} 
+                              onChange={e => handleSemesterFormChange('total_credits', e.target.value)} 
+                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                            />
+                          </div>
+                        </div>
+
+                        <label className="flex items-center gap-3 p-4 bg-indigo-50/80 backdrop-blur-sm rounded-xl cursor-pointer hover:bg-indigo-100/80 transition-colors border border-indigo-200/50">
+                          <input 
+                            type="checkbox" 
+                            checked={semesterForm.is_current} 
+                            onChange={e => handleSemesterFormChange('is_current', e.target.checked)}
+                            className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Mark as current semester</span>
+                        </label>
+                      </div>
+
+                      <div className="flex gap-3 pt-4">
+                        <button 
+                          type="button" 
+                          onClick={() => setEditOpen(false)} 
+                          className="flex-1 px-6 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/50 text-gray-700 font-semibold rounded-xl hover:bg-gray-50/80 transition-all shadow-sm"
+                        >
+                          Close
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all backdrop-blur-sm"
+                        >
+                          Save Semester
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Right Column: Courses */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <BookOpen className="w-5 h-5 text-indigo-600" />
+                        <h4 className="text-lg font-semibold text-gray-800">Course Management</h4>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Semester</label>
+                        <select 
+                          value={selectedSemesterKey} 
+                          onChange={async e => {
+                            const key = e.target.value;
+                            setSelectedSemesterKey(key);
+                            if (!user) return;
+                            try {
+                              const auth0Id = user.sub || user.user_id || user?.id;
+                              if (!auth0Id) return;
+                              const cResp = await apiClient.get(`/academic/courses?auth0_id=${encodeURIComponent(auth0Id)}&semester_key=${encodeURIComponent(key)}`);
+                              if (cResp && Array.isArray(cResp.courses)) {
+                                setSemesters(prev => prev.map(p => (p.semester_key === key ? { ...p, courses: cResp.courses.map((c: any) => ({ id: String(c.id), name: c.name, code: c.code, credits: Number(c.credits||0), grade: c.grade||'-', status: c.status||'upcoming' })) } : p)));
+                              }
+                            } catch (e) { console.error('Failed loading courses', e); }
+                          }} 
+                          className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                        >
+                          <option value="">-- Choose semester --</option>
+                          {semesters.map(s => <option key={s.id} value={s.semester_key || s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                        {(semesters.find(s => (s.semester_key || s.id) === selectedSemesterKey)?.courses || []).map((c, idx) => (
+                          <motion.div 
+                            key={c.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="group relative bg-white/60 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 hover:border-indigo-300/80 hover:shadow-lg transition-all"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors">{c.name}</div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                  <span className="font-mono bg-white px-2 py-1 rounded">{c.code}</span>
+                                  <span>•</span>
+                                  <span>{c.credits} credits</span>
+                                  <span>•</span>
+                                  <span className="font-semibold text-indigo-600">{c.grade}</span>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    setEditingCourseId(c.id);
+                                    setCourseForm({ course_key: c.id, name: c.name, code: c.code, credits: String(c.credits || ''), grade: c.grade || '', status: (c as any).status || 'upcoming', progress: '' });
+                                    setShowCourseForm(true);
+                                  }} 
+                                  className="px-3 py-1.5 text-xs bg-white/90 backdrop-blur-sm border border-gray-300/50 text-gray-700 font-medium rounded-lg hover:bg-indigo-50/90 hover:border-indigo-300/80 transition-all shadow-sm"
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  type="button" 
+                                  onClick={async () => {
+                                    setSemesters(prev => prev.map(p => p.semester_key === (p.semester_key || p.id) && (p.semester_key || p.id) === selectedSemesterKey ? { ...p, courses: p.courses.filter(x => x.id !== c.id) } : p));
+                                  }} 
+                                  className="px-3 py-1.5 text-xs bg-white/90 backdrop-blur-sm border border-red-200/50 text-red-600 font-medium rounded-lg hover:bg-red-50/90 hover:border-red-300/80 transition-all shadow-sm"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                        
+                        {selectedSemesterKey && (semesters.find(s => (s.semester_key || s.id) === selectedSemesterKey)?.courses || []).length === 0 && (
+                          <div className="text-center py-8 text-gray-400">
+                            <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No courses added yet</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setEditingCourseId(null);
+                          setCourseForm({ course_key: '', name: '', code: '', credits: '', grade: '', status: 'upcoming', progress: '' });
+                          setShowCourseForm(true);
+                        }} 
+                        className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 backdrop-blur-sm"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New Course
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Course Form */}
+                  {showCourseForm && (
+                    <motion.form 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onSubmit={async e => {
+                        e.preventDefault();
+                        if (!user) return;
+                        try {
+                          const auth0Id = user.sub || user.user_id || user?.id;
+                          if (!auth0Id) return;
+                          const semesterKey = selectedSemesterKey || (semesterForm.semester_key || semesterForm.name || (semesters[0] && (semesters[0].semester_key || semesters[0].id)));
+                          if (!semesterKey) { alert('Please select or save a semester first'); return; }
+                          const payload = {
+                            auth0_id: auth0Id,
+                            semester_key: semesterKey,
+                            course_key: String(courseForm.course_key || courseForm.name || ('course-' + Date.now())).trim(),
+                            name: String(courseForm.name || '').trim(),
+                            code: String(courseForm.code || '').trim(),
+                            credits: courseForm.credits ? Number(courseForm.credits) : 0,
+                            grade: courseForm.grade || null,
+                            status: courseForm.status || 'upcoming',
+                            progress: courseForm.progress ? Number(courseForm.progress) : 0,
+                          };
+                          await apiClient.post('/academic/courses', payload);
+                          setReloadCounter(c => c + 1);
+                          setShowCourseForm(false);
+                        } catch (err) {
+                          console.error('Failed saving course', err);
+                        }
+                      }} 
+                      className="mt-8 pt-8 border-t-2 border-gray-200/50 backdrop-blur-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="p-2 bg-blue-100/80 backdrop-blur-sm rounded-lg">
+                          <Pencil className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-800">
+                          {editingCourseId ? 'Edit Course Details' : 'New Course Details'}
+                        </h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Course Key</label>
+                          <input 
+                            placeholder="e.g., cs401" 
+                            value={courseForm.course_key} 
+                            onChange={e => setCourseForm(f => ({ ...f, course_key: e.target.value }))} 
+                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
+                          <input 
+                            placeholder="e.g., Artificial Intelligence" 
+                            value={courseForm.name} 
+                            onChange={e => setCourseForm(f => ({ ...f, name: e.target.value }))} 
+                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Course Code</label>
+                          <input 
+                            placeholder="e.g., CS401" 
+                            value={courseForm.code} 
+                            onChange={e => setCourseForm(f => ({ ...f, code: e.target.value }))} 
+                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Credits</label>
+                          <input 
+                            type="number"
+                            placeholder="e.g., 4" 
+                            value={courseForm.credits} 
+                            onChange={e => setCourseForm(f => ({ ...f, credits: e.target.value }))} 
+                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Grade</label>
+                          <input 
+                            placeholder="e.g., A" 
+                            value={courseForm.grade} 
+                            onChange={e => setCourseForm(f => ({ ...f, grade: e.target.value }))} 
+                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                          <select 
+                            value={courseForm.status} 
+                            onChange={e => setCourseForm(f => ({ ...f, status: e.target.value }))} 
+                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                          >
+                            <option value="upcoming">📅 Upcoming</option>
+                            <option value="in-progress">📚 In Progress</option>
+                            <option value="completed">✅ Completed</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCourseForm(false)} 
+                          className="flex-1 px-6 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/50 text-gray-700 font-semibold rounded-xl hover:bg-gray-50/80 transition-all shadow-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all backdrop-blur-sm"
+                        >
+                          {editingCourseId ? 'Update Course' : 'Add Course'}
+                        </button>
+                      </div>
+                    </motion.form>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>,
+            document.body
+          )}
 
           {/* STATS GRID */}
           <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -405,28 +855,7 @@ export default function AcademicProgress() {
 
         </div>
 
-        {/* EDIT MODAL */}
-        {editOpen && (
-          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
-            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl transform transition-all scale-100">
-              <div className="text-center mb-6">
-                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Pencil className="w-8 h-8 text-gray-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Edit Mode</h3>
-                <p className="text-gray-500 mt-2">
-                  Backend connection is currently disabled for this demo.
-                </p>
-              </div>
-              <button
-                onClick={() => setEditOpen(false)}
-                className="w-full py-3.5 bg-gray-900 text-white font-semibold rounded-xl hover:bg-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Legacy modal removed; new Edit Goals modal is rendered above header when `editOpen` is true. */}
 
       </div>
     </StudentNavigation>
