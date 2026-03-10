@@ -15,24 +15,64 @@ interface StudentProfile {
   department: string;
   rollNumber: string;
   gpa: number;
-  creditsCompleted: number;
-  totalCredits: number;
+  auth0Id: string;
+  email: string;
 }
 
-interface AcademicProgress {
-  currentSemester: string;
-  gpa: number;
-  creditsCompleted: number;
-  totalCredits: number;
-  coursesInProgress: number;
-  upcomingAssignments: number;
+interface AcademicSemester {
+  id: string;
+  semester_key: string;
+  name: string;
+  gpa: number | null;
+  total_credits: number;
+  is_current: boolean;
 }
 
-interface QuickStats {
-  mentorshipRequests: number;
-  jobApplications: number;
-  eventsAttended: number;
-  networkingConnections: number;
+interface JobApplication {
+  id: number;
+  job_id: number;
+  applicant_email: string;
+  status: string;
+  title: string;
+  company: string;
+  updated_at: string;
+}
+
+interface MentorshipRequest {
+  id: number;
+  student_email: string;
+  mentor_email: string;
+  status: string;
+  updated_at: string;
+}
+
+interface UpcomingEvent {
+  id: string;
+  title: string;
+  event_date: string | null;
+  event_time: string;
+  location: string;
+  is_virtual: boolean;
+}
+
+function formatEventDate(dateStr: string | null): string {
+  if (!dateStr) return 'TBD';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.ceil((d.getTime() - now.getTime()) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays <= 7) return 'This Week';
+  if (diffDays <= 14) return 'Next Week';
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function getEventDateColor(dateStr: string | null): string {
+  if (!dateStr) return 'text-gray-600 bg-gray-100';
+  const diffDays = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  if (diffDays <= 1) return 'text-red-600 bg-red-100';
+  if (diffDays <= 7) return 'text-blue-600 bg-blue-100';
+  return 'text-green-600 bg-green-100';
 }
 
 // Animation variants
@@ -57,37 +97,27 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [semesters, setSemesters] = useState<AcademicSemester[]>([]);
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [mentorships, setMentorships] = useState<MentorshipRequest[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [connections, setConnections] = useState<Array<{ id: number; pair_key: string; requester_email: string; target_email: string; status: 'pending' | 'accepted' | 'rejected' | 'removed' }>>([]);
   const [connLoading, setConnLoading] = useState(false);
   const API_BASE = useMemo(() => ((process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api'), []);
-  const myEmail = (authUser?.email as string) || 'student@example.com';
+  const myEmail = (authUser?.email as string) || '';
 
-  // Mock data - replace with API calls
-  const mockProfile: StudentProfile = {
-    name: "Vinayak Gorivale",
-    year: "3rd Year",
-    department: "Information Technology",
-    rollNumber: "VU4F2223050",
-    gpa: 8.5,
-    creditsCompleted: 120,
-    totalCredits: 160
-  };
-
-  const academicProgress: AcademicProgress = {
-    currentSemester: "Semester 6",
-    gpa: 8.5,
-    creditsCompleted: 120,
-    totalCredits: 160,
-    coursesInProgress: 6,
-    upcomingAssignments: 4
-  };
-
-  const quickStats: QuickStats = {
-    mentorshipRequests: 2,
-    jobApplications: 8,
-    eventsAttended: 12,
-    networkingConnections: 45
-  };
+  // ── Derived academic stats ──────────────────────────────────────────────
+  const currentSemester = useMemo(() => semesters.find(s => s.is_current) || semesters[0] || null, [semesters]);
+  const totalCreditsEarned = useMemo(() => semesters.reduce((sum, s) => sum + (s.total_credits || 0), 0), [semesters]);
+  const activeApplications = useMemo(() => applications.filter(a => ['applied', 'screening', 'interview', 'offer'].includes(String(a.status || '').toLowerCase())).length, [applications]);
+  const acceptedMentors = useMemo(() => mentorships.filter(m => m.status === 'accepted').length, [mentorships]);
+  const recentActivity = useMemo(() => {
+    const items: { type: string; title: string; subtitle: string; timestamp: Date }[] = [];
+    applications.slice(0, 2).forEach(app => items.push({ type: 'job', title: 'Job Application', subtitle: `${app.title} at ${app.company}`, timestamp: new Date(app.updated_at) }));
+    mentorships.slice(0, 1).forEach(m => items.push({ type: 'mentor', title: m.status === 'accepted' ? 'Mentor Connected' : 'Mentorship Request', subtitle: m.mentor_email, timestamp: new Date(m.updated_at) }));
+    connections.filter(c => c.status === 'accepted').slice(0, 1).forEach(c => items.push({ type: 'connection', title: 'New Connection', subtitle: c.requester_email === myEmail ? c.target_email : c.requester_email, timestamp: new Date() }));
+    return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 4);
+  }, [applications, mentorships, connections, myEmail]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -95,9 +125,34 @@ export default function StudentDashboard() {
         setLoading(true);
         setError(null);
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setProfile(mockProfile);
+        const resp = await fetch('/api/user/profile', { cache: 'no-store' });
+        if (!resp.ok) {
+          // Not authenticated or backend down — fall back to auth user name
+          setProfile({
+            name: authUser?.name || 'Student',
+            year: '', department: '', rollNumber: '', gpa: 0,
+            auth0Id: '', email: myEmail,
+          });
+          return;
+        }
+        const data = await resp.json();
+        const u = data?.user || {};
+
+        // If registration not yet completed, redirect to student registration
+        if (u.registration_completed === false || !u.registration_completed) {
+          router.push('/student-registration');
+          return;
+        }
+
+        setProfile({
+          name: u.name || authUser?.name || 'Student',
+          year: u.year_of_study || '',
+          department: u.department || u.major || '',
+          rollNumber: u.roll_number || '',
+          gpa: u.cgpa ? parseFloat(u.cgpa) : 0,
+          auth0Id: u.auth0_id || '',
+          email: u.email || myEmail,
+        });
       } catch (e: any) {
         setError(e?.message || 'Failed to load profile');
       } finally {
@@ -106,34 +161,82 @@ export default function StudentDashboard() {
     };
 
     loadProfile();
-  }, []);
+  }, [authUser, router, myEmail]);
 
+  // ── Academic semesters ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!myEmail) return;
+    if (!profile?.auth0Id) return;
+    fetch(`${API_BASE}/academic/semesters?auth0_id=${encodeURIComponent(profile.auth0Id)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.semesters) setSemesters(data.semesters); })
+      .catch(() => { });
+  }, [API_BASE, profile?.auth0Id]);
+
+  // ── Job applications ────────────────────────────────────────────────────
+  useEffect(() => {
+    const email = profile?.email || myEmail;
+    if (!email) return;
+    fetch(`${API_BASE}/applications?applicant_email=${encodeURIComponent(email)}&limit=10`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.applications) setApplications(data.applications); })
+      .catch(() => { });
+  }, [API_BASE, profile?.email, myEmail]);
+
+  // ── Mentorship requests ─────────────────────────────────────────────────
+  useEffect(() => {
+    const email = profile?.email || myEmail;
+    if (!email) return;
+    fetch(`${API_BASE}/mentorship/requests?student_email=${encodeURIComponent(email)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.requests) setMentorships(data.requests); })
+      .catch(() => { });
+  }, [API_BASE, profile?.email, myEmail]);
+
+  // ── Upcoming events ─────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch(`${API_BASE}/events`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: UpcomingEvent[] | null) => {
+        if (Array.isArray(data)) {
+          const now = new Date();
+          const future = data
+            .filter(ev => !ev.event_date || new Date(ev.event_date) >= now)
+            .sort((a, b) => !a.event_date ? 1 : !b.event_date ? -1 : new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+            .slice(0, 3);
+          setUpcomingEvents(future);
+        }
+      })
+      .catch(() => { });
+  }, [API_BASE]);
+
+  // ── Connections (real-time polling) ─────────────────────────────────────
+  useEffect(() => {
+    const email = profile?.email || myEmail;
+    if (!email) return;
     let mounted = true;
     const loadConns = async () => {
       try {
         setConnLoading(true);
-        const resp = await fetch(`${API_BASE}/connections?user_email=${encodeURIComponent(myEmail)}`);
+        const resp = await fetch(`${API_BASE}/connections?user_email=${encodeURIComponent(email)}`);
         if (resp.ok) {
           const data = await resp.json();
           if (mounted) setConnections(data.connections || []);
         }
-      } finally { setConnLoading(false); }
+      } finally { if (mounted) setConnLoading(false); }
     };
     loadConns();
     const id = setInterval(loadConns, 15000);
     return () => { mounted = false; clearInterval(id); };
-  }, [API_BASE, myEmail]);
+  }, [API_BASE, profile?.email, myEmail]);
 
-  const pendingReceived = useMemo(() => connections.filter(c => c.status === 'pending' && c.target_email?.toLowerCase() === myEmail.toLowerCase()), [connections, myEmail]);
-  const pendingSent = useMemo(() => connections.filter(c => c.status === 'pending' && c.requester_email?.toLowerCase() === myEmail.toLowerCase()), [connections, myEmail]);
+  const pendingReceived = useMemo(() => { const em = (profile?.email || myEmail).toLowerCase(); return connections.filter(c => c.status === 'pending' && c.target_email?.toLowerCase() === em); }, [connections, profile?.email, myEmail]);
+  const pendingSent = useMemo(() => { const em = (profile?.email || myEmail).toLowerCase(); return connections.filter(c => c.status === 'pending' && c.requester_email?.toLowerCase() === em); }, [connections, profile?.email, myEmail]);
   const acceptedCount = useMemo(() => connections.filter(c => c.status === 'accepted').length, [connections]);
 
   async function respondTo(otherEmail: string, action: 'accept' | 'reject') {
     try {
       setConnLoading(true);
-      const resp = await fetch(`${API_BASE}/connections/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_email: myEmail, other_email: otherEmail, action }) });
+      const resp = await fetch(`${API_BASE}/connections/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_email: profile?.email || myEmail, other_email: otherEmail, action }) });
       if (resp.ok) {
         const data = await resp.json();
         setConnections(prev => prev.map(c => c.pair_key === data.connection.pair_key ? data.connection : c));
@@ -322,10 +425,10 @@ export default function StudentDashboard() {
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Academic Progress</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {Math.round((academicProgress.creditsCompleted / academicProgress.totalCredits) * 100)}%
+                    {currentSemester?.name || (semesters.length === 0 ? '–' : `Sem ${semesters.length}`)}
                   </p>
                   <p className="text-green-600 text-sm mt-1">
-                    {academicProgress.creditsCompleted}/{academicProgress.totalCredits} Credits
+                    {profile?.gpa ? `${profile.gpa} CGPA` : 'No data yet'}
                   </p>
                 </div>
                 <div className="p-3 bg-gradient-to-br from-green-100 to-green-200 rounded-xl shadow-md">
@@ -343,8 +446,8 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Active Mentors</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{quickStats.mentorshipRequests}</p>
-                  <p className="text-blue-600 text-sm mt-1">Connected</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{acceptedMentors}</p>
+                  <p className="text-blue-600 text-sm mt-1">{mentorships.length > 0 ? `${mentorships.length} request${mentorships.length !== 1 ? 's' : ''}` : 'Connected'}</p>
                 </div>
                 <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-md">
                   <Users className="w-6 h-6 text-blue-600" />
@@ -361,8 +464,8 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Job Applications</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{quickStats.jobApplications}</p>
-                  <p className="text-purple-600 text-sm mt-1">In Progress</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{activeApplications}</p>
+                  <p className="text-purple-600 text-sm mt-1">{applications.length > 0 ? `${applications.length} total applied` : 'In Progress'}</p>
                 </div>
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl shadow-md">
                   <Briefcase className="w-6 h-6 text-purple-600" />
@@ -405,7 +508,7 @@ export default function StudentDashboard() {
               <div className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Academic Overview</h2>
-                  <button className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors">
+                  <button className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors" onClick={() => router.push('/student/academic-progress')}>
                     View Details →
                   </button>
                 </div>
@@ -419,8 +522,8 @@ export default function StudentDashboard() {
                       <h3 className="font-semibold text-gray-900">Current Semester</h3>
                       <BookOpen className="w-5 h-5 text-green-600" />
                     </div>
-                    <p className="text-2xl font-bold text-green-600">{academicProgress.currentSemester}</p>
-                    <p className="text-sm text-gray-600 mt-1">{academicProgress.coursesInProgress} courses in progress</p>
+                    <p className="text-2xl font-bold text-green-600">{currentSemester?.name || 'Not Set'}</p>
+                    <p className="text-sm text-gray-600 mt-1">{currentSemester ? `${currentSemester.total_credits} credits this semester` : 'Add in Academic Progress'}</p>
                   </motion.div>
 
                   <motion.div
@@ -428,11 +531,11 @@ export default function StudentDashboard() {
                     className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Upcoming Tasks</h3>
-                      <Clock className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-semibold text-gray-900">Job Applications</h3>
+                      <Briefcase className="w-5 h-5 text-blue-600" />
                     </div>
-                    <p className="text-2xl font-bold text-blue-600">{academicProgress.upcomingAssignments}</p>
-                    <p className="text-sm text-gray-600 mt-1">assignments due soon</p>
+                    <p className="text-2xl font-bold text-blue-600">{applications.length}</p>
+                    <p className="text-sm text-gray-600 mt-1">{activeApplications} active, {applications.filter(a => a.status === 'withdrawn').length} withdrawn</p>
                   </motion.div>
                 </div>
 
@@ -440,22 +543,26 @@ export default function StudentDashboard() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">Degree Progress</h3>
-                    <span className="text-sm text-gray-600">
-                      {Math.round((academicProgress.creditsCompleted / academicProgress.totalCredits) * 100)}% Complete
-                    </span>
+                    <span className="text-sm text-gray-600">{totalCreditsEarned} credits across {semesters.length} semesters</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(academicProgress.creditsCompleted / academicProgress.totalCredits) * 100}%` }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                      className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full"
-                    ></motion.div>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600 mt-1">
-                    <span>{academicProgress.creditsCompleted} credits earned</span>
-                    <span>{academicProgress.totalCredits} total required</span>
-                  </div>
+                  {semesters.length > 0 ? (
+                    <>
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(100, (totalCreditsEarned / 160) * 100)}%` }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                          className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full"
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <span>{totalCreditsEarned} credits earned</span>
+                        <span>160 total required</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 bg-gray-50 rounded-xl p-3">Add semesters in Academic Progress to track your degree completion</p>
+                  )}
                 </div>
 
                 {/* Quick Actions */}
@@ -571,59 +678,31 @@ export default function StudentDashboard() {
                 className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
               >
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-                <div className="space-y-4">
-                  <motion.div
-                    whileHover={{ x: 5 }}
-                    className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors"
-                  >
-                    <div className="p-2 bg-gradient-to-br from-green-100 to-green-200 rounded-xl shadow-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Assignment Submitted</p>
-                      <p className="text-xs text-gray-600">Data Structures Lab - 2 hours ago</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ x: 5 }}
-                    className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors"
-                  >
-                    <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-sm">
-                      <Users className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Mentor Match Found</p>
-                      <p className="text-xs text-gray-600">Software Engineering - 1 day ago</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ x: 5 }}
-                    className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors"
-                  >
-                    <div className="p-2 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl shadow-sm">
-                      <Briefcase className="w-4 h-4 text-purple-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Job Application</p>
-                      <p className="text-xs text-gray-600">Google Internship - 3 days ago</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ x: 5 }}
-                    className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors"
-                  >
-                    <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl shadow-sm">
-                      <Calendar className="w-4 h-4 text-orange-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Event Registered</p>
-                      <p className="text-xs text-gray-600">Tech Talk Series - 1 week ago</p>
-                    </div>
-                  </motion.div>
-                </div>
+                {recentActivity.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No recent activity yet. Apply to jobs or connect with mentors!</p>
+                ) : (
+                  <div className="space-y-4">
+                    {recentActivity.map((item, idx) => (
+                      <motion.div key={idx} whileHover={{ x: 5 }} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors">
+                        <div className={`p-2 rounded-xl shadow-sm ${item.type === 'job' ? 'bg-gradient-to-br from-purple-100 to-purple-200'
+                            : item.type === 'mentor' ? 'bg-gradient-to-br from-blue-100 to-blue-200'
+                              : 'bg-gradient-to-br from-green-100 to-green-200'
+                          }`}>
+                          {item.type === 'job' && <Briefcase className="w-4 h-4 text-purple-600" />}
+                          {item.type === 'mentor' && <Users className="w-4 h-4 text-blue-600" />}
+                          {item.type === 'connection' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                          <p className="text-xs text-gray-600 truncate">{item.subtitle}</p>
+                        </div>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          {item.timestamp.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
 
               {/* Upcoming Events */}
@@ -632,41 +711,35 @@ export default function StudentDashboard() {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
               >
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Upcoming Events</h2>
-                <div className="space-y-3">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-3 border border-gray-200 rounded-xl bg-gradient-to-br from-white to-blue-50 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-medium text-gray-900">Career Fair 2024</h3>
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-lg">Tomorrow</span>
-                    </div>
-                    <p className="text-sm text-gray-600">10:00 AM - 4:00 PM</p>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-3 border border-gray-200 rounded-xl bg-gradient-to-br from-white to-green-50 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-medium text-gray-900">Alumni Meet</h3>
-                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-lg">This Week</span>
-                    </div>
-                    <p className="text-sm text-gray-600">Friday, 6:00 PM</p>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-3 border border-gray-200 rounded-xl bg-gradient-to-br from-white to-purple-50 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-medium text-gray-900">Tech Workshop</h3>
-                      <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-lg">Next Week</span>
-                    </div>
-                    <p className="text-sm text-gray-600">Machine Learning Basics</p>
-                  </motion.div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">Upcoming Events</h2>
+                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium" onClick={() => router.push('/student/events')}>View all →</button>
                 </div>
+                {upcomingEvents.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No upcoming events. Check back soon!</p>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingEvents.map((event, idx) => (
+                      <motion.div
+                        key={event.id}
+                        whileHover={{ scale: 1.02 }}
+                        className={`p-3 border border-gray-200 rounded-xl shadow-sm bg-gradient-to-br ${idx === 0 ? 'from-white to-blue-50' : idx === 1 ? 'from-white to-green-50' : 'from-white to-purple-50'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-medium text-gray-900 text-sm truncate pr-2">{event.title}</h3>
+                          <span className={`text-xs px-2 py-1 rounded-lg whitespace-nowrap ${getEventDateColor(event.event_date)}`}>
+                            {formatEventDate(event.event_date)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {event.event_time || (event.event_date ? new Date(event.event_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Time TBD')}
+                          {event.is_virtual ? ' · Online' : (event.location ? ` · ${event.location}` : '')}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             </div>
           </motion.div>

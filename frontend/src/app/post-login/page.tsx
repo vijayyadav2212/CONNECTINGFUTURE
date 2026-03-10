@@ -32,12 +32,18 @@ export default async function PostLogin() {
     redirect('/api/auth/login');
   }
   const user = data.user as any;
-  // Skip registration for admin and student; require only for alumni
+  // Route based on role and registration status
   const role = (user.user_type || 'alumni') as string;
   if (role === 'alumni' && user.registration_completed === false) {
     redirect('/registration');
   }
   if (role === 'admin') redirect('/admin/dashboard');
-  if (role === 'student') redirect('/student/dashboard');
+  if (role === 'student') {
+    // New students must complete their profile first
+    if (user.registration_completed === false || !user.registration_completed) {
+      redirect('/student-registration');
+    }
+    redirect('/student/dashboard');
+  }
   redirect('/alumni/dashboard');
 }
