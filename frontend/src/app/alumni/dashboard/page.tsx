@@ -8,6 +8,7 @@ import {
   BookOpen, Award, Send, Mic, Route, UserPlus, Heart, MessageSquare,
   ArrowRight, Sparkles, TrendingUp
 } from 'lucide-react';
+import JobManagementPage from '@/app/admin/jobs/page';
 
 // Interfaces
 interface DashboardSectionProps {
@@ -227,12 +228,11 @@ function DashboardSection({ profile }: DashboardSectionProps) {
             </p>
           </div>
           <button
-            onClick={() => router.push('/registration?redirect=/alumni/dashboard')}
+            onClick={() => router.push('/alumni/settings')}
             className="group relative px-6 py-3 bg-white/50 hover:bg-white/80 backdrop-blur border border-white/60 rounded-xl text-slate-700 font-semibold shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-2 overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <Settings className="w-5 h-5 text-slate-500 group-hover:rotate-45 transition-transform duration-500" />
-            <span className="relative z-10">Update Interests</span>
           </button>
         </div>
       </div>

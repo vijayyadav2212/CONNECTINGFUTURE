@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap, User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import { profile } from 'console';
 
 // Interfaces
 interface NavItem {
@@ -41,6 +42,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   const prevJobIdsRef = React.useRef<Set<number>>(new Set());
   const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
 
   const API_ROOT = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
 
@@ -54,6 +56,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
           const data = await resp.json();
           const status = data?.user?.approval_status || 'pending';
           setApprovalStatus(status);
+          setProfile(data?.user || null);
         }
       } catch (error) {
         console.error('Error loading profile:', error);
@@ -66,14 +69,14 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     }
   }, [user]);
 
-  // Sample alumni data
+  // Alumni data synced from database
   const alumniData: AlumniData = {
-    name: "Vijay Yadav",
-    graduationYear: "2018",
-    company: "Google",
-    position: "Senior Software Engineer",
-    avatar: null, 
-    verifiedBadge: true
+    name: profileLoading ? 'Loading...' : (profile?.name || user?.name || 'Alumni'),
+    graduationYear: profileLoading ? '' : String(profile?.graduation_year || profile?.graduationYear || ''),
+    company: profileLoading ? 'Loading...' : (profile?.company || profile?.current_company || 'Not specified'),
+    position: profileLoading ? 'Loading...' : (profile?.job_title || profile?.position || profile?.current_job || 'Not specified'),
+    avatar: profileLoading ? null : (profile?.picture || user?.picture || null),
+    verifiedBadge: profile?.approval_status === 'approved'
   };
 
   const navigationItems: NavItem[] = [
@@ -317,14 +320,18 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
         {/* Scrollable Container for entire sidebar */}
         <div className="h-full overflow-y-auto">
           {/* Logo & Branding */}
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="flex-shrink-0">
+                <img 
+                  src="/NEWCNLOGO.png"  
+                  className="w-12 h-12 object-contain"
+                  alt="CF Logo"
+                />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Alumni Connect</h1>
-                <p className="text-sm text-gray-500">VPPCOE & VA</p>
+              <div className="flex-1">
+                <h1 className="text-base font-bold text-gray-900 leading-tight">Connecting Future</h1>
+                <p className="text-xs text-gray-500 mt-0.5">VPPCOE & VA</p>
               </div>
             </div>
           </div>
@@ -333,9 +340,19 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="relative">
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-lg">AK</span>
-                </div>
+                {alumniData.avatar ? (
+                  <img 
+                    src={alumniData.avatar} 
+                    alt={alumniData.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-lg">
+                      {alumniData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </span>
+                  </div>
+                )}
                 {alumniData.verifiedBadge && (
                   <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
@@ -345,8 +362,13 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{alumniData.name}</h3>
                 <p className="text-sm text-gray-600">Class of {alumniData.graduationYear}</p>
+                {!profileLoading && alumniData.position !== 'Not specified' && (
+                  <p className="text-xs text-gray-500 mt-0.5">{alumniData.position} {alumniData.company !== 'Not specified' && `at ${alumniData.company}`}</p>
+                )}
                 <div className="flex items-center mt-1">
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Verified Alumni</span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                    {alumniData.verifiedBadge ? 'Verified Alumni' : 'Alumni'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -381,13 +403,23 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
           {/* Mentorship Status */}
           <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm font-medium text-green-700">Available</span>
+            {profile?.is_mentor ? (
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-700">Available</span>
+                </div>
+                <span className="text-xs text-green-600">Mentorship</span>
               </div>
-              <span className="text-xs text-green-600">Mentorship Status</span>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="text-sm font-medium text-gray-600">Not Available</span>
+                </div>
+                <span className="text-xs text-gray-500">Mentorship</span>
+              </div>
+            )}
           </div>
         </div>
       </aside>

@@ -25,6 +25,7 @@ import {
   MapPin,
   Check
 } from 'lucide-react';
+import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -117,15 +118,23 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setSaving(true);
     setMessage(null);
-    setMessage(null);
     try {
       if (!token) throw new Error('Not authenticated');
       const payload = {
         name: profileData.fullName,
         phone: profileData.phone,
+        email: profileData.email,
         location: profileData.location,
-        bio: profileData.bio,
+        graduationYear: profileData.graduationYear,
+        course: profileData.course,
+        currentCompany: profileData.currentCompany,
+        jobTitle: profileData.jobTitle,
+        linkedIn: profileData.linkedin,
         portfolio: profileData.website,
+        bio: profileData.bio,
+        skills: profileData.skills,
+        isOpenToMentoring: profileData.isMentor,
+        picture: profileData.profileImage,
         notification_preferences: notifications,
         privacy_settings: privacy
       };
@@ -140,13 +149,15 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Settings saved successfully!' });
+        setMessage({ type: 'success', text: 'Profile updated successfully!' });
         setTimeout(() => setMessage(null), 3000);
       } else {
-        throw new Error('Failed to save settings');
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to save profile');
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
+      console.error('Error saving profile:', error);
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save profile. Please try again.' });
     } finally {
       setSaving(false);
     }
