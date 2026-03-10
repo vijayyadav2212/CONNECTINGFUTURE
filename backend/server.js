@@ -269,6 +269,11 @@ async function initializeTables() {
     try {
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)');
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS university VARCHAR(255)');
+      // Student-specific columns
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS roll_number VARCHAR(50)');
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS year_of_study VARCHAR(50)');
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(255)');
+      await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS cgpa NUMERIC(4,2)');
     } catch (e) { console.log('User schema migration note:', e.message); }
 
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
@@ -651,7 +656,12 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     bio,
     skills,
     isOpenToMentoring,
-    picture // Add picture to destructuring
+    picture,
+    // Student-specific fields
+    rollNumber,
+    yearOfStudy,
+    department,
+    cgpa
   } = req.body;
 
   const values = {
@@ -673,12 +683,17 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     skills: Array.isArray(skills) ? skills.join(',') : (skills || null),
     is_mentor: !!isOpenToMentoring,
     picture: picture || null,
-    registration_completed: true
+    registration_completed: true,
+    // Student-specific
+    roll_number: rollNumber || null,
+    year_of_study: yearOfStudy || null,
+    department: department || course || null,
+    cgpa: cgpa ? parseFloat(cgpa) : null,
   };
 
   const sql = `
-    INSERT INTO users (auth0_id, email, name, phone, university, graduation_year, major, current_job, company, job_title, location, linkedin_url, github_url, website_url, bio, skills, is_mentor, picture, registration_completed)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (auth0_id, email, name, phone, university, graduation_year, major, current_job, company, job_title, location, linkedin_url, github_url, website_url, bio, skills, is_mentor, picture, registration_completed, roll_number, year_of_study, department, cgpa)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (auth0_id) DO UPDATE SET
       email = EXCLUDED.email,
       name = EXCLUDED.name,
@@ -697,7 +712,11 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
       skills = EXCLUDED.skills,
       is_mentor = EXCLUDED.is_mentor,
       picture = COALESCE(EXCLUDED.picture, users.picture),
-      registration_completed = EXCLUDED.registration_completed
+      registration_completed = EXCLUDED.registration_completed,
+      roll_number = EXCLUDED.roll_number,
+      year_of_study = EXCLUDED.year_of_study,
+      department = EXCLUDED.department,
+      cgpa = EXCLUDED.cgpa
   `;
 
   const params = [
@@ -719,7 +738,11 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
     values.skills,
     values.is_mentor,
     values.picture,
-    values.registration_completed
+    values.registration_completed,
+    values.roll_number,
+    values.year_of_study,
+    values.department,
+    values.cgpa
   ];
 
   dbQuery(sql, params)
