@@ -1,19 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD:frontend/src/app/admin/approvals/page.tsx
-import AdminNavigation from '../AdminNavigation';
-import { 
-  UserCheck, UserX, Search, Filter, CheckCircle, 
-  XCircle, Clock, Eye, Mail, Phone, Linkedin, 
-  GraduationCap, Building, MapPin, Calendar 
-=======
-import AdminNavigation from '../../AdminNavigation/AdminNavigation';
+import AdminNavigation from '../AdminNavigation/AdminNavigation';
 import {
   UserCheck, UserX, Search, Filter, CheckCircle,
   XCircle, Clock, Eye, Mail, Phone, Linkedin,
   GraduationCap, Building, MapPin, Calendar
->>>>>>> 77a6fd9 (Updated feature / fixed bug / added new changes):frontend/src/app/admin/approvals/alumni/page.tsx
 } from 'lucide-react';
 
 interface AlumniApproval {

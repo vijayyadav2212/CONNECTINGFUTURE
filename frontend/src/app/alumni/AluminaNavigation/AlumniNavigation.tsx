@@ -614,17 +614,6 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     if (user) loadProfile();
   }, [user]);
 
-<<<<<<< HEAD
-  // Alumni data synced from database
-  const alumniData: AlumniData = {
-    name: profileLoading ? 'Loading...' : (profile?.name || user?.name || 'Alumni'),
-    graduationYear: profileLoading ? '' : String(profile?.graduation_year || profile?.graduationYear || ''),
-    company: profileLoading ? 'Loading...' : (profile?.company || profile?.current_company || 'Not specified'),
-    position: profileLoading ? 'Loading...' : (profile?.job_title || profile?.position || profile?.current_job || 'Not specified'),
-    avatar: profileLoading ? null : (profile?.picture || user?.picture ||null),
-    verifiedBadge: profile?.approval_status === 'approved'
-  };
-=======
   useEffect(() => {
     if (approvalStatus !== 'approved' || !user?.email) return;
     const poll = async () => {
@@ -651,7 +640,6 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     const timer = setInterval(poll, 60000);
     return () => clearInterval(timer);
   }, [approvalStatus, user?.email, API_ROOT]);
->>>>>>> 77a6fd9 (Updated feature / fixed bug / added new changes)
 
   const navigationItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutIcon />, route: "/alumni/dashboard" },
@@ -704,40 +692,8 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="relative">
-<<<<<<< HEAD
-                {alumniData.avatar ? (
-                  <img 
-                    src={alumniData.avatar} 
-                    alt={alumniData.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-lg">
-                      {(alumniData.name?.trim()?.charAt(0) || 'A').toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                {alumniData.verifiedBadge && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{alumniData.name}</h3>
-                <p className="text-sm text-gray-600">Class of {alumniData.graduationYear}</p>
-                {!profileLoading && alumniData.position !== 'Not specified' && (
-                  <p className="text-xs text-gray-500 mt-0.5">{alumniData.position} {alumniData.company !== 'Not specified' && `at ${alumniData.company}`}</p>
-                )}
-                <div className="flex items-center mt-1">
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                    {alumniData.verifiedBadge ? 'Verified Alumni' : 'Alumni'}
-                  </span>
-=======
                 <div className="w-12 h-12 bg-sky-400 rounded-full flex items-center justify-center overflow-hidden">
                   <img src={profile?.picture || user?.picture || `https://ui-avatars.com/api/?name=${user?.name}`} className="w-full h-full object-cover" alt="" />
->>>>>>> 77a6fd9 (Updated feature / fixed bug / added new changes)
                 </div>
                 {approvalStatus === 'approved' && (
                   <div className="absolute -top-1 -right-1 w-5 h-5 bg-sky-500 rounded-full flex items-center justify-center border-2 border-white">
