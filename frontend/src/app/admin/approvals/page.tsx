@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import AdminNavigation from '../../AdminNavigation';
+import AdminNavigation from '../AdminNavigation';
 import { 
   UserCheck, UserX, Search, Filter, CheckCircle, 
   XCircle, Clock, Eye, Mail, Phone, Linkedin, 
