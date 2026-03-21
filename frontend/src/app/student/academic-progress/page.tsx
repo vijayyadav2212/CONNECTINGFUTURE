@@ -432,7 +432,7 @@ export default function AcademicProgress() {
                       
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
+                          {/* <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Semester Key</label>
                             <input 
                               placeholder="e.g., sem7" 
@@ -440,14 +440,14 @@ export default function AcademicProgress() {
                               onChange={e => handleSemesterFormChange('semester_key', e.target.value)} 
                               className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
                             />
-                          </div>
+                          </div> */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Semester Name</label>
                             <input 
                               placeholder="e.g., Semester 7" 
                               value={semesterForm.name} 
                               onChange={e => handleSemesterFormChange('name', e.target.value)} 
-                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                              className="w-full px-4 py-3 bg-Black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
                             />
                           </div>
                         </div>
@@ -461,7 +461,7 @@ export default function AcademicProgress() {
                               placeholder="e.g., 8.5" 
                               value={semesterForm.gpa} 
                               onChange={e => handleSemesterFormChange('gpa', e.target.value)} 
-                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                              className="w-full px-4 py-3 bg-black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
                             />
                           </div>
                           <div>
@@ -471,7 +471,7 @@ export default function AcademicProgress() {
                               placeholder="e.g., 24" 
                               value={semesterForm.total_credits} 
                               onChange={e => handleSemesterFormChange('total_credits', e.target.value)} 
-                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
+                              className="w-full px-4 py-3 bg-black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
                             />
                           </div>
                         </div>
@@ -528,7 +528,7 @@ export default function AcademicProgress() {
                               }
                             } catch (e) { console.error('Failed loading courses', e); }
                           }} 
-                          className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                          className="w-full px-4 py-3 bg-black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
                         >
                           <option value="">-- Choose semester --</option>
                           {semesters.map(s => <option key={s.id} value={s.semester_key || s.id}>{s.name}</option>)}

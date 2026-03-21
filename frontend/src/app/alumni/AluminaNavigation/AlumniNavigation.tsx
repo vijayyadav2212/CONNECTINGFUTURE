@@ -75,7 +75,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     graduationYear: profileLoading ? '' : String(profile?.graduation_year || profile?.graduationYear || ''),
     company: profileLoading ? 'Loading...' : (profile?.company || profile?.current_company || 'Not specified'),
     position: profileLoading ? 'Loading...' : (profile?.job_title || profile?.position || profile?.current_job || 'Not specified'),
-    avatar: profileLoading ? null : (profile?.picture || user?.picture || null),
+    avatar: profileLoading ? null : (profile?.picture || user?.picture ||null),
     verifiedBadge: profile?.approval_status === 'approved'
   };
 
@@ -349,7 +349,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                 ) : (
                   <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold text-lg">
-                      {alumniData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      {(alumniData.name?.trim()?.charAt(0) || 'A').toUpperCase()}
                     </span>
                   </div>
                 )}

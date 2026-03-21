@@ -391,7 +391,7 @@ export default function StudentDashboard() {
                   </div>
 
                   {/* Settings/Update Button */}
-                  <motion.button
+                  {/* <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => router.push('/student/settings')}
@@ -402,7 +402,7 @@ export default function StudentDashboard() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span className="text-sm font-medium text-gray-700">Update Interests</span>
-                  </motion.button>
+                  </motion.button> */}
                 </div>
               </div>
             </div>

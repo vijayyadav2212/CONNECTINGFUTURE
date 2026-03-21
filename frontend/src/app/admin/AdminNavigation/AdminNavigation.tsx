@@ -122,20 +122,20 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
           {/* Quick Stats */}
           <div className="p-4 border-b border-gray-200">
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-3 rounded-lg border border-orange-200">
+              {/* <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-3 rounded-lg border border-orange-200">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-orange-600" />
                   <span className="text-xs text-gray-600 font-medium">Pending</span>
                 </div>
                 <p className="text-xl font-bold text-gray-900 mt-1">{pendingApprovals}</p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
+              </div> */}
+              {/* <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
                 <div className="flex items-center space-x-2">
                   <Users className="w-4 h-4 text-blue-600" />
                   <span className="text-xs text-gray-600 font-medium">Users</span>
                 </div>
                 <p className="text-xl font-bold text-gray-900 mt-1">1,234</p>
-              </div>
+              </div> */}
             </div>
           </div>
 

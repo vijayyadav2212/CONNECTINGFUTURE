@@ -375,7 +375,7 @@ function DashboardSection({ profile }: DashboardSectionProps) {
         <StatCard
           icon={BookOpen}
           value="+2"
-          label="Blogs Written"
+          label="Events Hosted"
           fullValue={2}
           color="purple"
           isVisible={isStatsVisible}
@@ -414,9 +414,9 @@ function DashboardSection({ profile }: DashboardSectionProps) {
             label="Post Job"
           />
           <QuickActionButton
-            onClick={() => router.push('/alumni/ama')}
+            onClick={() => router.push('/alumni/events')}
             icon={Mic}
-            label="Host AMA"
+            label="Host Events"
           />
           <QuickActionButton
             onClick={() => router.push('/alumni/roadmap')}

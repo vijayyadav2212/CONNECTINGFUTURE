@@ -272,13 +272,13 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
           {/* Bottom Actions */}
           <div className="p-4 border-t border-gray-200 mt-auto">
             <div className="space-y-2">
-              <button
+              {/* <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="flex items-center space-x-3 w-full p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <Bell className="w-5 h-5 text-gray-500" />
                 <span className="font-medium">Notifications</span>
-              </button>
+              </button> */}
 
               <Link
                 href="/api/auth/logout"
