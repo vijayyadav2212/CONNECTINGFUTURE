@@ -2,19 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminNavigation from '../AdminNavigation';
-import { 
-  Users, UserCheck, UserX, Briefcase, Calendar, 
-  TrendingUp, AlertCircle, CheckCircle, Clock, 
-  Eye, Activity, ArrowUpRight, Send, RefreshCw
-} from 'lucide-react';
 import Link from 'next/link';
+import AdminNavigation from '../AdminNavigation/AdminNavigation';
+import {
+  Users, UserCheck, UserX, Briefcase, Calendar,
+  TrendingUp, AlertCircle, CheckCircle, Clock,
+  Eye, Activity, Send, RefreshCw
+} from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useAuth0Token } from '../../../hooks/useAuth0Token';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
-// Interfaces
 interface DashboardStats {
   totalUsers: number;
   pendingApprovals: number;
@@ -31,14 +30,7 @@ interface PendingApproval {
   subtitle: string;
   date: string;
   status: string;
-  raw_data?: any; // Store original data for API calls
-}
-
-interface ApiResponse {
-  users?: any[];
-  jobs?: any[];
-  events?: any[];
-  total?: number;
+  raw_data?: any;
 }
 
 export default function AdminDashboard() {
@@ -48,626 +40,217 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    pendingApprovals: 0,
-    activeJobs: 0,
-    upcomingEvents: 0,
-    newRegistrations: 0,
-    approvedToday: 0
-  });
-
+  const [stats, setStats] = useState<DashboardStats>({ totalUsers: 0, pendingApprovals: 0, activeJobs: 0, upcomingEvents: 0, newRegistrations: 0, approvedToday: 0 });
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
 
-  // Fetch dashboard data
   const fetchDashboardData = async (isRefresh = false) => {
     if (!user || !accessToken) return;
-    
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      isRefresh ? setRefreshing(true) : setLoading(true);
       setError(null);
 
-      // Fetch all data in parallel
       const [usersResponse, jobsResponse, eventsResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/users?limit=1000`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
-        }).catch(err => ({ ok: false, error: 'Users API failed', details: err })),
-        fetch(`${API_BASE}/api/jobs?limit=1000`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
-        }).catch(err => ({ ok: false, error: 'Jobs API failed', details: err })),
-        fetch(`${API_BASE}/api/events?limit=1000`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
-        }).catch(err => ({ ok: false, error: 'Events API failed', details: err }))
+        fetch(`${API_BASE}/api/users?limit=1000`, { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => ({ ok: false })),
+        fetch(`${API_BASE}/api/jobs?limit=1000`, { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => ({ ok: false })),
+        fetch(`${API_BASE}/api/events?limit=1000`, { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => ({ ok: false })),
       ]);
 
-      // Check for API errors
-      const errors = [];
-      let usersData = { users: [] };
-      let jobsData = { jobs: [] };
-      let eventsData = { events: [] };
+      const errors: string[] = [];
+      let usersData = { users: [] }, jobsData = { jobs: [] }, eventsData = { events: [] };
 
-      if (usersResponse.ok) {
-        const contentType = usersResponse.headers?.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          usersData = await usersResponse.json();
-        } else {
-          errors.push('Users API returned invalid response');
-        }
-      } else {
-        errors.push(`Users API failed: ${usersResponse.status || 'Network error'}`);
-      }
+      if ((usersResponse as Response).ok) { try { usersData = await (usersResponse as Response).json(); } catch { errors.push('Users parse error'); } }
+      else errors.push('Users API failed');
+      if ((jobsResponse as Response).ok) { try { jobsData = await (jobsResponse as Response).json(); } catch { errors.push('Jobs parse error'); } }
+      else errors.push('Jobs API failed');
+      if ((eventsResponse as Response).ok) { try { eventsData = await (eventsResponse as Response).json(); } catch { errors.push('Events parse error'); } }
+      else errors.push('Events API failed');
 
-      if (jobsResponse.ok) {
-        const contentType = jobsResponse.headers?.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          jobsData = await jobsResponse.json();
-        } else {
-          errors.push('Jobs API returned invalid response');
-        }
-      } else {
-        errors.push(`Jobs API failed: ${jobsResponse.status || 'Network error'}`);
-      }
-
-      if (eventsResponse.ok) {
-        const contentType = eventsResponse.headers?.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          eventsData = await eventsResponse.json();
-        } else {
-          errors.push('Events API returned invalid response');
-        }
-      } else {
-        errors.push(`Events API failed: ${eventsResponse.status || 'Network error'}`);
-      }
-
-      if (errors.length > 0) {
-        console.warn('Dashboard API errors:', errors);
-        setError(`Some data may be incomplete: ${errors.join(', ')}`);
-      }
+      if (errors.length) setError(`Some data may be incomplete: ${errors.join(', ')}`);
 
       const users = usersData.users || [];
       const jobs = jobsData.jobs || [];
       const events = eventsData.events || [];
-
-      // Filter for alumni users specifically
       const alumniUsers = users.filter((u: any) => u.user_type === 'alumni');
-      const allUsers = users; // Keep total for overall stats
 
-      // Calculate stats
-      const totalUsers = allUsers.length;
-      const totalAlumni = alumniUsers.length;
-      const activeJobs = jobs.filter((j: any) => {
-        const status = String(j.status || '').toLowerCase();
-        return status.includes('approved');
-      }).length;
-      const upcomingEvents = events.filter((e: any) => {
-        try {
-          const eventDate = new Date(e.start_date);
-          const now = new Date();
-          const status = String(e.status || '').toLowerCase();
-          return eventDate > now && status.includes('approved');
-        } catch {
-          return false;
-        }
-      }).length;
+      const activeJobs = jobs.filter((j: any) => String(j.status || '').toLowerCase().includes('approved')).length;
+      const upcomingEvents = events.filter((e: any) => { try { return new Date(e.start_date) > new Date() && String(e.status || '').toLowerCase().includes('approved'); } catch { return false; } }).length;
+      const pendingAlumni = alumniUsers.filter((u: any) => String(u.approval_status || 'pending').toLowerCase() === 'pending').length;
+      const pendingJobs = jobs.filter((j: any) => String(j.status || '').toLowerCase().includes('pending')).length;
+      const pendingEvents = events.filter((e: any) => String(e.status || '').toLowerCase().includes('pending')).length;
+      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+      const newRegistrations = users.filter((u: any) => { try { return new Date(u.created_at) > weekAgo; } catch { return false; } }).length;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const approvedToday = alumniUsers.filter((u: any) => { try { const d = u.approved_at ? new Date(u.approved_at) : null; return d && d >= today && String(u.approval_status || '').toLowerCase() === 'approved'; } catch { return false; } }).length;
 
-      // Count pending approvals
-      const pendingAlumni = alumniUsers.filter((u: any) => {
-        const status = String(u.approval_status || 'pending').toLowerCase();
-        return status === 'pending';
-      }).length;
-      const pendingJobs = jobs.filter((j: any) => {
-        const status = String(j.status || '').toLowerCase();
-        return status.includes('pending');
-      }).length;
-      const pendingEvents = events.filter((e: any) => {
-        const status = String(e.status || '').toLowerCase();
-        return status.includes('pending');
-      }).length;
-      const totalPending = pendingAlumni + pendingJobs + pendingEvents;
+      setStats({ totalUsers: users.length, pendingApprovals: pendingAlumni + pendingJobs + pendingEvents, activeJobs, upcomingEvents, newRegistrations, approvedToday });
 
-      // Count new registrations (last 7 days)
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const newRegistrations = allUsers.filter((u: any) => {
-        try {
-          const created = new Date(u.created_at);
-          return created > weekAgo;
-        } catch {
-          return false;
-        }
-      }).length;
-
-      // Count approvals today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const approvedToday = alumniUsers.filter((u: any) => {
-        try {
-          const approved = u.approved_at ? new Date(u.approved_at) : null;
-          const status = String(u.approval_status || '').toLowerCase();
-          return approved && approved >= today && status === 'approved';
-        } catch {
-          return false;
-        }
-      }).length;
-
-      setStats({
-        totalUsers,
-        pendingApprovals: totalPending,
-        activeJobs,
-        upcomingEvents,
-        newRegistrations,
-        approvedToday
-      });
-
-      console.log('Dashboard Stats:', {
-        totalUsers,
-        totalAlumni,
-        pendingApprovals: totalPending,
-        activeJobs,
-        upcomingEvents,
-        newRegistrations,
-        approvedToday,
-        breakdown: {
-          pendingAlumni,
-          pendingJobs,
-          pendingEvents
-        }
-      });
-
-      // Create pending approvals list
       const pendingItems: PendingApproval[] = [];
-
-      // Add pending alumni (limit to 3)
-      alumniUsers
-        .filter((u: any) => {
-          const status = String(u.approval_status || 'pending').toLowerCase();
-          return status === 'pending';
-        })
-        .slice(0, 3)
-        .forEach((u: any) => {
-          pendingItems.push({
-            id: u.id,
-            type: 'alumni',
-            title: u.name || 'Unknown User',
-            subtitle: `${u.major || 'Unknown'} • ${u.graduation_year || 'N/A'}`,
-            date: u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Unknown',
-            status: u.approval_status || 'pending',
-            raw_data: u
-          });
-        });
-
-      // Add pending jobs (limit to 2)
-      jobs
-        .filter((j: any) => {
-          const status = String(j.status || '').toLowerCase();
-          return status.includes('pending');
-        })
-        .slice(0, 2)
-        .forEach((j: any) => {
-          pendingItems.push({
-            id: j.id,
-            type: 'job',
-            title: j.title,
-            subtitle: `${j.company} • ${j.job_type || 'Unknown'}`,
-            date: j.posted_date ? new Date(j.posted_date).toLocaleDateString() : 'Unknown',
-            status: j.status,
-            raw_data: j
-          });
-        });
-
-      // Add pending events (limit to 2)
-      events
-        .filter((e: any) => {
-          const status = String(e.status || '').toLowerCase();
-          return status.includes('pending');
-        })
-        .slice(0, 2)
-        .forEach((e: any) => {
-          try {
-            pendingItems.push({
-              id: e.id,
-              type: 'event',
-              title: e.title,
-              subtitle: `${e.is_virtual ? 'Virtual Event' : e.location || 'TBD'} • ${new Date(e.start_date).toLocaleDateString()}`,
-              date: e.posted_date ? new Date(e.posted_date).toLocaleDateString() : 'Unknown',
-              status: e.status,
-              raw_data: e
-            });
-          } catch (dateError) {
-            // Skip events with invalid dates
-            console.warn('Invalid event date:', e.start_date);
-          }
-        });
-
-      // Sort by most recent
-      pendingItems.sort((a, b) => {
-        const dateA = a.raw_data.created_at || a.raw_data.posted_date;
-        const dateB = b.raw_data.created_at || b.raw_data.posted_date;
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      alumniUsers.filter((u: any) => String(u.approval_status || 'pending').toLowerCase() === 'pending').slice(0, 3).forEach((u: any) => {
+        pendingItems.push({ id: u.id, type: 'alumni', title: u.name || 'Unknown User', subtitle: `${u.major || 'Unknown'} • ${u.graduation_year || 'N/A'}`, date: u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Unknown', status: u.approval_status || 'pending', raw_data: u });
       });
-
-      setPendingApprovals(pendingItems.slice(0, 5)); // Show max 5 items
+      jobs.filter((j: any) => String(j.status || '').toLowerCase().includes('pending')).slice(0, 2).forEach((j: any) => {
+        pendingItems.push({ id: j.id, type: 'job', title: j.title, subtitle: `${j.company} • ${j.job_type || 'Unknown'}`, date: j.posted_date ? new Date(j.posted_date).toLocaleDateString() : 'Unknown', status: j.status, raw_data: j });
+      });
+      events.filter((e: any) => String(e.status || '').toLowerCase().includes('pending')).slice(0, 2).forEach((e: any) => {
+        try { pendingItems.push({ id: e.id, type: 'event', title: e.title, subtitle: `${e.is_virtual ? 'Virtual' : e.location || 'TBD'} • ${new Date(e.start_date).toLocaleDateString()}`, date: e.posted_date ? new Date(e.posted_date).toLocaleDateString() : 'Unknown', status: e.status, raw_data: e }); } catch {}
+      });
+      pendingItems.sort((a, b) => new Date(b.raw_data.created_at || b.raw_data.posted_date).getTime() - new Date(a.raw_data.created_at || a.raw_data.posted_date).getTime());
+      setPendingApprovals(pendingItems.slice(0, 5));
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard data');
-      console.error('Dashboard error:', err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false); setRefreshing(false);
     }
   };
 
-  // Quick approve function
   const quickApprove = async (approval: PendingApproval) => {
     if (!accessToken) return;
-    
     try {
-      let endpoint = '';
-      let body = {};
-      
-      if (approval.type === 'alumni') {
-        // Use server-side proxy for alumni approvals (proxy will use admin token)
-        const auth0 = approval.raw_data && (approval.raw_data.auth0_id || approval.raw_data.auth0Id);
-        endpoint = '/api/admin/users';
-        body = { approval_status: 'approved' } as any;
-        if (auth0) body.auth0_id = auth0; else body.id = approval.id;
-      } else if (approval.type === 'job') {
-        endpoint = `${API_BASE}/api/admin/jobs/${approval.id}/approval`;
-        body = { status: 'Approved' };
-      } else if (approval.type === 'event') {
-        endpoint = `${API_BASE}/api/admin/events/${approval.id}/approval`;
-        body = { status: 'Approved' };
-      }
-      const options: any = {
-        method: approval.type === 'alumni' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      };
+      let endpoint = '', body: any = {};
+      if (approval.type === 'alumni') { endpoint = '/api/admin/users'; body = { approval_status: 'approved' }; const auth0 = approval.raw_data?.auth0_id || approval.raw_data?.auth0Id; if (auth0) body.auth0_id = auth0; else body.id = approval.id; }
+      else if (approval.type === 'job') { endpoint = `${API_BASE}/api/admin/jobs/${approval.id}/approval`; body = { status: 'Approved' }; }
+      else if (approval.type === 'event') { endpoint = `${API_BASE}/api/admin/events/${approval.id}/approval`; body = { status: 'Approved' }; }
+      const options: any = { method: approval.type === 'alumni' ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
       if (approval.type !== 'alumni') options.headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(endpoint, options);
-      if (response.ok) {
-        // Remove from pending list and refresh stats
-        setPendingApprovals(prev => prev.filter(p => p.id !== approval.id || p.type !== approval.type));
-        fetchDashboardData(true);
-      } else {
-        let details = 'unknown error';
-        try { const d = await response.json(); details = d && (d.details || d.error || JSON.stringify(d)); } catch { try { details = await response.text(); } catch {} }
-        console.error('Quick approve upstream error', response.status, details);
-        alert('Approve failed: ' + details);
-      }
-    } catch (error) {
-      console.error('Error approving:', error);
-      alert('Failed to approve. Please try again.');
-    }
+      const res = await fetch(endpoint, options);
+      if (res.ok) { setPendingApprovals(p => p.filter(x => x.id !== approval.id || x.type !== approval.type)); fetchDashboardData(true); }
+      else { let d = 'unknown error'; try { const j = await res.json(); d = j?.details || j?.error || JSON.stringify(j); } catch { try { d = await res.text(); } catch {} } alert('Approve failed: ' + d); }
+    } catch { alert('Failed to approve. Please try again.'); }
   };
 
-  // Quick reject function
   const quickReject = async (approval: PendingApproval) => {
     if (!accessToken) return;
-    
     try {
-      let endpoint = '';
-      let body = {};
-      
-      if (approval.type === 'alumni') {
-        endpoint = '/api/admin/users';
-        body = { approval_status: 'rejected' } as any;
-        const auth0 = approval.raw_data && (approval.raw_data.auth0_id || approval.raw_data.auth0Id);
-        if (auth0) body.auth0_id = auth0; else body.id = approval.id;
-      } else if (approval.type === 'job') {
-        endpoint = `${API_BASE}/api/admin/jobs/${approval.id}/approval`;
-        body = { status: 'Rejected' };
-      } else if (approval.type === 'event') {
-        endpoint = `${API_BASE}/api/admin/events/${approval.id}/approval`;
-        body = { status: 'Rejected' };
-      }
-      const options2: any = {
-        method: approval.type === 'alumni' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      };
-      if (approval.type !== 'alumni') {
-        options2.headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-      const response = await fetch(endpoint, options2);
-      if (response.ok) {
-        // Remove from pending list and refresh stats
-        setPendingApprovals(prev => prev.filter(p => p.id !== approval.id || p.type !== approval.type));
-        fetchDashboardData(true);
-      } else {
-        let details = 'unknown error';
-        try { const d = await response.json(); details = d && (d.details || d.error || JSON.stringify(d)); } catch { try { details = await response.text(); } catch {} }
-        console.error('Quick reject upstream error', response.status, details);
-        alert('Reject failed: ' + details);
-      }
-    } catch (error) {
-      console.error('Error rejecting:', error);
-      alert('Failed to reject. Please try again.');
-    }
+      let endpoint = '', body: any = {};
+      if (approval.type === 'alumni') { endpoint = '/api/admin/users'; body = { approval_status: 'rejected' }; const auth0 = approval.raw_data?.auth0_id || approval.raw_data?.auth0Id; if (auth0) body.auth0_id = auth0; else body.id = approval.id; }
+      else if (approval.type === 'job') { endpoint = `${API_BASE}/api/admin/jobs/${approval.id}/approval`; body = { status: 'Rejected' }; }
+      else if (approval.type === 'event') { endpoint = `${API_BASE}/api/admin/events/${approval.id}/approval`; body = { status: 'Rejected' }; }
+      const options: any = { method: approval.type === 'alumni' ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+      if (approval.type !== 'alumni') options.headers['Authorization'] = `Bearer ${accessToken}`;
+      const res = await fetch(endpoint, options);
+      if (res.ok) { setPendingApprovals(p => p.filter(x => x.id !== approval.id || x.type !== approval.type)); fetchDashboardData(true); }
+      else { let d = 'unknown error'; try { const j = await res.json(); d = j?.details || j?.error || JSON.stringify(j); } catch { try { d = await res.text(); } catch {} } alert('Reject failed: ' + d); }
+    } catch { alert('Failed to reject. Please try again.'); }
   };
 
+  useEffect(() => { fetchDashboardData(); }, [user, accessToken]);
   useEffect(() => {
-    fetchDashboardData();
-  }, [user, accessToken]);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    if (!loading) {
-      const interval = setInterval(() => {
-        fetchDashboardData(true);
-      }, 30000);
-      return () => clearInterval(interval);
-    }
+    if (!loading) { const t = setInterval(() => fetchDashboardData(true), 30000); return () => clearInterval(t); }
   }, [loading, user, accessToken]);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'alumni': return <UserCheck className="w-5 h-5" />;
-      case 'job': return <Briefcase className="w-5 h-5" />;
-      case 'event': return <Calendar className="w-5 h-5" />;
-      default: return <AlertCircle className="w-5 h-5" />;
-    }
-  };
+  const typeIcon = (t: string) => ({ alumni: <UserCheck className="w-4 h-4" />, job: <Briefcase className="w-4 h-4" />, event: <Calendar className="w-4 h-4" /> }[t] || <AlertCircle className="w-4 h-4" />);
+  const typeStyle = (t: string) => ({ alumni: 'bg-blue-50 text-blue-600', job: 'bg-purple-50 text-purple-600', event: 'bg-green-50 text-green-600' }[t] || 'bg-gray-50 text-gray-600');
+  const typeRoute = (t: string) => ({ alumni: '/admin/approvals/alumni', job: '/admin/jobs', event: '/admin/events' }[t] || '/admin/dashboard');
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'alumni': return 'text-blue-600 bg-blue-50';
-      case 'job': return 'text-purple-600 bg-purple-50';
-      case 'event': return 'text-green-600 bg-green-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getApprovalRoute = (type: string) => {
-    switch (type) {
-      case 'alumni': return '/admin/approvals/alumni';
-      case 'job': return '/admin/jobs';
-      case 'event': return '/admin/events';
-      default: return '/admin/dashboard';
-    }
-  };
+  const statCards = [
+    { label: 'Total Users',        value: stats.totalUsers,        sub: '+12% this month',  icon: <Users className="w-4 h-4" />,     bg: 'bg-blue-50',   color: 'text-blue-600' },
+    { label: 'Pending Approvals',   value: stats.pendingApprovals,  sub: 'Needs attention',  icon: <AlertCircle className="w-4 h-4" />, bg: 'bg-amber-50',  color: 'text-amber-600' },
+    { label: 'Active Jobs',         value: stats.activeJobs,        sub: 'Live postings',    icon: <Briefcase className="w-4 h-4" />,  bg: 'bg-purple-50', color: 'text-purple-600' },
+    { label: 'Upcoming Events',     value: stats.upcomingEvents,    sub: 'This month',       icon: <Calendar className="w-4 h-4" />,   bg: 'bg-green-50',  color: 'text-green-600' },
+    { label: 'New Registrations',   value: stats.newRegistrations,  sub: 'This week',        icon: <TrendingUp className="w-4 h-4" />, bg: 'bg-teal-50',   color: 'text-teal-600' },
+    { label: 'Approved Today',      value: stats.approvedToday,     sub: 'All processed',    icon: <CheckCircle className="w-4 h-4" />, bg: 'bg-green-50', color: 'text-green-600' },
+  ];
 
   return (
     <AdminNavigation>
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <div className="text-gray-600">Loading dashboard...</div>
-          </div>
+        <div className="flex flex-col items-center justify-center h-60 gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500" />
+          <p className="text-sm text-gray-400">Loading dashboard…</p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Welcome Section */}
-          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-8 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
-            
-            <div className="relative z-10 flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">Welcome back, Admin!</h1>
-                <p className="text-white/90">Here's what's happening with your platform today.</p>
-              </div>
-              <button
-                onClick={() => fetchDashboardData(true)}
-                disabled={refreshing}
-                className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-lg hover:bg-white/30 transition-all duration-200 flex items-center disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </button>
+        <div className="space-y-5">
+
+          {/* Welcome Banner */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-5 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Welcome back, Admin!</h1>
+              <p className="text-gray-500 text-sm mt-1">Here's what's happening with your platform today.</p>
             </div>
+            <button onClick={() => fetchDashboardData(true)} disabled={refreshing} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors shadow-sm">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
           </div>
 
-          {/* Error Display */}
+          {/* Error */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <div className="flex items-start">
-                <AlertCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-red-900 mb-1">Error Loading Dashboard</h3>
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Total Users */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {statCards.map((s, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl ${s.bg} ${s.color} flex items-center justify-center shrink-0`}>{s.icon}</div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.totalUsers}</h3>
-                  <div className="flex items-center mt-2 text-green-600">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    <span className="text-sm font-medium">+12% this month</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600" />
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{s.label}</p>
+                  <p className="text-2xl font-black text-gray-900 leading-none mt-0.5">{s.value}</p>
+                  <p className={`text-[11px] font-semibold mt-0.5 ${s.color}`}>{s.sub}</p>
                 </div>
               </div>
-            </div>
-
-            {/* Pending Approvals */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.pendingApprovals}</h3>
-                  <div className="flex items-center mt-2 text-orange-600">
-                    <Clock className="w-4 h-4 mr-1" />
-                    <span className="text-sm font-medium">Needs attention</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-orange-50 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-orange-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Active Jobs */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.activeJobs}</h3>
-                  <div className="flex items-center mt-2 text-blue-600">
-                    <Activity className="w-4 h-4 mr-1" />
-                    <span className="text-sm font-medium">Live postings</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-lg">
-                  <Briefcase className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Upcoming Events */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Upcoming Events</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.upcomingEvents}</h3>
-                  <div className="flex items-center mt-2 text-green-600">
-                    <Calendar className="w-4 h-4 mr-1" />
-                    <span className="text-sm font-medium">This month</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <Calendar className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* New Registrations */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">New Registrations</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.newRegistrations}</h3>
-                  <div className="flex items-center mt-2 text-blue-600">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    <span className="text-sm font-medium">This week</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <UserCheck className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Approved Today */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Approved Today</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.approvedToday}</h3>
-                  <div className="flex items-center mt-2 text-green-600">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    <span className="text-sm font-medium">All processed</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
-            {/* Pending Approvals Section */}
-          {pendingApprovals.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">All caught up!</h3>
-              <p className="text-gray-600">No pending approvals at the moment.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Pending Approvals</h2>
-                  <p className="text-sm text-gray-600 mt-1">Items requiring your review</p>
-                </div>
-                <Link 
-                  href="/admin/approvals/alumni"
-                  className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
-                >
-                  View All
-                  <ArrowUpRight className="w-4 h-4 ml-1" />
-                </Link>
+          {/* Pending Approvals */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm">Pending Approvals</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Items requiring your review</p>
               </div>
+              <Link href="/admin/approvals/alumni" className="text-xs font-bold text-green-600 hover:underline">View All →</Link>
             </div>
-
-            <div className="divide-y divide-gray-100">
-              {pendingApprovals.map((approval) => (
-                <div key={approval.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className={`p-3 rounded-lg ${getTypeColor(approval.type)}`}>
-                        {getTypeIcon(approval.type)}
+            {pendingApprovals.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3"><CheckCircle className="w-6 h-6 text-green-500" /></div>
+                <p className="font-bold text-gray-900 text-sm">All caught up!</p>
+                <p className="text-xs text-gray-400 mt-0.5">No pending approvals at the moment.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {pendingApprovals.map(a => (
+                  <div key={`${a.type}-${a.id}`} className="px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${typeStyle(a.type)}`}>{typeIcon(a.type)}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{a.title}</p>
+                        <p className="text-xs text-gray-400">{a.subtitle}</p>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{approval.title}</h3>
-                        <p className="text-sm text-gray-600">{approval.subtitle}</p>
-                        <p className="text-xs text-gray-500 mt-1">{approval.date}</p>
+                      <p className="text-[10px] text-gray-400 shrink-0 mr-2">{a.date}</p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => router.push(typeRoute(a.type))} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
+                          <Eye className="w-3 h-3" />Review
+                        </button>
+                        <button onClick={() => quickApprove(a)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors">
+                          <CheckCircle className="w-3 h-3" />Approve
+                        </button>
+                        <button onClick={() => quickReject(a)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-colors">
+                          <UserX className="w-3 h-3" />Reject
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => router.push(getApprovalRoute(approval.type))}
-                        className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm flex items-center"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Review
-                      </button>
-                      <button
-                        onClick={() => quickApprove(approval)}
-                        className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors font-medium text-sm flex items-center"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => quickReject(approval)}
-                        className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium text-sm flex items-center"
-                      >
-                        <UserX className="w-4 h-4 mr-1" />
-                        Reject
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-          )}
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link href="/admin/jobs/create" className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white hover:shadow-lg transition-shadow">
-              <Briefcase className="w-8 h-8 mb-4" />
-              <h3 className="text-lg font-bold mb-2">Post a Job</h3>
-              <p className="text-white/80 text-sm">Create new job posting or internship opportunity</p>
-            </Link>
-
-            <Link href="/admin/events/create" className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white hover:shadow-lg transition-shadow">
-              <Calendar className="w-8 h-8 mb-4" />
-              <h3 className="text-lg font-bold mb-2">Host an Event</h3>
-              <p className="text-white/80 text-sm">Schedule and manage alumni events</p>
-            </Link>
-
-            <Link href="/admin/notifications" className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white hover:shadow-lg transition-shadow">
-              <Send className="w-8 h-8 mb-4" />
-              <h3 className="text-lg font-bold mb-2">Send Notification</h3>
-              <p className="text-white/80 text-sm">Broadcast messages to users</p>
-            </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { href: '/admin/jobs/create', icon: <Briefcase className="w-5 h-5" />, title: 'Post a Job', desc: 'Create new job postings', bg: 'bg-purple-50', color: 'text-purple-600', border: 'border-purple-100' },
+              { href: '/admin/events/create', icon: <Calendar className="w-5 h-5" />, title: 'Host an Event', desc: 'Schedule alumni events', bg: 'bg-green-50', color: 'text-green-600', border: 'border-green-100' },
+              { href: '/admin/notifications', icon: <Send className="w-5 h-5" />, title: 'Send Notification', desc: 'Broadcast to users', bg: 'bg-blue-50', color: 'text-blue-600', border: 'border-blue-100' },
+            ].map((q, i) => (
+              <Link key={i} href={q.href} className={`bg-white rounded-2xl border ${q.border} shadow-sm p-4 hover:shadow-md transition-all flex items-center gap-3`}>
+                <div className={`w-10 h-10 rounded-xl ${q.bg} ${q.color} flex items-center justify-center shrink-0`}>{q.icon}</div>
+                <div><p className={`text-sm font-bold ${q.color}`}>{q.title}</p><p className="text-xs text-gray-400">{q.desc}</p></div>
+              </Link>
+            ))}
           </div>
         </div>
       )}

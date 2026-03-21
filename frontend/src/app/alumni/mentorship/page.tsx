@@ -2,13 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import AlumniNavigation from '../AluminaNavigation';
-import { useToast } from '@/hooks/use-toast';
-import StarRating from '@/components/ui/star-rating';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Users, CheckCircle, Star, Calendar, Clock, UserX, ChevronDown, ChevronUp, Video
+} from 'lucide-react';
 
 type Request = {
   id: number;
@@ -41,75 +38,100 @@ type UserProfile = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
-function normalizeExternalLink(link?: string) {
+function normalizeLink(link?: string) {
   if (!link) return '';
   const l = link.trim();
   if (/^https?:\/\//i.test(l)) return l;
-  if (/^\/\//.test(l)) return window.location.protocol + l;
-  if (/meet\.google\.com/i.test(l)) return 'https://' + l.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
-  return l.startsWith('/') ? l : 'https://' + l;
+  if (/^\/\//.test(l)) return 'https:' + l;
+  return 'https://' + l;
+}
+
+function statusBadge(status: string) {
+  const map: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    accepted: 'bg-green-50 text-green-700 border-green-200',
+    rejected: 'bg-red-50 text-red-600 border-red-200',
+    scheduled: 'bg-blue-50 text-blue-700 border-blue-200',
+    paid: 'bg-purple-50 text-purple-700 border-purple-200',
+    completed: 'bg-gray-100 text-gray-600 border-gray-200',
+  };
+  return `text-[11px] font-bold px-2 py-0.5 rounded-full border ${map[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`;
 }
 
 export default function MentorshipPage() {
   const { user } = useUser();
-  const { toast } = useToast();
   const [skills, setSkills] = useState('');
   const [topics, setTopics] = useState('');
   const [availability, setAvailability] = useState('');
   const [experience, setExperience] = useState<number | ''>('');
   const [price, setPrice] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
   const [requests, setRequests] = useState<Request[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
-  // Helper: sort sessions with latest (scheduled or created) first
-  const sortSessionsLatestFirst = (arr: Session[]) => {
-    return (arr || []).slice().sort((a, b) => {
-      const aKey = a.scheduled_at ? new Date(a.scheduled_at).getTime() : ((a as any).created_at ? new Date((a as any).created_at).getTime() : 0);
-      const bKey = b.scheduled_at ? new Date(b.scheduled_at).getTime() : ((b as any).created_at ? new Date((b as any).created_at).getTime() : 0);
-      return bKey - aKey; // newest first
-    });
-  };
-  const [scheduleForm, setScheduleForm] = useState<{ session_id: number; scheduled_at: string; duration_minutes: number; meeting_link?: string } | null>(null);
-  const [scheduleDialogSession, setScheduleDialogSession] = useState<Session | null>(null);
-  const [prevRequests, setPrevRequests] = useState<Record<number, string>>({});
-  const [prevSessions, setPrevSessions] = useState<Record<number, string>>({});
   const [removing, setRemoving] = useState<string | null>(null);
   const [myRatingAvg, setMyRatingAvg] = useState<number | null>(null);
   const [myRatingCount, setMyRatingCount] = useState<number | null>(null);
+  const [showAllSessions, setShowAllSessions] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState<{
+    session_id: number; scheduled_at: string; duration_minutes: number; meeting_link: string;
+  } | null>(null);
   const [meetingDialog, setMeetingDialog] = useState<Session | null>(null);
   const [alertedStart, setAlertedStart] = useState<Record<number, boolean>>({});
-  const [showAllSessions, setShowAllSessions] = useState(false);
-  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
-  // Dynamic stats derived from backend data
-  const activeMenteesCount = useMemo(
-    () => requests.filter((r) => r.status === 'accepted').length,
-    [requests]
-  );
-  const completedSessionsCount = useMemo(
-    () => sessions.filter((s) => s.status === 'completed').length,
-    [sessions]
-  );
-  const myRatingAvgDisplay = useMemo(
-    () => (myRatingAvg == null ? '—' : Number(myRatingAvg).toFixed(1)),
-    [myRatingAvg]
-  );
-  const upcomingSessions = useMemo(() => {
-    return (sessions || [])
-      .filter((s) => s.status === 'scheduled' && s.scheduled_at)
-      .slice()
-      .sort((a, b) => new Date(a.scheduled_at || '').getTime() - new Date(b.scheduled_at || '').getTime())
-      .slice(0, 5);
-  }, [sessions]);
-  const sortedSessions = useMemo(() => {
-    return (sessions || []).slice().sort((a, b) => {
+  const activeMenteesCount = useMemo(() => requests.filter(r => r.status === 'accepted').length, [requests]);
+  const completedSessionsCount = useMemo(() => sessions.filter(s => s.status === 'completed').length, [sessions]);
+  const upcomingSessions = useMemo(() =>
+    sessions.filter(s => s.status === 'scheduled' && s.scheduled_at)
+      .sort((a, b) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime()),
+    [sessions]);
+  const sortedSessions = useMemo(() =>
+    sessions.slice().sort((a, b) => {
       if (a.scheduled_at && b.scheduled_at) return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
       if (a.scheduled_at) return -1;
       if (b.scheduled_at) return 1;
       return 0;
-    });
-  }, [sessions]);
+    }), [sessions]);
+
+  async function reloadMentorData() {
+    if (!user?.email) return;
+    try {
+      const [rq, sq] = await Promise.all([
+        fetch(`${API_BASE}/api/mentorship/requests?mentor_email=${encodeURIComponent(user.email)}`),
+        fetch(`${API_BASE}/api/mentorship/sessions?mentor_email=${encodeURIComponent(user.email)}`),
+      ]);
+      const rj = await rq.json();
+      const sj = await sq.json();
+      const newRequests: Request[] = rj.requests || [];
+      const newSessions: Session[] = sj.sessions || [];
+      setRequests(newRequests);
+      setSessions(newSessions);
+
+      // Check for sessions starting now
+      newSessions.forEach(s => {
+        if (s.status === 'scheduled' && s.scheduled_at && !alertedStart[s.id]) {
+          const diff = new Date(s.scheduled_at).getTime() - Date.now();
+          if (diff <= 0) {
+            setMeetingDialog(s);
+            setAlertedStart(prev => ({ ...prev, [s.id]: true }));
+          }
+        }
+      });
+
+      const emails = Array.from(new Set([...newRequests.map(r => r.student_email), ...newSessions.map(s => s.student_email)]));
+      const entries = await Promise.all(emails.map(async email => {
+        try {
+          const r = await fetch(`${API_BASE}/api/users/by-email?email=${encodeURIComponent(email)}`);
+          const j = await r.json();
+          return [email, j.user] as const;
+        } catch { return [email, { email }] as const; }
+      }));
+      const map: Record<string, UserProfile> = {};
+      entries.forEach(([email, prof]) => { if (email) map[email] = prof as UserProfile; });
+      setProfiles(map);
+    } catch { }
+  }
 
   useEffect(() => {
     async function loadProfile() {
@@ -128,166 +150,44 @@ export default function MentorshipPage() {
       } catch { }
     }
     loadProfile();
-  }, [user?.email]);
-
-  async function reloadMentorData() {
-    if (!user?.email) return;
-    try {
-      const rq = await fetch(`${API_BASE}/api/mentorship/requests?mentor_email=${encodeURIComponent(user.email)}`);
-      const rj = await rq.json();
-      const newRequests: Request[] = rj.requests || [];
-      setRequests(newRequests);
-
-      const sq = await fetch(`${API_BASE}/api/mentorship/sessions?mentor_email=${encodeURIComponent(user.email)}`);
-      const sj = await sq.json();
-      const newSessions: Session[] = sj.sessions || [];
-      setSessions(sortSessionsLatestFirst(newSessions));
-
-      // Hydrate student profiles from fresh results
-      const emails = Array.from(new Set([
-        ...newRequests.map((r) => r.student_email),
-        ...newSessions.map((s) => s.student_email),
-      ]));
-      const entries = await Promise.all(
-        emails.map(async (email) => {
-          try {
-            const r = await fetch(`${API_BASE}/api/users/by-email?email=${encodeURIComponent(email)}`);
-            const j = await r.json();
-            return [email, j.user] as const;
-          } catch {
-            return [email, { email } as UserProfile] as const;
-          }
-        })
-      );
-      const map: Record<string, UserProfile> = {};
-      entries.forEach(([email, prof]) => { if (email) map[email] = prof as UserProfile; });
-      setProfiles(map);
-    } catch { }
-  }
-
-  useEffect(() => {
     reloadMentorData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
-
-  // Poll for notifications: new/incoming requests and upcoming sessions
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (!user?.email) return;
-      try {
-        const rq = await fetch(`${API_BASE}/api/mentorship/requests?mentor_email=${encodeURIComponent(user.email)}`);
-        const rj = await rq.json();
-        const newRequests: Request[] = rj.requests || [];
-        // New pending requests detection
-        newRequests.forEach((r) => {
-          const prev = prevRequests[r.id];
-          if (!prev && r.status === 'pending') {
-            toast({ title: 'New Mentorship Request', description: `${r.student_email} requested mentorship.` });
-          }
-        });
-        const map: Record<number, string> = {};
-        newRequests.forEach((r) => { map[r.id] = r.status; });
-        setPrevRequests(map);
-        setRequests(newRequests);
-      } catch { }
-
-      try {
-        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?mentor_email=${encodeURIComponent(user.email)}`);
-        const sj = await sq.json();
-        const newSessions: Session[] = sj.sessions || [];
-        // Upcoming session detection
-        newSessions.forEach((s) => {
-          const prev = prevSessions[s.id];
-          // If a session just moved to 'paid', prompt mentor to schedule via dialog
-          if ((prev || '') !== s.status && s.status === 'paid') {
-            // only open dialog for mentor role (current user is mentor)
-            if (user?.email && s.mentor_email === user.email) {
-              setScheduleDialogSession(s);
-              setScheduleForm({ session_id: s.id, scheduled_at: '', duration_minutes: s.duration_minutes || 60, meeting_link: s.meeting_link || '' });
-            }
-          }
-          if ((prev || '') !== s.status && s.status === 'scheduled' && s.scheduled_at) {
-            const when = new Date(s.scheduled_at);
-            const diff = when.getTime() - Date.now();
-            if (diff > 0 && diff <= 24 * 60 * 60 * 1000) {
-              toast({ title: 'Upcoming Session', description: `${when.toLocaleString()} with ${s.student_email}` });
-            }
-          }
-          // Meeting start pop-up: when scheduled time is reached and not alerted yet
-          if (s.status === 'scheduled' && s.scheduled_at && !alertedStart[s.id]) {
-            const when = new Date(s.scheduled_at);
-            const diffStart = when.getTime() - Date.now();
-            if (diffStart <= 0) {
-              setMeetingDialog(s);
-              setAlertedStart((prev) => ({ ...prev, [s.id]: true }));
-            }
-          }
-        });
-        const sessMap: Record<number, string> = {};
-        newSessions.forEach((s) => { sessMap[s.id] = s.status; });
-        setPrevSessions(sessMap);
-        setSessions(sortSessionsLatestFirst(newSessions));
-      } catch { }
-    }, 15000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email, prevRequests, prevSessions]);
 
   async function respondRequest(request: Request, action: 'accept' | 'reject') {
     if (!user?.email) return;
     try {
-      const res = await fetch(`${API_BASE}/api/mentorship/respond`, {
+      await fetch(`${API_BASE}/api/mentorship/respond`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ mentor_email: user.email, student_email: request.student_email, action }),
       });
-      if (!res.ok) {
-        const msg = `Respond failed (${res.status})`;
-        throw new Error(msg);
-      }
-      toast({ title: action === 'accept' ? 'Request Accepted' : 'Request Declined' });
       await reloadMentorData();
-    } catch (e) {
-      toast({ title: 'Action Failed', description: e instanceof Error ? e.message : 'Please try again.', variant: 'destructive' });
-    }
+    } catch { }
   }
 
-  async function scheduleSession(session_id: number, scheduled_at: string, duration_minutes: number, meeting_link?: string) {
+  async function scheduleSession(session_id: number, scheduled_at: string, duration_minutes: number, meeting_link: string) {
     try {
-      const res = await fetch(`${API_BASE}/api/mentorship/sessions/schedule`, {
+      await fetch(`${API_BASE}/api/mentorship/sessions/schedule`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ session_id, scheduled_at, duration_minutes, meeting_link }),
       });
-      if (!res.ok) throw new Error('Schedule failed');
-      toast({ title: 'Session Scheduled', description: new Date(scheduled_at).toLocaleString() });
       setScheduleForm(null);
-      setScheduleDialogSession(null);
-      if (user?.email) {
-        const sq = await fetch(`${API_BASE}/api/mentorship/sessions?user_email=${encodeURIComponent(user.email)}&role=mentor`);
-        const sj = await sq.json();
-        setSessions(sortSessionsLatestFirst(sj.sessions || []));
-      }
-    } catch (e) {
-      toast({ title: 'Scheduling Error', description: 'Please try again.', variant: 'destructive' });
-    }
+      await reloadMentorData();
+    } catch { }
   }
 
   async function removeConnectionWithMentee(student_email: string) {
     if (!user?.email) return;
     setRemoving(student_email);
     try {
-      const res = await fetch(`${API_BASE}/api/connections/remove`, {
+      await fetch(`${API_BASE}/api/connections/remove`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ user_email: user.email, other_email: student_email }),
       });
-      if (!res.ok) throw new Error('Remove failed');
-      toast({ title: 'Connection Removed', description: `You removed ${student_email}.` });
       await reloadMentorData();
-    } catch (e) {
-      toast({ title: 'Remove Failed', description: 'Please try again.', variant: 'destructive' });
-    }
+    } catch { }
     setRemoving(null);
   }
 
@@ -295,7 +195,7 @@ export default function MentorshipPage() {
     if (!user?.email) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/mentors/profile`, {
+      await fetch(`${API_BASE}/api/mentors/profile`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -307,409 +207,334 @@ export default function MentorshipPage() {
           price: price === '' ? 0 : Number(price),
         }),
       });
-      // No toast implementation here; rely on UI state
-    } catch { }
+      setSaveMsg('Saved!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch { setSaveMsg('Error saving'); }
     setSaving(false);
   }
+
+  const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 3);
+
   return (
     <AlumniNavigation>
-      <div className="bg-white rounded-3xl p-10 shadow-xl border border-slate-200">
+      <div className="space-y-6">
 
-
-        <div className="space-y-8">
-          {/* Enhanced Header */}
-          <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-4xl">🧑‍🏫</span>
-                    <h1 className="text-4xl font-black">Mentorship Hub</h1>
-                  </div>
-                  <p className="text-blue-100 text-xl">Shape the future through meaningful guidance</p>
-                </div>
-                <button className="bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/30 transition-all duration-300 shadow-lg border border-white/20">
-                  Accept New Mentees
-                </button>
-              </div>
-            </div>
+        {/* Page Header */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 rounded-2xl p-8 border border-gray-100 shadow-sm">
+          <div className="relative z-10">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Mentorship Hub</h1>
+            <p className="text-gray-500 text-sm">Manage your mentees, sessions, and mentor profile all in one place.</p>
           </div>
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/30 blur-[60px] rounded-full -mr-16 -mt-16 pointer-events-none" />
+        </div>
 
-          {/* Enhanced Mentorship Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 text-center group hover:scale-105 transition-all duration-500">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-400 to-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                <span className="text-white text-3xl">👥</span>
-              </div>
-              <h3 className="text-4xl font-black text-slate-900 mb-3">{activeMenteesCount}</h3>
-              <p className="text-slate-600 font-semibold text-lg">Active Mentees</p>
-              <div className="mt-4 w-full bg-slate-200 rounded-full h-3">
-                <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full w-4/5"></div>
-              </div>
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-2">Active Mentees</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{activeMenteesCount}</p>
+              <p className="text-sm font-semibold text-green-600">Accepted requests</p>
             </div>
-
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 text-center group hover:scale-105 transition-all duration-500">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                <span className="text-white text-3xl">✅</span>
-              </div>
-              <h3 className="text-4xl font-black text-slate-900 mb-3">{completedSessionsCount}</h3>
-              <p className="text-slate-600 font-semibold text-lg">Sessions Completed</p>
-              <div className="mt-4 w-full bg-slate-200 rounded-full h-3">
-                <div className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full w-full"></div>
-              </div>
-            </div>
-
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 text-center group hover:scale-105 transition-all duration-500">
-              <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                <span className="text-white text-3xl">⭐</span>
-              </div>
-              <h3 className="text-4xl font-black text-slate-900 mb-3">{myRatingAvgDisplay}</h3>
-              <p className="text-slate-600 font-semibold text-lg">Average Rating</p>
-              <div className="mt-4 w-full bg-slate-200 rounded-full h-3">
-                <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full w-5/6"></div>
-              </div>
-            </div>
+            <div className="p-3 rounded-xl bg-green-50 text-green-600"><Users size={22} /></div>
           </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-2">Sessions Completed</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{completedSessionsCount}</p>
+              <p className="text-sm font-semibold text-blue-600">This year</p>
+            </div>
+            <div className="p-3 rounded-xl bg-blue-50 text-blue-600"><CheckCircle size={22} /></div>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-2">Average Rating</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{myRatingAvg != null ? Number(myRatingAvg).toFixed(1) : '—'}</p>
+              <p className="text-sm font-semibold text-amber-600">{myRatingCount ?? 0} reviews</p>
+            </div>
+            <div className="p-3 rounded-xl bg-amber-50 text-amber-500"><Star size={22} /></div>
+          </div>
+        </div>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {/* Mentor Profile Setup */}
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20">
-            <h3 className="text-3xl font-black text-slate-900 mb-6">Your Mentor Profile</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="lg:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="text-base font-bold text-gray-900 mb-5">Your Mentor Profile</h3>
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Skills / Expertise</label>
-                <Textarea className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g., React, Node.js, System Design" />
-
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Skills / Expertise</label>
+                <textarea
+                  value={skills}
+                  onChange={e => setSkills(e.target.value)}
+                  placeholder="e.g., React, Node.js, System Design"
+                  rows={2}
+                  className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-all resize-none"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Mentorship Topics</label>
-                <Textarea className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="e.g., Interview Prep, Career Guidance" />
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Mentorship Topics</label>
+                <textarea
+                  value={topics}
+                  onChange={e => setTopics(e.target.value)}
+                  placeholder="e.g., Interview Prep, Career Guidance"
+                  rows={2}
+                  className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-all resize-none"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Availability</label>
-                <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="e.g., Weekends, 6-9 PM IST" />
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Availability</label>
+                <input
+                  value={availability}
+                  onChange={e => setAvailability(e.target.value)}
+                  placeholder="e.g., Weekends, 6–9 PM IST"
+                  className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-all"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Experience (years)</label>
-                  <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="number" value={experience as any} onChange={(e) => setExperience(e.target.value ? Number(e.target.value) : '')} />
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Experience (yrs)</label>
+                  <input
+                    type="number"
+                    value={experience as any}
+                    onChange={e => setExperience(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-all"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Session Price (₹)</label>
-                  <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Price (₹)</label>
+                  <input
+                    type="number"
+                    value={price as any}
+                    onChange={e => setPrice(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-all"
+                  />
                 </div>
               </div>
-              <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-                <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <StarRating value={Number(myRatingAvg || 0)} readOnly size={16} />
-                    <span className="font-bold text-yellow-800 text-sm">{myRatingAvg ?? '—'}</span>
-                  </div>
-                  <p className="text-xs text-yellow-700 font-medium">Avg Rating ({myRatingCount || 0})</p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                  <div className="mb-1">
-                    <span className="font-bold text-blue-800 text-sm">{price ? `₹${price}` : '—'}</span>
-                  </div>
-                  <p className="text-xs text-blue-700 font-medium">Session Price</p>
-                </div>
-              </div>
-              <div className="lg:col-span-2 flex justify-end">
-                <Button onClick={saveProfile} disabled={saving || !user?.email}>
-                  {saving ? 'Saving...' : 'Save Profile'}
-                </Button>
-              </div>
+              <button
+                onClick={saveProfile}
+                disabled={saving || !user?.email}
+                className="w-full py-2.5 text-sm font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {saving ? 'Saving…' : 'Save Profile'}
+              </button>
+              {saveMsg && <p className="text-xs text-center font-semibold text-green-600">{saveMsg}</p>}
             </div>
           </div>
 
-          {/* Incoming Requests */}
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-3xl font-black text-slate-900">Incoming Requests</h3>
-            </div>
-            <div className="space-y-6">
-              {requests.length > 0 ? (
-                requests.map((r) => {
-                  const prof = profiles[r.student_email];
-                  const name = prof?.name || r.student_email;
-                  return (
-                    <div key={r.id} className="flex items-center justify-between p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50 group">
-                      <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 text-xl">{name}</p>
-                          <div className="flex items-center mt-2 space-x-4">
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{r.status}</span>
-                          </div>
-                        </div>
-                      </div>
-                      {r.status === 'pending' ? (
-                        <div className="flex space-x-4">
-                          <button onClick={() => respondRequest(r, 'accept')} className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-6 py-3 rounded-xl font-bold hover:from-green-500 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
-                            Accept
-                          </button>
-                          <button onClick={() => respondRequest(r, 'reject')} className="bg-gradient-to-r from-red-400 to-rose-500 text-white px-6 py-3 rounded-xl font-bold hover:from-red-500 hover:to-rose-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
-                            Decline
-                          </button>
-                        </div>
-                      ) : (
-                        r.status === 'accepted' ? (
-                          <div>
-                            <button onClick={() => removeConnectionWithMentee(r.student_email)} className="bg-gradient-to-r from-red-400 to-rose-500 text-white px-6 py-3 rounded-xl font-bold hover:from-red-500 hover:to-rose-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" disabled={removing === r.student_email}>
-                              {removing === r.student_email ? 'Removing...' : 'Remove Mentee'}
-                            </button>
-                          </div>
-                        ) : null
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-slate-600">No incoming requests.</div>
-              )}
-            </div>
-          </div>
+          {/* Right column: Requests + Upcoming Sessions */}
+          <div className="lg:col-span-2 space-y-5">
 
-          {/* Current Mentees / Sessions */}
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20">
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-3xl font-black text-slate-900">Your Sessions</h3>
-                  <span className="text-sm text-slate-500">({sessions.length})</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  {sortedSessions.length > 3 ? (
-                    <button onClick={() => setShowAllSessions((v) => !v)} className="text-sm text-slate-600 hover:underline">
-                      {showAllSessions ? 'Show less' : 'Show all'}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            <div className="space-y-6">
-                <> 
-                  {sortedSessions.length === 0 ? (
-                    <div className="text-slate-600">No sessions yet.</div>
-                  ) : (
-                    (showAllSessions ? sortedSessions : sortedSessions.slice(0, 3)).map((s) => {
-                      const prof = profiles[s.student_email];
-                      const name = prof?.name || s.student_email;
-                      return (
-                        <div key={s.id} className="p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center">
-                                <span className="text-white font-bold">{String(name).charAt(0).toUpperCase()}</span>
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900">{name}</p>
-                                <p className="text-slate-600 text-sm">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
-                              </div>
-                            </div>
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
-                            {(() => {
-                              if (!s.meeting_link || !s.scheduled_at) return null;
-                              const href = normalizeExternalLink(s.meeting_link || undefined);
-                              return (
-                                <div className="ml-4">
-                                  <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md">Join</a>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          {s.status === 'paid' ? (
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-2">
-                              <Input
-                                type="datetime-local"
-                                value={scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : ''}
-                                onChange={(e) => setScheduleForm({
-                                  session_id: s.id,
-                                  scheduled_at: e.target.value,
-                                  duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
-                                  meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
-                                })}
-                              />
-                              <Input
-                                placeholder="Google Meet link (optional)"
-                                value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.meeting_link || '') : ''}
-                                onChange={(e) => setScheduleForm({
-                                  session_id: s.id,
-                                  scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
-                                  duration_minutes: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.duration_minutes : 60,
-                                  meeting_link: e.target.value,
-                                })}
-                              />
-                              <Input
-                                type="number"
-                                placeholder="Duration (mins)"
-                                value={scheduleForm && scheduleForm.session_id === s.id ? (scheduleForm.duration_minutes as number) : (60 as number)}
-                                onChange={(e) => setScheduleForm({
-                                  session_id: s.id,
-                                  scheduled_at: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.scheduled_at : '',
-                                  duration_minutes: Number(e.target.value) || 60,
-                                  meeting_link: scheduleForm && scheduleForm.session_id === s.id ? scheduleForm.meeting_link : '',
-                                })}
-                              />
-                              <Button
-                                onClick={() => {
-                                  if (!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at)) return;
-                                  const when = new Date(scheduleForm.scheduled_at);
-                                  const validFuture = when.getTime() > Date.now();
-                                  const dur = Number(scheduleForm.duration_minutes) || 60;
-                                  if (!validFuture) {
-                                    toast({ title: 'Invalid time', description: 'Pick a future date/time.', variant: 'destructive' });
-                                    return;
-                                  }
-                                  if (dur < 15 || dur > 240) {
-                                    toast({ title: 'Invalid duration', description: 'Duration must be 15-240 minutes.', variant: 'destructive' });
-                                    return;
-                                  }
-                                  scheduleSession(scheduleForm.session_id, scheduleForm.scheduled_at, dur, scheduleForm.meeting_link);
-                                }}
-                                disabled={!(scheduleForm && scheduleForm.session_id === s.id && scheduleForm.scheduled_at)}
-                              >
-                                Schedule
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })
-                  )}
-                </>
-            </div>
-          </div>
-
-          {/* New Enhanced Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Mentorship Analytics */}
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20">
-              <h3 className="text-2xl font-black text-slate-900 mb-6 flex items-center">
-                <span className="mr-3">📊</span>
-                Mentorship Analytics
+            {/* Incoming Requests */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Users size={16} className="text-green-600" />
+                Incoming Requests
+                {requests.filter(r => r.status === 'pending').length > 0 && (
+                  <span className="ml-auto text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                    {requests.filter(r => r.status === 'pending').length} new
+                  </span>
+                )}
               </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-600">Success Rate</span>
-                  <span className="font-bold text-green-600">87%</span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full w-5/6"></div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-600">Response Time</span>
-                  <span className="font-bold text-blue-600">2.4 hrs</span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full w-3/4"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Upcoming Sessions */}
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <h3 className="text-2xl font-black text-slate-900 mr-3">🗓️ Upcoming Sessions</h3>
-                  <span className="text-sm text-slate-500">({upcomingSessions.length})</span>
-                </div>
-                {upcomingSessions.length > 3 ? (
-                  <button onClick={() => setShowAllUpcoming((v) => !v)} className="text-sm text-slate-600 hover:underline">
-                    {showAllUpcoming ? 'Show less' : 'Show all'}
-                  </button>
-                ) : null}
-              </div>
-              <div className="space-y-4">
-                { (showAllUpcoming ? upcomingSessions : upcomingSessions.slice(0,3)).length > 0 ? (
-                  (showAllUpcoming ? upcomingSessions : upcomingSessions.slice(0,3)).map((s) => {
-                    const prof = profiles[s.student_email];
-                    const name = prof?.name || s.student_email;
-                    const initial = String(name || '').charAt(0).toUpperCase() || 'S';
-                    const when = s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—';
+              {requests.length === 0 ? (
+                <p className="text-sm text-gray-400">No incoming requests yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {requests.map(r => {
+                    const prof = profiles[r.student_email];
+                    const name = prof?.name || r.student_email;
+                    const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
                     return (
-                      <div key={`up-${s.id}`} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center">
-                          <span className="text-white font-bold">{initial}</span>
+                      <div key={r.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm shrink-0">{initials}</div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm truncate">{name}</p>
+                            <span className={statusBadge(r.status)}>{r.status}</span>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-slate-900">{name}</p>
-                          <p className="text-slate-600 text-sm">{when}</p>
+                        <div className="flex gap-2 shrink-0">
+                          {r.status === 'pending' && (
+                            <>
+                              <button onClick={() => respondRequest(r, 'accept')} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors">Accept</button>
+                              <button onClick={() => respondRequest(r, 'reject')} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors">Decline</button>
+                            </>
+                          )}
+                          {r.status === 'accepted' && (
+                            <button
+                              onClick={() => removeConnectionWithMentee(r.student_email)}
+                              disabled={removing === r.student_email}
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors disabled:opacity-50"
+                            >
+                              <UserX size={12} /> {removing === r.student_email ? 'Removing…' : 'Remove'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
-                  })
-                ) : (
-                  <div className="text-slate-600">No upcoming sessions.</div>
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Upcoming Sessions */}
+            {upcomingSessions.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar size={16} className="text-blue-600" />
+                  Upcoming Sessions
+                  <span className="ml-auto text-xs text-gray-400">{upcomingSessions.length} scheduled</span>
+                </h3>
+                <div className="space-y-3">
+                  {upcomingSessions.slice(0, 5).map(s => {
+                    const prof = profiles[s.student_email];
+                    const name = prof?.name || s.student_email;
+                    const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                    const link = normalizeLink(s.meeting_link || '');
+                    return (
+                      <div key={s.id} className="flex items-center justify-between p-4 rounded-xl border border-blue-50 bg-blue-50/50 hover:bg-blue-50 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">{initials}</div>
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{name}</p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                              <Clock size={10} /> {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'}
+                              {s.duration_minutes && <> · {s.duration_minutes} mins</>}
+                            </p>
+                          </div>
+                        </div>
+                        {link && (
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shrink-0">
+                            <Video size={12} /> Join
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-      {/* Meeting Start Dialog */}
-      <Dialog open={!!meetingDialog} onOpenChange={(open) => { if (!open) setMeetingDialog(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Session starting now</DialogTitle>
-            <DialogDescription>
-              {meetingDialog ? (
-                <span>
-                  With {profiles[meetingDialog.student_email]?.name || meetingDialog.student_email}. Scheduled at {meetingDialog.scheduled_at ? new Date(meetingDialog.scheduled_at).toLocaleString() : '—'}.
-                </span>
-              ) : null}
-            </DialogDescription>
-          </DialogHeader>
-          {meetingDialog?.meeting_link ? (
-            <div className="mt-2">
-              <a href={meetingDialog.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md hover:from-blue-700 hover:to-indigo-700">Open Google Meet</a>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-600">No meeting link provided.</p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMeetingDialog(null)}>Dismiss</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Schedule Dialog (appears when session transitions to 'paid') */}
-      <Dialog open={!!scheduleDialogSession} onOpenChange={(open) => { if (!open) { setScheduleDialogSession(null); setScheduleForm(null); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Schedule Session</DialogTitle>
-            <DialogDescription>
-              {scheduleDialogSession ? (`Schedule a meeting for ${profiles[scheduleDialogSession.student_email]?.name || scheduleDialogSession.student_email}`) : null}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <label className="block text-sm font-medium text-gray-700">Date & Time</label>
-            <Input type="datetime-local" value={scheduleForm && scheduleDialogSession && scheduleForm.session_id === scheduleDialogSession.id ? scheduleForm.scheduled_at : ''} onChange={(e) => setScheduleForm(prev => (prev && scheduleDialogSession && prev.session_id === scheduleDialogSession.id) ? ({ ...prev, scheduled_at: e.target.value }) : prev)} />
 
-            <label className="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-            <Input type="number" value={scheduleForm && scheduleDialogSession && scheduleForm.session_id === scheduleDialogSession.id ? String(scheduleForm.duration_minutes) : '60'} onChange={(e) => setScheduleForm(prev => (prev && scheduleDialogSession && prev.session_id === scheduleDialogSession.id) ? ({ ...prev, duration_minutes: Number(e.target.value) || 60 }) : prev)} />
-
-            <label className="block text-sm font-medium text-gray-700">Google Meet Link (optional)</label>
-            <Input type="text" value={scheduleForm && scheduleDialogSession && scheduleForm.session_id === scheduleDialogSession.id ? (scheduleForm.meeting_link || '') : ''} onChange={(e) => setScheduleForm(prev => (prev && scheduleDialogSession && prev.session_id === scheduleDialogSession.id) ? ({ ...prev, meeting_link: e.target.value }) : prev)} />
+        {/* All Sessions */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <CheckCircle size={16} className="text-green-600" />
+              All Sessions
+              <span className="text-xs text-gray-400 font-normal">{sessions.length} total</span>
+            </h3>
+            {sortedSessions.length > 3 && (
+              <button onClick={() => setShowAllSessions(v => !v)} className="flex items-center gap-1 text-xs font-semibold text-green-600 hover:underline">
+                {showAllSessions ? <><ChevronUp size={14} />Show less</> : <><ChevronDown size={14} />Show all</>}
+              </button>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setScheduleDialogSession(null); setScheduleForm(null); }}>Cancel</Button>
-            <Button onClick={() => {
-              if (!scheduleForm || !scheduleDialogSession) return;
-              const when = new Date(scheduleForm.scheduled_at);
-              const validFuture = when.getTime() > Date.now();
-              const dur = Number(scheduleForm.duration_minutes) || 60;
-              if (!validFuture) { toast({ title: 'Invalid time', description: 'Pick a future date/time.', variant: 'destructive' }); return; }
-              if (dur < 15 || dur > 240) { toast({ title: 'Invalid duration', description: 'Duration must be 15-240 minutes.', variant: 'destructive' }); return; }
-              scheduleSession(scheduleForm.session_id, scheduleForm.scheduled_at, dur, scheduleForm.meeting_link);
-            }}>Schedule</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+          {sortedSessions.length === 0 ? (
+            <p className="text-sm text-gray-400">No sessions yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {displayedSessions.map(s => {
+                const prof = profiles[s.student_email];
+                const name = prof?.name || s.student_email;
+                const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                const link = normalizeLink(s.meeting_link || '');
+                const isActive = scheduleForm?.session_id === s.id;
+                return (
+                  <div key={s.id} className="rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all overflow-hidden">
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm shrink-0">{initials}</div>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{name}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className={statusBadge(s.status)}>{s.status}</span>
+                            {s.scheduled_at && (
+                              <span className="text-[11px] text-gray-500 flex items-center gap-0.5">
+                                <Clock size={10} /> {new Date(s.scheduled_at).toLocaleString()}
+                              </span>
+                            )}
+                            {s.amount != null && (
+                              <span className="text-[11px] text-gray-500">₹{s.amount}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        {link && s.status === 'scheduled' && (
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                            <Video size={12} /> Join
+                          </a>
+                        )}
+                        {s.status === 'paid' && (
+                          <button
+                            onClick={() => setScheduleForm(isActive ? null : { session_id: s.id, scheduled_at: '', duration_minutes: s.duration_minutes || 60, meeting_link: s.meeting_link || '' })}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors"
+                          >
+                            {isActive ? 'Cancel' : 'Schedule'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Inline schedule form for paid sessions */}
+                    {s.status === 'paid' && isActive && (
+                      <div className="px-4 pb-4 pt-0 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <input
+                          type="datetime-local"
+                          value={scheduleForm?.scheduled_at || ''}
+                          onChange={e => setScheduleForm(f => f ? { ...f, scheduled_at: e.target.value } : f)}
+                          className="col-span-2 text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400"
+                        />
+                        <input
+                          placeholder="Meet link (optional)"
+                          value={scheduleForm?.meeting_link || ''}
+                          onChange={e => setScheduleForm(f => f ? { ...f, meeting_link: e.target.value } : f)}
+                          className="text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400"
+                        />
+                        <button
+                          disabled={!scheduleForm?.scheduled_at}
+                          onClick={() => {
+                            if (!scheduleForm?.scheduled_at) return;
+                            scheduleSession(scheduleForm.session_id, scheduleForm.scheduled_at, scheduleForm.duration_minutes, scheduleForm.meeting_link);
+                          }}
+                          className="py-2 text-sm font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* Meeting Start Modal */}
+      {meetingDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMeetingDialog(null)}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Session Starting Now</h2>
+            <p className="text-sm text-gray-600 mb-5">
+              With {profiles[meetingDialog.student_email]?.name || meetingDialog.student_email}
+              {meetingDialog.scheduled_at && <> · {new Date(meetingDialog.scheduled_at).toLocaleString()}</>}
+            </p>
+            {meetingDialog.meeting_link ? (
+              <a href={normalizeLink(meetingDialog.meeting_link)} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors mb-3">
+                <Video size={16} /> Open Meeting
+              </a>
+            ) : <p className="text-sm text-gray-500 mb-3">No meeting link provided.</p>}
+            <button onClick={() => setMeetingDialog(null)} className="w-full py-2.5 text-sm font-semibold rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Dismiss</button>
+          </div>
+        </div>
+      )}
     </AlumniNavigation>
   );
 }
