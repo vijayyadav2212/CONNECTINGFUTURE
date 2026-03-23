@@ -250,25 +250,6 @@ export default function DonationPage() {
               </div>
             )}
 
-            {/* Success Stories */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-                <p className="text-xs font-bold text-gray-900">Success Stories</p>
-              </div>
-              {[
-                { text: '"Thanks to alumni donations, I completed my engineering degree. Now I\'m at a top tech company!"', name: 'Priya S.', sub: 'ECE 2024 Graduate', icon: <GraduationCap className="w-3.5 h-3.5 text-white" />, bg: 'bg-blue-500' },
-                { text: '"The mentorship program funded by donations helped me land my dream job. Forever grateful!"', name: 'Arjun K.', sub: 'CSE 2023 Graduate', icon: <Users className="w-3.5 h-3.5 text-white" />, bg: 'bg-green-500' },
-              ].map((s, i) => (
-                <div key={i} className={`${i > 0 ? 'mt-3 pt-3 border-t border-gray-100' : ''}`}>
-                  <p className="text-xs text-gray-600 italic mb-2">{s.text}</p>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-7 h-7 ${s.bg} rounded-full flex items-center justify-center shrink-0`}>{s.icon}</div>
-                    <div><p className="text-xs font-bold text-gray-900">{s.name}</p><p className="text-[10px] text-gray-400">{s.sub}</p></div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>

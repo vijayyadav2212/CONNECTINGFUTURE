@@ -36,7 +36,7 @@ const normalizeMemory = (m: any) => {
   };
 };
 
-const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-all";
+const inputCls = "w-full px-4 py-3 text-[14px] rounded-[16px] border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all shadow-sm";
 
 export default function MemoriesPage() {
   const { toast } = useToast();
@@ -86,7 +86,13 @@ export default function MemoriesPage() {
         try {
           const d = JSON.parse(e.data); const id = d.id; const c = d.comment;
           const mapped = { id: c.id, author: c.author_name || 'Alumni', text: c.text, time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now', likes: c.likes || 0 };
-          setComments(prev => { const list = prev[id] || []; const exists = list.some((x: any) => x.id === mapped.id); const next = exists ? list.map((x: any) => x.id === mapped.id ? mapped : x) : [...list, mapped]; if (!exists) setMemories(p => p.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m)); return { ...prev, [id]: next }; });
+          setComments(prev => { 
+            const list = prev[id] || []; 
+            const exists = list.some((x: any) => x.id === mapped.id || (x.text === mapped.text && x.author === mapped.author)); 
+            const next = exists ? list.map((x: any) => (x.id === mapped.id || (x.text === mapped.text && x.author === mapped.author)) ? mapped : x) : [...list, mapped]; 
+            if (!exists) { setMemories(p => p.map(m => m.id === id ? { ...m, comments: (m.comments || 0) + 1 } : m)); }
+            return { ...prev, [id]: next }; 
+          });
         } catch {}
       });
       es.addEventListener('memory-create', (e: any) => {
@@ -111,7 +117,10 @@ export default function MemoriesPage() {
     if (open) {
       try {
         const resp = await apiClient.get(`/memories/${memoryId}/comments`);
-        setComments(prev => ({ ...prev, [memoryId]: (resp?.comments || []).map((c: any) => ({ id: c.id, author: c.author_name || 'Alumni', text: c.text, time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now', likes: c.likes || 0 })) }));
+        const fetched = (resp?.comments || []).map((c: any) => ({ id: c.id, author: c.author_name || 'Alumni', text: c.text, time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now', likes: c.likes || 0 }));
+        setComments(prev => ({ ...prev, [memoryId]: fetched }));
+        setMemories(p => p.map(m => m.id === memoryId ? { ...m, comments: fetched.length } : m));
+        if (selectedMemory?.id === memoryId) setSelectedMemory((prev: any) => ({ ...prev, comments: fetched.length }));
       } catch {}
     }
   };
@@ -120,8 +129,14 @@ export default function MemoriesPage() {
     if (!newComment.trim()) return;
     try {
       const resp = await apiClient.post(`/memories/${memoryId}/comments`, { author_name: 'You', text: newComment });
-      const newItem = { id: resp?.id, author: resp?.author_name || 'You', text: resp?.text || newComment, time: 'Just now', likes: 0 };
-      setComments(prev => { const list = prev[memoryId] || []; const exists = list.some((x: any) => x.id === newItem.id); const next = exists ? list : [...list, newItem]; if (!exists) setMemories(p => p.map(m => m.id === memoryId ? { ...m, comments: (m.comments || 0) + 1 } : m)); return { ...prev, [memoryId]: next }; });
+      const newItem = { id: resp?.id || Date.now(), author: resp?.author_name || 'You', text: resp?.text || newComment, time: 'Just now', likes: 0 };
+      setComments(prev => { 
+        const list = prev[memoryId] || []; 
+        const exists = list.some((x: any) => x.id === newItem.id || (x.text === newItem.text && x.author === newItem.author)); 
+        const next = exists ? list : [...list, newItem]; 
+        if (!exists) setMemories(p => p.map(m => m.id === memoryId ? { ...m, comments: (m.comments || 0) + 1 } : m)); 
+        return { ...prev, [memoryId]: next }; 
+      });
       setNewComment('');
     } catch {}
   };
@@ -132,7 +147,7 @@ export default function MemoriesPage() {
   };
 
   const handleAddMemory = async () => {
-    if (!newMemory.title.trim()) { toast({ title: 'Title required', description: 'Please add a title.' }); return; }
+    if (!newMemory.title.trim()) { toast({ title: 'Title required', description: 'Please add a title.', variant: 'destructive' }); return; }
     try {
       setIsSharing(true);
       let image_url: string | null = null;
@@ -141,12 +156,12 @@ export default function MemoriesPage() {
         try { const up = await apiClient.postFormData('/uploads/memory-image', fd); image_url = up?.url || null; } catch {}
       }
       await apiClient.post('/memories', { author_name: 'You', author_avatar: null, author_batch: '2020-2024', author_department: 'Your Department', title: newMemory.title, description: newMemory.description || '', image_url, date: new Date().toISOString().split('T')[0], location: newMemory.location || 'Campus', tags: newMemory.tags.split(',').map(t => t.trim()).filter(Boolean), category: newMemory.category, type: 'photo' });
-      toast({ title: 'Memory shared!', description: 'Your memory has been posted.' });
+      toast({ title: 'Memory shared!', description: 'Your memory has been posted.', className: "bg-indigo-500 text-white rounded-2xl border-none" });
       setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
       setImagePreview(null); setImageFile(null); setShowAddForm(false);
       const resp = await apiClient.get(`/memories?q=&category=all&sort=recent&page=1&limit=50`);
       setMemories((resp?.memories || resp || []).map((m: any) => normalizeMemory(m)));
-    } catch (e: any) { toast({ title: 'Unable to share memory', description: e?.message || 'Please try again.' }); }
+    } catch (e: any) { toast({ title: 'Unable to share memory', description: e?.message || 'Please try again.', variant: "destructive" }); }
     finally { setIsSharing(false); }
   };
 
@@ -162,80 +177,89 @@ export default function MemoriesPage() {
     { value: 'popular', label: 'Popular', icon: <Eye className="w-3.5 h-3.5" /> },
   ];
 
-  const CommentThread = ({ memoryId }: { memoryId: number }) => (
-    <div className="mt-2 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-      <h4 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-        <MessageCircle className="w-4 h-4 text-green-600" />
+  const renderCommentThread = (memoryId: number) => (
+    <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5">
+      <h4 className="flex items-center gap-2 text-sm font-black text-slate-800 mb-4 tracking-wider uppercase">
+        <MessageCircle className="w-4 h-4 text-indigo-500" />
         Comments ({comments[memoryId]?.length || 0})
       </h4>
-      <div className="space-y-3 max-h-60 overflow-y-auto mb-3">
+      <div className="space-y-4 max-h-60 overflow-y-auto mb-4 pr-1">
         {(comments[memoryId] || []).map((c: any, i: number) => (
-          <div key={`${c.id}-${i}`} className="flex gap-2">
-            <div className="w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
-            <div className="flex-1 bg-gray-50 rounded-xl p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-gray-900">{c.author}</span>
-                <span className="text-[10px] text-gray-400">{c.time}</span>
+          <div key={`${c.id}-${i}`} className="flex gap-3">
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
+            <div className="flex-1 bg-slate-50/70 rounded-[16px] p-4 border border-slate-100/60">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[13px] font-black text-slate-800">{c.author}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">{c.time}</span>
               </div>
-              <p className="text-xs text-gray-600">{c.text}</p>
+              <p className="text-[13px] text-slate-600 font-medium leading-relaxed">{c.text}</p>
             </div>
           </div>
         ))}
       </div>
       <div className="flex gap-2">
-        <input value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment…" className="flex-1 px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200" />
-        <button onClick={() => handleAddComment(memoryId)} className="px-3 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700 transition-colors">
-          <Send className="w-3.5 h-3.5" />
+        <input value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment…" className="flex-1 px-4 py-2 text-[14px] rounded-[16px] border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" />
+        <button onClick={() => handleAddComment(memoryId)} className="px-4 py-2 bg-indigo-500 text-white rounded-[16px] text-sm font-bold hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-200">
+          <Send className="w-4 h-4" />
         </button>
       </div>
     </div>
   );
 
-  const MemoryCard = ({ memory }: { memory: any }) => {
+  const renderMemoryCard = (memory: any, i: number) => {
     const CatIcon = categoryIcons[memory.category] || Users;
     const a = memory.author || { name: 'Alumni', avatar: '', batch: '', department: '' };
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
         {memory.image && (
-          <div className="relative h-44 overflow-hidden cursor-pointer" onClick={async () => { setSelectedMemory(memory); try { const v = await apiClient.post(`/memories/${memory.id}/view`, {}); setMemories(p => p.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m)); } catch {} }}>
-            <img src={memory.image} alt={memory.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-            <div className="absolute top-2.5 left-2.5">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 text-xs font-bold text-gray-700">
-                <CatIcon className="w-3 h-3" />{memory.category}
+          <div className="relative h-48 overflow-hidden cursor-pointer" onClick={async () => { setSelectedMemory(memory); try { const v = await apiClient.post(`/memories/${memory.id}/view`, {}); setMemories(p => p.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m)); } catch {} }}>
+            <img src={memory.image} alt={memory.title} className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+            <div className="absolute top-3 left-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-white/95 backdrop-blur-md text-[10px] uppercase font-black tracking-widest text-slate-800 shadow-sm border border-white/20">
+                <CatIcon className="w-3.5 h-3.5 text-indigo-500" />{memory.category}
               </span>
             </div>
-            <div className="absolute bottom-2.5 left-2.5 flex items-center gap-2">
-              <span className="flex items-center gap-1 text-white text-xs bg-black/40 rounded-full px-2 py-1"><Eye className="w-3 h-3" />{memory.views || 0}</span>
+            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-white/90 text-xs font-bold bg-slate-900/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10"><Eye className="w-3.5 h-3.5" />{memory.views || 0} views</span>
             </div>
           </div>
         )}
-        <div className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{a.name.charAt(0)}</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-gray-900 leading-none">{a.name}</p>
-              <p className="text-[10px] text-gray-400">{a.batch}{a.department ? ` · ${a.department}` : ''}</p>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[12px] font-black flex items-center justify-center shrink-0 shadow-sm">{a.name.charAt(0)}</div>
+              <div className="min-w-0">
+                <p className="text-[14px] font-black text-slate-800 leading-tight block truncate">{a.name}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block truncate">{a.batch}{a.department ? ` · ${a.department}` : ''}</p>
+              </div>
             </div>
-            <span className="text-[10px] text-gray-400 flex items-center gap-1 shrink-0"><Clock className="w-3 h-3" />{new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
+              <Clock className="w-3 h-3" />
+              {new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
           </div>
-          <h4 className="font-bold text-gray-900 text-sm mb-1 cursor-pointer hover:text-green-700 transition-colors" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
-          <p className="text-xs text-gray-500 line-clamp-2 mb-2">{memory.description}</p>
-          {memory.location && <p className="flex items-center gap-1 text-[11px] text-gray-400 mb-2"><MapPin className="w-3 h-3" />{memory.location}</p>}
+          
+          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-indigo-600 transition-colors block truncate" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
+          <p className="text-[13px] font-medium text-slate-500 line-clamp-2 mb-4 leading-relaxed">{memory.description}</p>
+          
+          {memory.location && <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4"><MapPin className="w-3.5 h-3.5 text-slate-300" />{memory.location}</p>}
+          
           {Array.isArray(memory.tags) && memory.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {memory.tags.slice(0, 3).map((t: string, i: number) => <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">#{t}</span>)}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {memory.tags.slice(0, 3).map((t: string, i: number) => <span key={i} className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500">#{t}</span>)}
             </div>
           )}
-          <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-            <button onClick={() => handleLike(memory.id)} disabled={pendingLikeIds.has(memory.id)} className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${memory.isLiked ? 'text-red-600 bg-red-50' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'}`}>
-              <Heart className={`w-3.5 h-3.5 ${memory.isLiked ? 'fill-current' : ''}`} />{memory.likes}
+          
+          <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
+            <button onClick={() => handleLike(memory.id)} disabled={pendingLikeIds.has(memory.id)} className={`flex items-center justify-center flex-1 gap-2 text-[12px] font-bold px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest ${memory.isLiked ? 'text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100' : 'text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 shadow-sm'}`}>
+              <Heart className={`w-4 h-4 ${memory.isLiked ? 'fill-current' : ''}`} />{memory.likes}
             </button>
-            <button onClick={() => toggleComments(memory.id)} className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${showComments[memory.id] ? 'text-green-700 bg-green-50' : 'text-gray-500 hover:text-green-700 hover:bg-green-50'}`}>
-              <MessageCircle className="w-3.5 h-3.5" />{memory.comments}
+            <button onClick={() => toggleComments(memory.id)} className={`flex items-center justify-center flex-1 gap-2 text-[12px] font-bold px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest ${showComments[memory.id] ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' : 'text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 shadow-sm'}`}>
+              <MessageCircle className="w-4 h-4" />{memory.comments}
             </button>
           </div>
-          {showComments[memory.id] && <CommentThread memoryId={memory.id} />}
+          {showComments[memory.id] && renderCommentThread(memory.id)}
         </div>
       </div>
     );
@@ -243,61 +267,69 @@ export default function MemoriesPage() {
 
   return (
     <AlumniNavigation>
-      <div className="space-y-5">
+      <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans px-2 md:px-4">
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Camera className="w-6 h-6 text-green-600" />Memories Wall</h1>
-            <p className="text-gray-500 text-sm mt-1">Relive, share, and celebrate moments that defined your journey</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex gap-3">
-              <div className="bg-white px-4 py-2.5 rounded-xl border border-gray-100 shadow-sm text-center">
-                <p className="text-lg font-bold text-green-600">{memories.length}</p>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Memories</p>
-              </div>
-              <div className="bg-white px-4 py-2.5 rounded-xl border border-gray-100 shadow-sm text-center">
-                <p className="text-lg font-bold text-red-500">{memories.reduce((s, m) => s + (m.likes || 0), 0)}</p>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Total Likes</p>
-              </div>
+        {/* Dashboard Header Style */}
+        <div className="bg-gradient-to-r from-[#e7eaff] to-[#eaddff] rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
+          <div className="relative z-10 max-w-2xl">
+            <div className="flex items-center gap-2 text-indigo-600 font-semibold text-[15px] mb-3">
+              <Sparkles className="w-5 h-5" /> <span>Memories Hub</span>
             </div>
-            <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-sm">
-              <Plus className="w-4 h-4" />Share Memory
-            </button>
+            <h1 className="text-4xl md:text-[44px] font-extrabold text-[#1e293b] mb-4 tracking-tight leading-tight">Memories Wall</h1>
+            <p className="text-slate-600 text-[17px] font-medium opacity-90 mt-2">Relive, share, and celebrate moments that defined your journey.</p>
           </div>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="absolute top-1/2 right-8 md:right-12 -translate-y-1/2 bg-white/50 hover:bg-white text-indigo-500 p-4 rounded-2xl backdrop-blur-sm shadow-[0_8px_20px_rgb(0,0,0,0.03)] border border-white/60 transition-all duration-300 group hidden sm:block"
+            title="Share Memory"
+          >
+            <Camera className="w-8 h-8 text-indigo-500 stroke-[2.5]" />
+          </button>
         </div>
+        
+        {/* Mobile FAB */}
+        <button 
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30 z-[90] hover:bg-indigo-600 transition-colors"
+        >
+          <Camera className="w-6 h-6" />
+        </button>
 
         {/* Controls */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className="bg-white rounded-[32px] p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input placeholder="Search memories, people, tags…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400" />
-              {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><X className="w-4 h-4" /></button>}
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input placeholder="Search memories, people, tags…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-12 pr-10 py-3.5 text-[15px] font-medium rounded-[16px] border border-slate-200 bg-slate-50/50 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all shadow-sm" />
+              {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 bg-white rounded-full p-1 shadow-sm border border-slate-100"><X className="w-3.5 h-3.5" /></button>}
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full sm:w-48 h-10 rounded-xl border-gray-200 bg-white text-sm text-gray-900">
-                <Filter className="w-4 h-4 mr-2 text-gray-500" /><SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="achievement">🏆 Achievement</SelectItem>
-                <SelectItem value="friendship">👥 Friendship</SelectItem>
-                <SelectItem value="academic">📚 Academic</SelectItem>
-                <SelectItem value="sports">⚽ Sports</SelectItem>
-                <SelectItem value="event">🎉 Events</SelectItem>
-                <SelectItem value="competition">🏅 Competition</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-              <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}><Grid className="w-4 h-4" /></button>
-              <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}><List className="w-4 h-4" /></button>
+            
+            <div className="flex gap-4">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-52 h-[52px] rounded-[16px] border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white text-[14px] font-bold text-slate-700 shadow-sm transition-colors">
+                  <Filter className="w-4 h-4 mr-2 text-indigo-500" /><SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-slate-100 shadow-xl font-medium">
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="achievement">🏆 Achievement</SelectItem>
+                  <SelectItem value="friendship">👥 Friendship</SelectItem>
+                  <SelectItem value="academic">📚 Academic</SelectItem>
+                  <SelectItem value="sports">⚽ Sports</SelectItem>
+                  <SelectItem value="event">🎉 Events</SelectItem>
+                  <SelectItem value="competition">🏅 Competition</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div className="hidden sm:flex gap-1.5 bg-slate-50 border border-slate-100 p-1.5 rounded-[16px] shrink-0">
+                <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600 border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><Grid className="w-4 h-4" /></button>
+                <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600 border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><List className="w-4 h-4" /></button>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+          
+          <div className="flex flex-wrap items-center gap-2">
             {TABS.map(t => (
-              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === t.value ? 'bg-white shadow-sm text-green-700' : 'text-gray-500 hover:text-gray-700'}`}>
+              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
                 {t.icon}{t.label}
               </button>
             ))}
@@ -306,104 +338,159 @@ export default function MemoriesPage() {
 
         {/* Add Memory Form */}
         {showAddForm && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center"><Sparkles className="w-4 h-4 text-green-600" /></div>
-              <h3 className="font-bold text-gray-900">Share a Memory</h3>
-            </div>
-            <div>
-              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="img-upload" />
-              <label htmlFor="img-upload" className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all overflow-hidden">
-                {imagePreview ? (
-                  <div className="relative w-full h-full">
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                    <button onClick={e => { e.preventDefault(); setImagePreview(null); setImageFile(null); }} className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white shadow flex items-center justify-center text-gray-600 hover:text-red-600"><X className="w-3 h-3" /></button>
-                  </div>
-                ) : (
-                  <><Upload className="w-8 h-8 text-gray-300 mb-2" /><p className="text-sm text-gray-400">Click to upload photo</p></>
-                )}
-              </label>
-            </div>
-            <input placeholder="Memory Title *" value={newMemory.title} onChange={e => setNewMemory({ ...newMemory, title: e.target.value })} className={inputCls} />
-            <textarea placeholder="Describe this memory…" value={newMemory.description} onChange={e => setNewMemory({ ...newMemory, description: e.target.value })} rows={3} className={`${inputCls} resize-none`} />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input placeholder="Location" value={newMemory.location} onChange={e => setNewMemory({ ...newMemory, location: e.target.value })} className={inputCls} />
-              <input placeholder="Tags (comma separated)" value={newMemory.tags} onChange={e => setNewMemory({ ...newMemory, tags: e.target.value })} className={inputCls} />
-              <select value={newMemory.category} onChange={e => setNewMemory({ ...newMemory, category: e.target.value })} className={inputCls}>
-                <option value="friendship">👥 Friendship</option>
-                <option value="achievement">🏆 Achievement</option>
-                <option value="academic">📚 Academic</option>
-                <option value="sports">⚽ Sports</option>
-                <option value="event">🎉 Event</option>
-                <option value="competition">🏅 Competition</option>
-              </select>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={handleAddMemory} disabled={isSharing} className="flex-1 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-sm disabled:opacity-60">
-                <Sparkles className="w-4 h-4 inline mr-2" />{isSharing ? 'Sharing…' : 'Share Memory'}
+          <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 animate-in slide-in-from-top-4 fade-in duration-300">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100"><Sparkles className="w-5 h-5 text-indigo-500" /></div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-800">Share a Memory</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mt-1">Upload and Inspire</p>
+                </div>
+              </div>
+              <button onClick={() => setShowAddForm(false)} className="p-2.5 bg-slate-50 border border-slate-100 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                <X className="w-5 h-5" />
               </button>
-              <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); }} className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Cancel</button>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="img-upload" />
+                <label htmlFor="img-upload" className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-slate-200 rounded-[28px] cursor-pointer bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-all overflow-hidden group relative">
+                  {imagePreview ? (
+                    <div className="relative w-full h-full">
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-sm">
+                        <span className="text-white font-bold text-sm bg-slate-900/60 border border-white/20 px-5 py-2.5 rounded-full shadow-lg">Change Photo</span>
+                      </div>
+                      <button onClick={e => { e.preventDefault(); setImagePreview(null); setImageFile(null); }} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-xl flex items-center justify-center text-slate-600 hover:text-rose-600 hover:scale-110 transition-all z-10"><X className="w-4 h-4" /></button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                      <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Upload className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold">Click to upload photo</p>
+                      <p className="text-[11px] font-bold uppercase tracking-widest opacity-60 mt-1.5">PNG, JPG up to 10MB</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+              
+              <div className="space-y-4">
+                <input placeholder="Memory Title *" value={newMemory.title} onChange={e => setNewMemory({ ...newMemory, title: e.target.value })} className={inputCls} />
+                <textarea placeholder="Describe this memory in detail…" value={newMemory.description} onChange={e => setNewMemory({ ...newMemory, description: e.target.value })} rows={4} className={`${inputCls} resize-none`} />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input placeholder="Location" value={newMemory.location} onChange={e => setNewMemory({ ...newMemory, location: e.target.value })} className={inputCls} />
+                <input placeholder="Tags (comma separated)" value={newMemory.tags} onChange={e => setNewMemory({ ...newMemory, tags: e.target.value })} className={inputCls} />
+                <select value={newMemory.category} onChange={e => setNewMemory({ ...newMemory, category: e.target.value })} className={inputCls}>
+                  <option value="friendship">👥 Friendship</option>
+                  <option value="achievement">🏆 Achievement</option>
+                  <option value="academic">📚 Academic</option>
+                  <option value="sports">⚽ Sports</option>
+                  <option value="event">🎉 Event</option>
+                  <option value="competition">🏅 Competition</option>
+                </select>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
+                <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); }} className="px-6 py-3.5 text-sm font-black rounded-[16px] bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest text-center">Cancel</button>
+                <button onClick={handleAddMemory} disabled={isSharing} className="px-8 py-3.5 bg-indigo-500 text-white text-sm font-black rounded-[16px] hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-60 uppercase tracking-widest text-center">
+                  {isSharing ? 'Sharing…' : 'Post Memory'}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Memory Grid/List */}
         {filteredMemories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm text-center">
-            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3"><Search className="w-7 h-7 text-gray-400" /></div>
-            <p className="font-bold text-gray-900 text-sm mb-1">No memories found</p>
-            <p className="text-xs text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
-            <button onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} className="px-4 py-2 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">Clear Filters</button>
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] text-center px-4">
+            <div className="w-20 h-20 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5"><Search className="w-8 h-8 text-indigo-300" /></div>
+            <p className="font-extrabold text-slate-800 text-xl mb-2">No memories found</p>
+            <p className="text-[15px] font-medium text-slate-500 mb-6 max-w-sm mx-auto">Try adjusting your search or filter criteria to see more memories from the community.</p>
+            <button onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} className="px-6 py-3 text-[12px] font-black rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest shadow-sm">Clear Filters</button>
           </div>
         ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
-            {filteredMemories.map((memory, i) => <MemoryCard key={`${memory.id}-${i}`} memory={memory} />)}
+          <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-6 max-w-4xl mx-auto'}`}>
+            {filteredMemories.map((memory, i) => React.cloneElement(renderMemoryCard(memory, i) as React.ReactElement, { key: `${memory.id}-${i}` }))}
           </div>
         )}
       </div>
 
       {/* Memory Detail Modal */}
       <Dialog open={!!selectedMemory} onOpenChange={() => setSelectedMemory(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 bg-white rounded-2xl border border-gray-100 shadow-xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 bg-white rounded-[32px] border border-slate-100 shadow-2xl flex flex-col md:flex-row">
           {selectedMemory && (
-            <div>
-              <div className="p-5 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-100 text-green-700 font-bold text-sm flex items-center justify-center shrink-0">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 text-sm">{selectedMemory.author?.name}</p>
-                  <p className="text-xs text-gray-400">{selectedMemory.author?.batch}{selectedMemory.author?.department ? ` · ${selectedMemory.author.department}` : ''}</p>
+            <>
+              {selectedMemory.image ? (
+                <div className="w-full md:w-1/2 h-64 md:h-auto bg-slate-900/5 relative overflow-hidden flex items-center justify-center border-r border-slate-100">
+                  <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-3xl scale-110" style={{ backgroundImage: `url(${selectedMemory.image})`, backgroundSize: 'cover' }}></div>
+                  <img src={selectedMemory.image} alt={selectedMemory.title} className="max-w-full max-h-full object-contain relative z-10 scale-[1.02] drop-shadow-2xl" />
                 </div>
-                <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">{selectedMemory.category}</span>
-              </div>
-              {selectedMemory.image && <div className="h-56 sm:h-72 overflow-hidden"><img src={selectedMemory.image} alt={selectedMemory.title} className="w-full h-full object-cover" /></div>}
-              <div className="p-5 space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">{selectedMemory.title}</h2>
-                <p className="text-sm text-gray-600 leading-relaxed">{selectedMemory.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {(Array.isArray(selectedMemory.tags) ? selectedMemory.tags : []).map((t: string, i: number) => <span key={i} className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 font-semibold">#{t}</span>)}
+              ) : (
+                <div className="hidden md:flex w-1/3 bg-indigo-50 items-center justify-center border-r border-indigo-100">
+                  <Camera className="w-20 h-20 text-indigo-200" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-green-600" />
-                    <div><p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Date</p><p className="text-sm font-bold text-gray-900">{new Date(selectedMemory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p></div>
+              )}
+              
+              <div className="w-full flex-1 flex flex-col max-h-[90vh] overflow-y-auto bg-white">
+                <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-[16px] bg-indigo-50 border border-indigo-100 text-indigo-600 font-black text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
+                    <div>
+                      <p className="font-black text-slate-800 text-[15px]">{selectedMemory.author?.name}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{selectedMemory.author?.batch}{selectedMemory.author?.department ? ` · ${selectedMemory.author.department}` : ''}</p>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-red-500" />
-                    <div><p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Location</p><p className="text-sm font-bold text-gray-900">{selectedMemory.location}</p></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 shadow-sm hidden sm:block">{selectedMemory.category}</span>
+                </div>
+                
+                <div className="p-6 md:p-8 space-y-6 flex-1">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight leading-tight mb-3">{selectedMemory.title}</h2>
+                    <p className="text-[14px] text-slate-600 leading-relaxed font-medium whitespace-pre-line">{selectedMemory.description}</p>
                   </div>
+                  
+                  {Array.isArray(selectedMemory.tags) && selectedMemory.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500">#{t}</span>)}
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded-[20px] p-4 md:p-5 border border-slate-100 flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm shrink-0"><Calendar className="w-4 h-4 text-indigo-500" /></div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>
+                        <p className="text-[13px] font-bold text-slate-800 leading-tight">{new Date(selectedMemory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                    </div>
+                    {selectedMemory.location && (
+                      <div className="bg-slate-50 rounded-[20px] p-4 md:p-5 border border-slate-100 flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm shrink-0"><MapPin className="w-4 h-4 text-emerald-500" /></div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Location</p>
+                          <p className="text-[13px] font-bold text-slate-800 leading-tight">{selectedMemory.location}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 pt-6 border-t border-slate-100 mt-auto">
+                    <button onClick={() => { handleLike(selectedMemory.id); setSelectedMemory({ ...selectedMemory, isLiked: !selectedMemory.isLiked, likes: selectedMemory.isLiked ? selectedMemory.likes - 1 : selectedMemory.likes + 1 }); }} className={`flex items-center justify-center flex-1 gap-2.5 px-4 py-3.5 text-[12px] font-bold uppercase tracking-widest rounded-[16px] transition-all ${selectedMemory.isLiked ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shadow-sm shadow-rose-100' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}>
+                      <Heart className={`w-4 h-4 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />{selectedMemory.likes}
+                    </button>
+                    <div className="flex items-center justify-center flex-1 gap-2.5 px-4 py-3.5 text-[12px] font-bold uppercase tracking-widest rounded-[16px] bg-slate-50 text-slate-600 border border-slate-100 shadow-sm">
+                      <MessageCircle className="w-4 h-4 text-indigo-500" />{comments[selectedMemory.id]?.length || selectedMemory.comments}
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2">{renderCommentThread(selectedMemory.id)}</div>
                 </div>
-                <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                  <button onClick={() => { handleLike(selectedMemory.id); setSelectedMemory({ ...selectedMemory, isLiked: !selectedMemory.isLiked, likes: selectedMemory.isLiked ? selectedMemory.likes - 1 : selectedMemory.likes + 1 }); }} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all ${selectedMemory.isLiked ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600'}`}>
-                    <Heart className={`w-4 h-4 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />{selectedMemory.likes}
-                  </button>
-                  <button onClick={() => toggleComments(selectedMemory.id)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700 transition-all">
-                    <MessageCircle className="w-4 h-4" />{comments[selectedMemory.id]?.length || selectedMemory.comments}
-                  </button>
-                  <span className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto"><Eye className="w-3.5 h-3.5" />{selectedMemory.views || 0} views</span>
-                </div>
-                {showComments[selectedMemory.id] && <CommentThread memoryId={selectedMemory.id} />}
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

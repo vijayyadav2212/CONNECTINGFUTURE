@@ -21,12 +21,12 @@ interface AdminNavigationProps {
 }
 
 const navigationItems: NavItem[] = [
-  { id: 'dashboard',        label: 'Dashboard',         icon: <LayoutDashboard className="w-4 h-4" />, route: '/admin/dashboard' },
-  { id: 'alumni-approvals', label: 'Alumni Approvals',  icon: <UserCheck className="w-4 h-4" />,       route: '/admin/approvals/alumni', badge: 8 },
-  { id: 'job-management',   label: 'Job Management',    icon: <Briefcase className="w-4 h-4" />,        route: '/admin/jobs',             badge: 3 },
-  { id: 'event-management', label: 'Event Management',  icon: <Calendar className="w-4 h-4" />,         route: '/admin/events',           badge: 1 },
-  { id: 'notifications',    label: 'Notifications',     icon: <Bell className="w-4 h-4" />,             route: '/admin/notifications' },
-  { id: 'settings',         label: 'Settings',          icon: <Settings className="w-4 h-4" />,         route: '/admin/settings' },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, route: '/admin/dashboard' },
+  { id: 'alumni-approvals', label: 'Alumni Approvals', icon: <UserCheck className="w-4 h-4" />, route: '/admin/approvals', badge: 8 },
+  { id: 'job-management', label: 'Job Management', icon: <Briefcase className="w-4 h-4" />, route: '/admin/jobs', badge: 3 },
+  { id: 'event-management', label: 'Event Management', icon: <Calendar className="w-4 h-4" />, route: '/admin/events', badge: 1 },
+  { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" />, route: '/admin/notifications' },
+  { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" />, route: '/admin/settings' },
 ];
 
 export default function AdminNavigation({ children }: AdminNavigationProps) {
@@ -93,11 +93,10 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
                 <Link
                   key={item.id}
                   href={item.route}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                    active
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${active
                       ? 'bg-green-50 text-green-700 border border-green-200'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <span className={active ? 'text-green-600' : 'text-gray-400 group-hover:text-gray-600'}>{item.icon}</span>
                   <span className="flex-1">{item.label}</span>

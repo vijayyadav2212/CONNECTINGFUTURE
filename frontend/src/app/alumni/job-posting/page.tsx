@@ -2058,7 +2058,7 @@ type JobItem = {
   id: number; title: string; company: string; location: string;
   postedDate: string; description: string; salary: string;
   tags: string[]; views: number; applied: number; status: string;
-  featured: boolean; jobType: string; isRemote: boolean;
+  featured: boolean; jobType: string; isRemote: boolean; postedBy?: string;
 }
 
 export default function AlumniJobBoard() {
@@ -2075,6 +2075,9 @@ export default function AlumniJobBoard() {
   const [myJobs, setMyJobs] = useState<JobItem[]>([])
   const [selectedJob, setSelectedJob] = useState<JobItem | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isApplicantModalOpen, setIsApplicantModalOpen] = useState(false)
+  const [applicants, setApplicants] = useState<any[]>([])
+  const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form State
@@ -2111,6 +2114,26 @@ export default function AlumniJobBoard() {
     } catch (e) { console.error("MyPosts Error:", e) }
   }
 
+  const handleViewApplicants = async (job: JobItem) => {
+    setSelectedJob(job)
+    setIsApplicantModalOpen(true)
+    setLoadingApplicants(true)
+    try {
+      const res = await fetch(`${API_BASE}/applications/by-job?job_id=${job.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setApplicants(data.applications || [])
+      } else {
+        setApplicants([])
+      }
+    } catch (e) {
+      console.error(e)
+      setApplicants([])
+    } finally {
+      setLoadingApplicants(false)
+    }
+  }
+
   useEffect(() => {
     fetchJobs();
     if (user?.email) fetchMyJobs();
@@ -2141,6 +2164,12 @@ export default function AlumniJobBoard() {
         industry: formData.industry,
         is_remote: formData.remoteAvailable,
         posted_by: user?.email,
+        application_url: formData.applicationUrl,
+        application_method: formData.applicationMethod,
+        application_deadline: formData.applicationDeadline,
+        contact_person: formData.contactPerson,
+        tags: formData.tags ? formData.tags.split(',').map(s => s.trim()) : [],
+        benefits: (formData as any).benefits || '',
         status: 'Pending Review'
       }
 
@@ -2289,46 +2318,61 @@ export default function AlumniJobBoard() {
                   ))}
                 </div>
 
-                <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 mb-8">
+                <div className="bg-white p-8 rounded-[2rem] border border-slate-100 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                   {activeStep === 1 && (
                     <div className="space-y-8 animate-in fade-in">
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Basic Information</h2>
+                        <p className="text-sm font-medium text-slate-400">Enter the core job details</p>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Job/Internship Title <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" placeholder="e.g. Senior Software Engineer" value={formData.jobTitle} onChange={e => handleInputChange('jobTitle', e.target.value)} />
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Job/Internship Title <span className="text-red-500">*</span></label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., Senior Software Engineer" value={formData.jobTitle} onChange={e => handleInputChange('jobTitle', e.target.value)} />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Company Name <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" placeholder="e.g. TechCorp Inc." value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)} />
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Company Name <span className="text-red-500">*</span></label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., TechCorp Inc." value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)} />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Location <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" placeholder="e.g. San Francisco, CA" value={formData.location} onChange={e => handleInputChange('location', e.target.value)} />
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Location <span className="text-red-500">*</span></label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., San Francisco, CA" value={formData.location} onChange={e => handleInputChange('location', e.target.value)} />
                         </div>
                         <div className="flex items-center gap-3 pt-8">
                           <Checkbox id="rem" checked={formData.remoteAvailable} onCheckedChange={v => handleInputChange('remoteAvailable', v)} />
-                          <label htmlFor="rem" className="text-sm font-bold text-slate-600">Remote work available</label>
+                          <label htmlFor="rem" className="text-[14px] font-medium text-slate-500">Remote work available</label>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Job Type <span className="text-red-500">*</span></label>
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Job Type <span className="text-red-500">*</span></label>
                           <Select value={formData.jobType} onValueChange={v => handleInputChange('jobType', v)}>
-                            <SelectTrigger className="w-full px-5 py-7 bg-white border-slate-200 rounded-2xl text-slate-900 font-bold"><SelectValue placeholder="Select job type" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Full-time">Full-time</SelectItem>
-                              <SelectItem value="Part-time">Part-time</SelectItem>
-                              <SelectItem value="Internship (Paid)">Internship (Paid)</SelectItem>
-                              <SelectItem value="Internship (Unpaid)">Internship (Unpaid)</SelectItem>
+                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue placeholder="Select job type" /></SelectTrigger>
+                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Full-time">Full-time</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Part-time">Part-time</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Internship (Paid)">Internship (Paid)</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Internship (Unpaid)">Internship (Unpaid)</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Contract">Contract</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Temporary">Temporary</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Volunteer">Volunteer</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Industry <span className="text-red-500">*</span></label>
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Industry <span className="text-red-500">*</span></label>
                           <Select value={formData.industry} onValueChange={v => handleInputChange('industry', v)}>
-                            <SelectTrigger className="w-full px-5 py-7 bg-white border-slate-200 rounded-2xl text-slate-900 font-bold"><SelectValue placeholder="Select industry" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Technology">Technology</SelectItem>
-                              <SelectItem value="Finance">Finance</SelectItem>
-                              <SelectItem value="Healthcare">Healthcare</SelectItem>
+                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue placeholder="Select industry" /></SelectTrigger>
+                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Technology">Technology</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Finance">Finance</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Healthcare">Healthcare</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Marketing">Marketing</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Consulting">Consulting</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Manufacturing">Manufacturing</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Education">Education</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Non-profit">Non-profit</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Government">Government</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Retail">Retail</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Media">Media</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -2338,68 +2382,111 @@ export default function AlumniJobBoard() {
 
                   {activeStep === 2 && (
                     <div className="space-y-8 animate-in fade-in">
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Job Description <span className="text-red-500">*</span></label>
-                        <textarea rows={5} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 outline-none font-medium" placeholder="Provide a detailed description of the role..." value={formData.jobDescription} onChange={e => handleInputChange('jobDescription', e.target.value)} />
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Job Details</h2>
+                        <p className="text-sm font-medium text-slate-400">Describe the role and requirements</p>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Key Responsibilities <span className="text-red-500">*</span></label>
-                        <textarea rows={3} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 outline-none font-medium" placeholder="List the main responsibilities..." value={formData.responsibilities} onChange={e => handleInputChange('responsibilities', e.target.value)} />
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Job Description <span className="text-red-500">*</span></label>
+                        <textarea rows={5} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="Provide a detailed description of the role..." value={formData.jobDescription} onChange={e => handleInputChange('jobDescription', e.target.value)} />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-700 uppercase ml-1 tracking-wider">Requirements/Qualifications <span className="text-red-500">*</span></label>
-                        <textarea rows={3} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 outline-none font-medium" placeholder="List required skills, experience, education..." value={formData.requirements} onChange={e => handleInputChange('requirements', e.target.value)} />
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Key Responsibilities <span className="text-red-500">*</span></label>
+                        <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="List the main responsibilities..." value={formData.responsibilities} onChange={e => handleInputChange('responsibilities', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Requirements/Qualifications <span className="text-red-500">*</span></label>
+                        <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="List required skills, experience, education..." value={formData.requirements} onChange={e => handleInputChange('requirements', e.target.value)} />
                       </div>
                     </div>
                   )}
 
                   {activeStep === 3 && (
                     <div className="space-y-8 animate-in fade-in">
-                      <h2 className="text-lg font-black text-slate-800">Compensation</h2>
-                      <div className="grid grid-cols-3 gap-4">
-                        <input className="px-5 py-4 bg-white border-slate-200 rounded-2xl text-slate-900 font-bold" placeholder="Min" value={formData.salaryMin} onChange={e => handleInputChange('salaryMin', e.target.value)} />
-                        <input className="px-5 py-4 bg-white border-slate-200 rounded-2xl text-slate-900 font-bold" placeholder="Max" value={formData.salaryMax} onChange={e => handleInputChange('salaryMax', e.target.value)} />
-                        <Select value={formData.currency} onValueChange={v => handleInputChange('currency', v)}>
-                          <SelectTrigger className="px-5 py-7 bg-white border-slate-200 rounded-2xl text-slate-900 font-bold"><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="INR">INR</SelectItem></SelectContent>
-                        </Select>
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Compensation</h2>
+                        <p className="text-sm font-medium text-slate-400">Set salary range and currency (optional)</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Min Salary</label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., 60000" value={formData.salaryMin} onChange={e => handleInputChange('salaryMin', e.target.value)} />
+                        </div>
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Max Salary</label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., 120000" value={formData.salaryMax} onChange={e => handleInputChange('salaryMax', e.target.value)} />
+                        </div>
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Currency</label>
+                          <Select value={formData.currency} onValueChange={v => handleInputChange('currency', v)}>
+                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="USD">USD</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="INR">INR</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="EUR">EUR</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {activeStep === 4 && (
                     <div className="space-y-8 animate-in fade-in">
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Application</h2>
+                        <p className="text-sm font-medium text-slate-400">How should applicants apply?</p>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1">Application Deadline</label>
-                          <input type="date" className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 font-bold" value={formData.applicationDeadline} onChange={e => handleInputChange('applicationDeadline', e.target.value)} />
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Application Deadline</label>
+                          <input type="date" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all " value={formData.applicationDeadline} onChange={e => handleInputChange('applicationDeadline', e.target.value)} />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-700 uppercase ml-1">Contact Person</label>
-                          <input className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 font-bold" placeholder="Contact person name" value={formData.contactPerson} onChange={e => handleInputChange('contactPerson', e.target.value)} />
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Contact Person</label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="Contact person name" value={formData.contactPerson} onChange={e => handleInputChange('contactPerson', e.target.value)} />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-700 uppercase ml-1">Application Method</label>
-                        <Select value={formData.applicationMethod} onValueChange={v => handleInputChange('applicationMethod', v)}>
-                          <SelectTrigger className="w-full px-5 py-7 bg-white border-slate-200 rounded-2xl text-slate-900 font-bold"><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="company">Apply on company site</SelectItem><SelectItem value="email">Apply via email</SelectItem></SelectContent>
-                        </Select>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Application Method</label>
+                          <Select value={formData.applicationMethod} onValueChange={v => handleInputChange('applicationMethod', v)}>
+                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue placeholder="e.g. Email or URL" /></SelectTrigger>
+                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="company">Apply on company site</SelectItem>
+                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="email">Apply via email</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Application URL / Email <span className="text-red-500">*</span></label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g. hr@company.com" value={formData.applicationUrl} onChange={e => handleInputChange('applicationUrl', e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-8">
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Tags (comma separated)</label>
+                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g. React, Remote, Full Time" value={formData.tags} onChange={e => handleInputChange('tags', e.target.value)} />
+                        </div>
+                        <div className="space-y-2.5">
+                          <label className="text-[14px] font-bold text-slate-700">Benefits / Perks</label>
+                          <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="List any benefits, health insurance..." value={(formData as any).benefits || ''} onChange={e => handleInputChange('benefits', e.target.value)} />
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center px-2">
                   {activeStep > 1 ? (
-                    <button onClick={() => setActiveStep(activeStep - 1)} className="px-10 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all">Back</button>
+                    <button onClick={() => setActiveStep(activeStep - 1)} className="px-8 py-3.5 bg-slate-100 text-slate-600 rounded-[14px] font-bold hover:bg-slate-200 transition-all">Back</button>
                   ) : <div />}
                   <button
                     onClick={() => activeStep < 4 ? setActiveStep(activeStep + 1) : handleSubmit()}
                     disabled={isSubmitting}
-                    className="px-12 py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:bg-blue-600 transition-all disabled:bg-slate-300"
+                    className="px-10 py-3.5 bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white rounded-[14px] font-bold shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50"
                   >
-                    {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : "Next Step"}
+                    {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : "Next: Details"}
                   </button>
                 </div>
               </div>
@@ -2442,7 +2529,7 @@ export default function AlumniJobBoard() {
                     </div>
                     <div className="flex gap-3">
                       <button className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-black">Edit</button>
-                      <button className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black">Applicants</button>
+                      <button onClick={() => handleViewApplicants(job)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black">Applicants</button>
                       <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-500/20">View Details</button>
                     </div>
                   </div>
@@ -2469,8 +2556,71 @@ export default function AlumniJobBoard() {
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Salary Range</p><p className="text-xl font-black text-emerald-600">{selectedJob.salary}</p></div>
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Job Type</p><p className="text-xl font-black text-slate-800">{selectedJob.jobType}</p></div>
               </div>
-              <div className="space-y-4 pt-4 border-t border-slate-100"><h4 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">About the role</h4><p className="text-slate-600 leading-relaxed font-medium">{selectedJob.description}</p></div>
-              <div className="flex gap-4 pt-6"><button className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:bg-blue-600 transition-all">Apply Now</button></div>
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <h4 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">About the role</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">{selectedJob.description}</p>
+              </div>
+              {/* Removed Apply Now Button, kept only View Logic above */}
+              {selectedJob.postedBy === user?.email && (
+                <div className="pt-6 border-t border-slate-100 space-y-4">
+                  <h4 className="font-black text-slate-800 uppercase text-xs tracking-widest">Registered Applicants ({selectedJob.applied || 0})</h4>
+                  <button onClick={() => {setIsModalOpen(false); handleViewApplicants(selectedJob);}} className="text-sm text-blue-500 font-bold flex items-center gap-2 hover:text-blue-600 tracking-wide transition-all">View Full Applicant List <ChevronRight className="w-4 h-4" /></button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isApplicantModalOpen} onOpenChange={setIsApplicantModalOpen}>
+        <DialogContent className="max-w-3xl rounded-[2.5rem] p-10 border-none bg-white">
+          {selectedJob && (
+            <div className="space-y-6 animate-in fade-in">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-3xl font-black text-slate-900">Applicants</h2>
+                  <p className="text-lg text-slate-500 font-bold">{selectedJob.title} @{selectedJob.company}</p>
+                </div>
+                <button onClick={() => setIsApplicantModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
+              </div>
+              
+              {loadingApplicants ? (
+                <div className="py-20 flex justify-center text-slate-400 font-bold animate-pulse">Loading Applicants...</div>
+              ) : applicants.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 space-y-4 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <Users className="w-12 h-12 mx-auto text-slate-300" />
+                  <p className="font-bold text-lg">No one has applied yet.</p>
+                </div>
+              ) : (
+                <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                  {applicants.map((app) => (
+                    <div key={app.id} className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                       <div className="flex items-center gap-4">
+                         <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">
+                           {app.applicant_email.charAt(0).toUpperCase()}
+                         </div>
+                         <div>
+                           <p className="font-bold text-slate-800">{app.applicant_email}</p>
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Applied: {new Date(app.created_at).toLocaleDateString()}</p>
+                         </div>
+                       </div>
+                       <div className="flex items-center gap-3">
+                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'applied' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}`}>{app.status}</span>
+                         {app.resume_url && (
+                           <a 
+                             href={app.resume_url.startsWith('http') ? app.resume_url : `${API_BASE.replace('/api', '')}${app.resume_url.startsWith('/') ? '' : '/'}${app.resume_url}`} 
+                             target="_blank" 
+                             rel="noreferrer" 
+                             className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 text-sm hover:scale-105 transition-all"
+                           >
+                             Resume
+                           </a>
+                         )}
+                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
