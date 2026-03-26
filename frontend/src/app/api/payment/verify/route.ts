@@ -20,13 +20,11 @@ export async function POST(request: NextRequest) {
 
     if (expectedSignature === signature) {
       // ✅ Valid payment - save to backend database
-      console.log("Payment verified successfully:", { paymentId, orderId });
-      
+
       try {
         // If it's a mentorship payment, just return valid without saving to donations table
         if (donationData && donationData.paymentType === 'mentorship') {
-          console.log("Mentorship payment verified. Skipping donation recording.");
-          return NextResponse.json({ 
+          return NextResponse.json({
             valid: true,
             message: "Mentorship payment verified successfully",
             paymentId,
@@ -70,20 +68,20 @@ export async function POST(request: NextRequest) {
 
         const savedDonation = await backendResponse.json();
         console.log("Donation saved to backend successfully:", savedDonation);
-        
-        return NextResponse.json({ 
+
+        return NextResponse.json({
           valid: true,
           message: "Payment verified and donation saved successfully",
           paymentId,
           orderId,
           donationId: savedDonation.id
         });
-        
+
       } catch (dbError) {
         console.error("Database/Backend error:", dbError);
         return NextResponse.json(
-          { 
-            valid: true, 
+          {
+            valid: true,
             message: "Payment verified but failed to save donation record",
             error: dbError instanceof Error ? dbError.message : 'Database error',
             paymentId,
@@ -94,9 +92,9 @@ export async function POST(request: NextRequest) {
       }
     } else {
       console.error("Payment verification failed - signature mismatch");
-      return NextResponse.json({ 
+      return NextResponse.json({
         valid: false,
-        error: "Invalid payment signature" 
+        error: "Invalid payment signature"
       }, { status: 400 });
     }
   } catch (error) {
@@ -119,7 +117,7 @@ async function savePaymentToDatabase(paymentData: {
 }) {
   // Example database save - replace with your actual database connection
   // This is a placeholder for MySQL/PostgreSQL integration
-  
+
   const query = `
     INSERT INTO payments (
       payment_id, 
@@ -131,7 +129,7 @@ async function savePaymentToDatabase(paymentData: {
       created_at
     ) VALUES (?, ?, ?, ?, ?, ?, NOW())
   `;
-  
+
   const values = [
     paymentData.paymentId,
     paymentData.orderId,
@@ -140,12 +138,12 @@ async function savePaymentToDatabase(paymentData: {
     paymentData.verifiedAt,
     paymentData.signature
   ];
-  
+
   // Example using mysql2 (you'll need to set up your connection)
   // const connection = await mysql.createConnection(process.env.DATABASE_URL);
   // await connection.execute(query, values);
   // await connection.end();
-  
+
   // For now, just log the data
   console.log("Would save to database:", paymentData);
 } 
