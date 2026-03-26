@@ -58,6 +58,7 @@ export default function MentorshipPage() {
   const [availability, setAvailability] = useState('');
   const [experience, setExperience] = useState<number | ''>('');
   const [price, setPrice] = useState<number | ''>('');
+  const [paymentUpiId, setPaymentUpiId] = useState('');
   const [saving, setSaving] = useState(false);
   const [requests, setRequests] = useState<Request[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -123,6 +124,7 @@ export default function MentorshipPage() {
         setAvailability(mentor?.availability || '');
         setExperience(mentor?.experience_years ?? '');
         setPrice(mentor?.price ?? '');
+        setPaymentUpiId(mentor?.payment_upi_id || '');
         setMyRatingAvg(mentor?.rating_avg ?? null);
         setMyRatingCount(mentor?.rating_count ?? null);
       } catch { }
@@ -305,6 +307,7 @@ export default function MentorshipPage() {
           availability,
           experience_years: experience === '' ? 0 : Number(experience),
           price: price === '' ? 0 : Number(price),
+          payment_upi_id: paymentUpiId
         }),
       });
       // No toast implementation here; rely on UI state
@@ -400,6 +403,11 @@ export default function MentorshipPage() {
                   <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Session Price (₹)</label>
                   <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
                 </div>
+              </div>
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Payment UPI ID (For Session Earnings)</label>
+                <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="text" value={paymentUpiId} onChange={(e) => setPaymentUpiId(e.target.value)} placeholder="e.g., name@okbank" />
+                <p className="text-xs text-gray-500 mt-1">Platform will transfer your session earnings to this UPI ID.</p>
               </div>
               <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                 <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">

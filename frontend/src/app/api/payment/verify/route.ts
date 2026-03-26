@@ -23,6 +23,17 @@ export async function POST(request: NextRequest) {
       console.log("Payment verified successfully:", { paymentId, orderId });
       
       try {
+        // If it's a mentorship payment, just return valid without saving to donations table
+        if (donationData && donationData.paymentType === 'mentorship') {
+          console.log("Mentorship payment verified. Skipping donation recording.");
+          return NextResponse.json({ 
+            valid: true,
+            message: "Mentorship payment verified successfully",
+            paymentId,
+            orderId
+          });
+        }
+
         // Save donation to backend database
         const donationRecord = {
           donor_name: donationData?.donor_name || 'Anonymous Donor',

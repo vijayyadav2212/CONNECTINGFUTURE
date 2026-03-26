@@ -19,6 +19,7 @@ interface PaymentDetails {
   causeCategory?: string;
   anonymous?: boolean;
   message?: string;
+  paymentType?: 'donation' | 'mentorship';
 }
 
 interface RazorpayPaymentProps {
@@ -107,7 +108,8 @@ export default function RazorpayPayment({
               donation_type: paymentDetails.donationType || 'one-time',
               cause_category: paymentDetails.causeCategory || 'General',
               anonymous: paymentDetails.anonymous || false,
-              message: paymentDetails.message || paymentDetails.description || null
+              message: paymentDetails.message || paymentDetails.description || null,
+              paymentType: paymentDetails.paymentType || 'donation'
             };
 
             // Call backend to verify signature and save donation

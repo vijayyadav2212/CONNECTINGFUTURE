@@ -405,7 +405,7 @@ export default function MentorshipRequests() {
             {purchaseFor ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8">
                 <RazorpayPayment
-                  paymentDetails={{ amount: purchaseFor.amount, currency: "INR", description: `Mentorship session with ${purchaseFor.mentor_email}`, email: user?.email || undefined }}
+                  paymentDetails={{ amount: purchaseFor.amount, currency: "INR", description: `Mentorship session with ${purchaseFor.mentor_email}`, email: user?.email || undefined, paymentType: 'mentorship' }}
                   onSuccess={(paymentId, orderId) => {
                     recordPurchase(paymentId, orderId, purchaseFor.mentor_email, purchaseFor.amount);
                     setPurchaseFor(null);
@@ -581,9 +581,12 @@ export default function MentorshipRequests() {
                       {btnText}
                     </Button>
                     {m.price ? ( 
-                      <Button variant="outline" className="w-full border-2 hover:border-blue-300" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number(m.price) })}>
-                        Purchase Session
-                      </Button>
+                      <div className="w-full text-center">
+                        <Button variant="outline" className="w-full border-2 hover:border-blue-300 mb-1" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price) * 1.06).toFixed(2)) })}>
+                          Purchase Session (₹{Number((Number(m.price) * 1.06).toFixed(2))})
+                        </Button>
+                        <p className="text-[10px] text-gray-500">Includes 6% platform fee</p>
+                      </div>
                     ) : null}
                   </div>
                 </div>

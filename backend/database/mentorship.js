@@ -56,6 +56,10 @@ async function createMentorshipSchema(dbQuery) {
 
   // Backfill column for existing deployments
   await dbQuery('ALTER TABLE mentorship_sessions ADD COLUMN IF NOT EXISTS meeting_link TEXT');
+  await dbQuery('ALTER TABLE mentorship_sessions ADD COLUMN IF NOT EXISTS platform_fee NUMERIC(10,2) DEFAULT 0');
+  await dbQuery('ALTER TABLE mentorship_sessions ADD COLUMN IF NOT EXISTS alumni_earnings NUMERIC(10,2) DEFAULT 0');
+  await dbQuery("ALTER TABLE mentorship_sessions ADD COLUMN IF NOT EXISTS payout_status VARCHAR(50) DEFAULT 'pending'");
+  await dbQuery("ALTER TABLE mentors ADD COLUMN IF NOT EXISTS payment_upi_id VARCHAR(255)");
 
   // Helpful indexes
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_sessions_pair ON mentorship_sessions(pair_key)');

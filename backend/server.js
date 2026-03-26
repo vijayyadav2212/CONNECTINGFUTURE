@@ -1980,19 +1980,19 @@ app.get('/api/mentors/profile', async (req, res) => {
 
 app.post('/api/mentors/profile', async (req, res) => {
   try {
-    const { email, skills, topics, availability, experience_years, price } = req.body || {};
+    const { email, skills, topics, availability, experience_years, price, payment_upi_id } = req.body || {};
     if (!email) return res.status(400).json({ error: 'email required' });
     const { rows: existing } = await dbQuery('SELECT * FROM mentors WHERE LOWER(mentor_email) = LOWER(?) LIMIT 1', [email]);
     if (existing && existing.length) {
       const { rows } = await dbQuery(
-        'UPDATE mentors SET skills = ?, topics = ?, availability = ?, experience_years = ?, price = ?, updated_at = NOW() WHERE LOWER(mentor_email) = LOWER(?) RETURNING *',
-        [skills || null, topics || null, availability || null, Number(experience_years) || 0, Number(price) || 0, email]
+        'UPDATE mentors SET skills = ?, topics = ?, availability = ?, experience_years = ?, price = ?, payment_upi_id = ?, updated_at = NOW() WHERE LOWER(mentor_email) = LOWER(?) RETURNING *',
+        [skills || null, topics || null, availability || null, Number(experience_years) || 0, Number(price) || 0, payment_upi_id || null, email]
       );
       return res.json({ mentor: rows[0] });
     }
     const { rows } = await dbQuery(
-      'INSERT INTO mentors (mentor_email, skills, topics, availability, experience_years, price) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
-      [email, skills || null, topics || null, availability || null, Number(experience_years) || 0, Number(price) || 0]
+      'INSERT INTO mentors (mentor_email, skills, topics, availability, experience_years, price, payment_upi_id) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *',
+      [email, skills || null, topics || null, availability || null, Number(experience_years) || 0, Number(price) || 0, payment_upi_id || null]
     );
     return res.status(201).json({ mentor: rows[0] });
   } catch (e) {
@@ -2137,15 +2137,157 @@ app.get('/api/mentorship/requests', async (req, res) => {
   }
 });
 
+// Admin: track mentorship payments
+app.get('/api/admin/mentorship-payments', checkJwt, async (req, res) => {
+  try {
+    // Verify admin
+    const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
+    const sub = req.auth && (req.auth.sub || req.auth.sub);
+    let isAdmin = false;
+    if (email) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin && sub) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE auth0_id = ? LIMIT 1', [sub]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const { page = 1, limit = 50 } = req.query || {};
+    const p = Math.max(1, parseInt(page, 10));
+    const l = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const offset = (p - 1) * l;
+
+    const { rows: sessions } = await dbQuery(`
+      SELECT m.*, 
+        stu.name AS student_name, 
+        alu.name AS mentor_name
+      FROM mentorship_sessions m
+      LEFT JOIN users stu ON LOWER(stu.email) = LOWER(m.student_email)
+      LEFT JOIN users alu ON LOWER(alu.email) = LOWER(m.mentor_email)
+      WHERE m.status IN ('paid', 'scheduled', 'completed')
+      ORDER BY m.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [l, offset]);
+
+    const { rows: totalRows } = await dbQuery(`SELECT COUNT(*) as cnt FROM mentorship_sessions WHERE status IN ('paid', 'scheduled', 'completed')`);
+    const total = totalRows && totalRows[0] ? parseInt(totalRows[0].cnt, 10) : 0;
+
+    const { rows: statsRows } = await dbQuery(`
+      SELECT 
+        SUM(amount) as total_volume,
+        SUM(platform_fee) as total_platform_fee
+      FROM mentorship_sessions 
+      WHERE status IN ('paid', 'scheduled', 'completed')
+    `);
+    
+    const stats = {
+      total_volume: statsRows && statsRows[0] ? Number(statsRows[0].total_volume || 0) : 0,
+      total_platform_fee: statsRows && statsRows[0] ? Number(statsRows[0].total_platform_fee || 0) : 0
+    };
+
+    return res.json({ sessions, page: p, limit: l, total, totalPages: Math.ceil(total / l), stats });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin: Get alumni payouts
+app.get('/api/admin/mentorship-payouts', checkJwt, async (req, res) => {
+  try {
+    // Verify admin
+    const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
+    const sub = req.auth && (req.auth.sub || req.auth.sub);
+    let isAdmin = false;
+    if (email) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin && sub) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE auth0_id = ? LIMIT 1', [sub]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const { limit } = req.query || {};
+    const limitClause = limit ? `LIMIT ${Math.max(1, parseInt(limit, 10))}` : '';
+
+    const { rows } = await dbQuery(`
+      SELECT 
+        m.mentor_email,
+        u.name AS mentor_name,
+        m2.payment_upi_id,
+        SUM(CASE WHEN m.payout_status = 'pending' THEN m.alumni_earnings ELSE 0 END) as pending_amount,
+        SUM(CASE WHEN m.payout_status = 'paid' THEN m.alumni_earnings ELSE 0 END) as paid_amount,
+        COUNT(CASE WHEN m.payout_status = 'pending' THEN 1 END) as pending_sessions
+      FROM mentorship_sessions m
+      LEFT JOIN users u ON LOWER(u.email) = LOWER(m.mentor_email)
+      LEFT JOIN mentors m2 ON LOWER(m2.mentor_email) = LOWER(m.mentor_email)
+      WHERE m.status IN ('paid', 'scheduled', 'completed')
+      GROUP BY m.mentor_email, u.name, m2.payment_upi_id
+      ORDER BY pending_amount DESC
+      ${limitClause}
+    `);
+    
+    return res.json({ payouts: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin: Mark alumni payout as paid
+app.post('/api/admin/mentorship-payouts/mark-paid', checkJwt, async (req, res) => {
+  try {
+    // Verify admin
+    const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
+    const sub = req.auth && (req.auth.sub || req.auth.sub);
+    let isAdmin = false;
+    if (email) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin && sub) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE auth0_id = ? LIMIT 1', [sub]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const { mentor_email } = req.body;
+    if (!mentor_email) return res.status(400).json({ error: 'mentor_email required' });
+
+    const { rows } = await dbQuery(`
+      UPDATE mentorship_sessions 
+      SET payout_status = 'paid' 
+      WHERE LOWER(mentor_email) = LOWER(?) 
+        AND payout_status = 'pending' 
+        AND status IN ('paid', 'scheduled', 'completed')
+      RETURNING id
+    `, [mentor_email]);
+
+    return res.json({ success: true, updated_count: rows ? rows.length : 0 });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // Record a paid session (after payment)
 app.post('/api/mentorship/sessions/purchase', async (req, res) => {
   const { student_email, mentor_email, amount, currency = 'INR', payment_id, order_id } = req.body || {};
   if (!student_email || !mentor_email || !amount) return res.status(400).json({ error: 'student_email, mentor_email and amount required' });
   try {
+    const totalPaid = Number(amount);
+    // Calculations: Student pays Base * 1.06, so Base = totalPaid / 1.06
+    const baseAmount = totalPaid / 1.06;
+    // Alumni receives Base * 0.94
+    const alumniEarnings = baseAmount * 0.94;
+    // Platform fee is totalPaid - alumniEarnings (which equals 12% of Base)
+    const platformFee = totalPaid - alumniEarnings;
+
     const pair_key = buildPairKey(student_email, mentor_email);
     const { rows } = await dbQuery(
-      'INSERT INTO mentorship_sessions (pair_key, student_email, mentor_email, status, amount, currency, payment_id, order_id) VALUES (?, ?, ?, \'paid\', ?, ?, ?, ?) RETURNING *',
-      [pair_key, student_email, mentor_email, Number(amount), currency || 'INR', payment_id || null, order_id || null]
+      'INSERT INTO mentorship_sessions (pair_key, student_email, mentor_email, status, amount, currency, payment_id, order_id, platform_fee, alumni_earnings) VALUES (?, ?, ?, \'paid\', ?, ?, ?, ?, ?, ?) RETURNING *',
+      [pair_key, student_email, mentor_email, totalPaid, currency || 'INR', payment_id || null, order_id || null, Number(platformFee.toFixed(2)), Number(alumniEarnings.toFixed(2))]
     );
     return res.status(201).json({ session: rows[0] });
   } catch (e) {

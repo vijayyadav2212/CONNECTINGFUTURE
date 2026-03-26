@@ -35,7 +35,7 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
       label: "Alumni Approvals", 
       icon: <UserCheck className="w-5 h-5" />, 
       badge: 8,
-      route: "/admin/approvals/alumni" 
+      route: "/admin/approvals" 
     },
     { 
       id: "job-management", 
@@ -50,6 +50,12 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
       icon: <Calendar className="w-5 h-5" />, 
       badge: 1,
       route: "/admin/events" 
+    },  
+    { 
+      id: "mentorship-payments", 
+      label: "Mentorship Payments", 
+      icon: <FileText className="w-5 h-5" />, 
+      route: "/admin/mentorship-payments" 
     },
     // { 
     //   id: "users", 
