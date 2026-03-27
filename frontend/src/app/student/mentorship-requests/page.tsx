@@ -11,6 +11,7 @@ import StarRating from "@/components/ui/star-rating";
 import RazorpayPayment from "@/components/payment/RazorpayPayment";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { Users, BadgeCheck, CalendarClock, Wallet } from "lucide-react";
 
 type Mentor = {
   mentor_email: string;
@@ -18,6 +19,8 @@ type Mentor = {
   topics?: string | null;
   availability?: string | null;
   price?: number | null;
+  subscription_price?: number | null;
+  subscription_duration_days?: number | null;
   experience_years?: number | null;
   rating_avg?: number | null;
   rating_count?: number | null;
@@ -54,6 +57,33 @@ type Session = {
   meeting_link?: string | null;
 };
 
+type DailySessionPlan = {
+  id: number;
+  mentor_email: string;
+  title: string;
+  description?: string | null;
+  daily_time: string;
+  timezone?: string | null;
+  start_date: string;
+  end_date: string;
+  duration_minutes?: number;
+  meeting_link?: string | null;
+};
+
+type Subscription = {
+  id: number;
+  student_email: string;
+  mentor_email: string;
+  status: string;
+  amount?: number;
+  currency?: string;
+  duration_days?: number;
+  start_at?: string;
+  end_at?: string;
+  payment_id?: string | null;
+  order_id?: string | null;
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
 function normalizeExternalLink(link?: string) {
@@ -63,6 +93,21 @@ function normalizeExternalLink(link?: string) {
   if (/^\/\//.test(l)) return window.location.protocol + l;
   if (/meet\.google\.com/i.test(l)) return 'https://' + l.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
   return l.startsWith('/') ? l : 'https://' + l;
+}
+
+function statusBadge(status: string) {
+  const map: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-600 border-amber-200/60',
+    accepted: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
+    rejected: 'bg-rose-50 text-rose-600 border-rose-200/60',
+    removed: 'bg-slate-100 text-slate-600 border-slate-200/80',
+    paid: 'bg-blue-50 text-blue-700 border-blue-200/60',
+    scheduled: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
+    completed: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
+    active: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
+    expired: 'bg-slate-100 text-slate-600 border-slate-200/80',
+  };
+  return `text-[11px] font-bold px-3 py-1 rounded-[8px] border ${map[status] || 'bg-slate-100 text-slate-600 border-slate-200/80'} uppercase tracking-wider`;
 }
 
 export default function MentorshipRequests() {
@@ -77,13 +122,15 @@ export default function MentorshipRequests() {
   const [requesting, setRequesting] = useState<string | null>(null);
   const [requests, setRequests] = useState<Request[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [purchaseFor, setPurchaseFor] = useState<{ mentor_email: string; amount: number } | null>(null);
+  const [purchaseFor, setPurchaseFor] = useState<{ mentor_email: string; amount: number; type: 'session' | 'subscription'; duration_days?: number } | null>(null);
+  const [dailySessions, setDailySessions] = useState<DailySessionPlan[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [scheduleForm, setScheduleForm] = useState<{ session_id: number; scheduled_at: string; duration_minutes: number; meeting_link: string } | null>(null);
   const { toast } = useToast();
   const [prevRequestStatuses, setPrevRequestStatuses] = useState<Record<number, string>>({});
   const [prevSessions, setPrevSessions] = useState<Record<number, string>>({});
-  const [removedMentors, setRemovedMentors] = useState<string[]>([]);
   const [ratingForm, setRatingForm] = useState<{ session_id: number; rating: number; feedback: string } | null>(null);
+  const [submittingSession, setSubmittingSession] = useState<number | null>(null);
 
   const queryParams = useMemo(() => {
     const p = new URLSearchParams();
@@ -102,6 +149,25 @@ export default function MentorshipRequests() {
     if (minRating !== "") chips.push({ label: `Min Rating: ${minRating}+`, key: "minRating" });
     return chips;
   }, [q, minExp, maxPrice, minRating]);
+
+  const activeSubscriptionsByMentor = useMemo(() => {
+    const now = Date.now();
+    const map: Record<string, Subscription> = {};
+    subscriptions.forEach((sub) => {
+      const end = sub.end_at ? new Date(sub.end_at).getTime() : 0;
+      if (sub.status === 'active' && end >= now) {
+        const current = map[sub.mentor_email];
+        const currentEnd = current?.end_at ? new Date(current.end_at).getTime() : 0;
+        if (!current || end > currentEnd) map[sub.mentor_email] = sub;
+      }
+    });
+    return map;
+  }, [subscriptions]);
+
+  const connectedMentorsCount = useMemo(() => requests.filter((r) => r.status === 'accepted').length, [requests]);
+  const pendingRequestsCount = useMemo(() => requests.filter((r) => r.status === 'pending').length, [requests]);
+  const upcomingSessionsCount = useMemo(() => sessions.filter((s) => s.status === 'scheduled').length, [sessions]);
+  const activeSubscriptionsCount = useMemo(() => Object.keys(activeSubscriptionsByMentor).length, [activeSubscriptionsByMentor]);
 
   function clearFilters() {
     setQ("");
@@ -149,6 +215,18 @@ export default function MentorshipRequests() {
       const sq = await fetch(`${API_BASE}/api/mentorship/sessions?student_email=${encodeURIComponent(user.email)}&role=student`);
       const sj = await sq.json();
       setSessions(sj.sessions || []);
+    } catch { }
+
+    try {
+      const dsq = await fetch(`${API_BASE}/api/mentorship/daily-sessions?student_email=${encodeURIComponent(user.email)}`);
+      const dsj = await dsq.json();
+      setDailySessions(dsj.daily_sessions || []);
+    } catch { }
+
+    try {
+      const subq = await fetch(`${API_BASE}/api/mentorship/subscriptions?student_email=${encodeURIComponent(user.email)}`);
+      const subj = await subq.json();
+      setSubscriptions(subj.subscriptions || []);
     } catch { }
   }
 
@@ -250,6 +328,30 @@ export default function MentorshipRequests() {
     }
   }
 
+  async function recordSubscriptionPurchase(paymentId: string, orderId: string, mentor_email: string, amount: number, duration_days?: number) {
+    if (!user?.email) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/mentorship/subscriptions/purchase`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          student_email: user.email,
+          mentor_email,
+          amount,
+          currency: 'INR',
+          payment_id: paymentId,
+          order_id: orderId,
+          duration_days: duration_days || 30,
+        }),
+      });
+      if (!res.ok) throw new Error('Subscription purchase failed');
+      toast({ title: 'Subscription Activated', description: `Subscription with ${mentor_email} is active.` });
+      await loadRequestsAndSessions();
+    } catch {
+      toast({ title: 'Subscription Error', description: 'Could not activate subscription.', variant: 'destructive' });
+    }
+  }
+
   async function scheduleSession(session_id: number, scheduled_at: string, duration_minutes: number, meeting_link?: string) {
     try {
       const res = await fetch(`${API_BASE}/api/mentorship/sessions/schedule`, {
@@ -276,7 +378,7 @@ export default function MentorshipRequests() {
       });
       if (!res.ok) throw new Error('Remove failed');
       toast({ title: 'Connection Removed', description: `You removed ${mentor_email}.` });
-      setRemovedMentors((prev) => [...prev, mentor_email]);
+      await loadRequestsAndSessions();
     } catch (e) {
       toast({ title: 'Remove Failed', description: 'Please try again.', variant: 'destructive' });
     }
@@ -284,19 +386,30 @@ export default function MentorshipRequests() {
 
   async function submitRating(session_id: number, mentor_email: string, rating: number, feedback: string) {
     if (!user?.email) return;
+    setSubmittingSession(session_id);
     try {
       const res = await fetch(`${API_BASE}/api/mentorship/ratings`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ session_id, student_email: user.email, mentor_email, rating, feedback }),
       });
-      if (!res.ok) throw new Error('Rating failed');
-      toast({ title: 'Thanks for your feedback', description: 'Your rating has been submitted.' });
-      setRatingForm(null);
-      await loadRequestsAndSessions();
-      await loadMentors();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 409 || errData.error?.includes('UNIQUE')) {
+          toast({ title: 'Already Rated', description: 'You have already submitted a rating for this session.', variant: 'destructive' });
+        } else {
+          throw new Error('Rating failed');
+        }
+      } else {
+        toast({ title: 'Thanks for your feedback', description: 'Your rating has been submitted.' });
+        setRatingForm(null);
+        await loadRequestsAndSessions();
+        await loadMentors();
+      }
     } catch (e) {
       toast({ title: 'Rating Error', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSubmittingSession(null);
     }
   }
 
@@ -405,9 +518,13 @@ export default function MentorshipRequests() {
             {purchaseFor ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8">
                 <RazorpayPayment
-                  paymentDetails={{ amount: purchaseFor.amount, currency: "INR", description: `Mentorship session with ${purchaseFor.mentor_email}`, email: user?.email || undefined, paymentType: 'mentorship' }}
+                  paymentDetails={{ amount: purchaseFor.amount, currency: "INR", description: `${purchaseFor.type === 'subscription' ? 'Mentorship subscription' : 'Mentorship session'} with ${purchaseFor.mentor_email}`, email: user?.email || undefined, paymentType: 'mentorship' }}
                   onSuccess={(paymentId, orderId) => {
-                    recordPurchase(paymentId, orderId, purchaseFor.mentor_email, purchaseFor.amount);
+                    if (purchaseFor.type === 'subscription') {
+                      recordSubscriptionPurchase(paymentId, orderId, purchaseFor.mentor_email, purchaseFor.amount, purchaseFor.duration_days);
+                    } else {
+                      recordPurchase(paymentId, orderId, purchaseFor.mentor_email, purchaseFor.amount);
+                    }
                     setPurchaseFor(null);
                   }}
                   onFailure={() => {
@@ -417,37 +534,98 @@ export default function MentorshipRequests() {
                 />
               </div>
             ) : null}
+
+            {/* Summary Cards */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+            >
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Connected Mentors</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{connectedMentorsCount}</p>
+                    <p className="text-[12px] font-semibold text-emerald-600 mt-2">Accepted connections</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Users size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Pending Requests</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{pendingRequestsCount}</p>
+                    <p className="text-[12px] font-semibold text-amber-600 mt-2">Waiting for mentor action</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <BadgeCheck size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Upcoming Sessions</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{upcomingSessionsCount}</p>
+                    <p className="text-[12px] font-semibold text-indigo-600 mt-2">Scheduled mentorship calls</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <CalendarClock size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Active Subscriptions</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{activeSubscriptionsCount}</p>
+                    <p className="text-[12px] font-semibold text-blue-600 mt-2">Recurring mentor access</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Wallet size={18} />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
 
         {/* My Mentors */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 shadow-xl border border-white/20 mb-8">
+        <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-slate-900">My Mentors</h2>
-            <div className="text-sm text-slate-600">
-              {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length} connected
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentors</h2>
+            <div className="text-[13px] font-semibold text-slate-500">
+              {requests.filter((r) => r.status === 'accepted').length} connected
             </div>
           </div>
           <div>
-            {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).length > 0 ? (
+            {requests.filter((r) => r.status === 'accepted').length > 0 ? (
               <div className="space-y-4">
-                {requests.filter((r) => r.status === 'accepted' && !removedMentors.includes(r.mentor_email)).map((r) => {
+                {requests.filter((r) => r.status === 'accepted').map((r) => {
                   const prof = profiles[r.mentor_email];
                   const name = prof?.name || r.mentor_email;
                   return (
-                    <div key={`conn-${r.id}`} className="flex items-center justify-between p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-400 transition-all duration-300 bg-gradient-to-r from-white to-blue-50">
+                    <div key={`conn-${r.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300">
                       <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
+                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                          {String(name).charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 text-xl">{name}</p>
-                          <div className="flex items-center mt-2 space-x-4">
-                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Connected</span>
+                          <p className="font-bold text-slate-900 text-[15px] truncate">{name}</p>
+                          <div className="mt-1.5 flex">
+                            <span className={statusBadge(r.status)}>{r.status}</span>
                           </div>
                         </div>
                       </div>
-                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-red-400 to-rose-500 text-white hover:from-red-500 hover:to-rose-600 transition-all">Remove Mentor</Button>
+                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="mt-3 sm:mt-0 px-4 py-2.5 text-[13px] font-bold rounded-xl bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80 transition-colors">Remove Mentor</Button>
                     </div>
                   );
                 })}
@@ -503,6 +681,8 @@ export default function MentorshipRequests() {
             const reqStatus = reqForMentor?.status;
             const isPending = reqStatus === 'pending';
             const isAccepted = reqStatus === 'accepted';
+            const activeSubscription = activeSubscriptionsByMentor[m.mentor_email];
+            const hasActiveSubscription = Boolean(activeSubscription);
             const btnDisabled = !user?.email || requesting === m.mentor_email || isPending || isAccepted;
             const btnText = requesting === m.mentor_email
               ? 'Requesting...'
@@ -576,15 +756,37 @@ export default function MentorshipRequests() {
                       <p className="text-xs text-blue-700 font-medium">Session Price</p>
                     </div>
                   </div>
+                  {hasActiveSubscription ? (
+                    <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Subscription Active</p>
+                      <p className="text-[12px] text-emerald-700 mt-1">
+                        Valid till {activeSubscription?.end_at ? new Date(activeSubscription.end_at).toLocaleDateString() : '—'}
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-auto pt-4 border-t border-gray-100">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-70" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
                       {btnText}
                     </Button>
-                    {m.price ? ( 
-                      <div className="w-full text-center">
-                        <Button variant="outline" className="w-full border-2 hover:border-blue-300 mb-1" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price) * 1.06).toFixed(2)) })}>
-                          Purchase Session (₹{Number((Number(m.price) * 1.06).toFixed(2))})
-                        </Button>
+                    {(m.price || m.subscription_price) ? (
+                      <div className="w-full text-center space-y-1">
+                        {m.price ? (
+                          <Button variant="outline" className="w-full border-2 hover:border-blue-300" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price) * 1.06).toFixed(2)), type: 'session' })}>
+                            Purchase Session (₹{Number((Number(m.price) * 1.06).toFixed(2))})
+                          </Button>
+                        ) : null}
+                        {m.subscription_price ? (
+                          <Button
+                            variant="outline"
+                            className="w-full border-2 hover:border-emerald-300 disabled:opacity-70"
+                            disabled={hasActiveSubscription}
+                            onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.subscription_price) * 1.06).toFixed(2)), type: 'subscription', duration_days: Number(m.subscription_duration_days || 30) })}
+                          >
+                            {hasActiveSubscription
+                              ? `Subscribed till ${activeSubscription?.end_at ? new Date(activeSubscription.end_at).toLocaleDateString() : ''}`
+                              : `Subscribe ${m.subscription_duration_days || 30}d (₹${Number((Number(m.subscription_price) * 1.06).toFixed(2))})`}
+                          </Button>
+                        ) : null}
                         <p className="text-[10px] text-gray-500">Includes 6% platform fee</p>
                       </div>
                     ) : null}
@@ -595,6 +797,92 @@ export default function MentorshipRequests() {
           })}
         </motion.div>
 
+        {/* Daily Mentor Sessions */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">Daily Mentor Sessions</h2>
+            <div className="text-[12px] font-semibold text-slate-500">From accepted mentors</div>
+          </div>
+          {dailySessions.length === 0 ? (
+            <div className="text-slate-600">No daily mentor plans available yet.</div>
+          ) : (
+            <div className="space-y-3">
+              {dailySessions.map((plan) => (
+                <div key={plan.id} className="p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-slate-900 text-[15px]">{plan.title}</p>
+                    <p className="text-xs text-slate-500 mt-1">Mentor: {plan.mentor_email}</p>
+                    <p className="text-xs text-slate-500">{plan.daily_time} • {plan.start_date} to {plan.end_date} • {plan.duration_minutes || 60} mins</p>
+                    {plan.description ? <p className="text-xs text-slate-600 mt-1">{plan.description}</p> : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={statusBadge('active')}>live plan</span>
+                    {plan.meeting_link ? (
+                      <a
+                        href={normalizeExternalLink(plan.meeting_link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2 rounded-md text-sm font-semibold"
+                      >
+                        Join Daily Session
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">Meeting link will be shared by mentor</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* My Subscriptions */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Subscriptions</h2>
+            <div className="text-[13px] font-semibold text-slate-500">
+              {Object.keys(activeSubscriptionsByMentor).length} active
+            </div>
+          </div>
+          {subscriptions.length === 0 ? (
+            <div className="text-slate-600">No subscriptions yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {subscriptions.map((sub) => {
+                const prof = profiles[sub.mentor_email];
+                const mentorName = prof?.name || sub.mentor_email;
+                const isActive = sub.status === 'active' && (!!sub.end_at ? new Date(sub.end_at).getTime() >= Date.now() : false);
+                return (
+                  <div key={sub.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300">
+                    <div>
+                      <p className="font-bold text-slate-900 text-[15px]">{mentorName}</p>
+                      <p className="text-[12px] text-slate-500 mt-1">
+                        {sub.start_at ? new Date(sub.start_at).toLocaleDateString() : '—'} to {sub.end_at ? new Date(sub.end_at).toLocaleDateString() : '—'}
+                      </p>
+                      <p className="text-[12px] text-slate-600 mt-1">
+                        {sub.amount ? `₹${sub.amount}` : '—'} {sub.currency || 'INR'} • {sub.duration_days || 30} days
+                      </p>
+                    </div>
+                    <span className={statusBadge(isActive ? 'active' : 'expired')}>{isActive ? 'active' : 'expired'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+
 
         {/* My Mentorship Requests */}
         <motion.div
@@ -602,10 +890,10 @@ export default function MentorshipRequests() {
           animate="visible"
           variants={fadeInUp}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30 mb-8"
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-slate-900">My Mentorship Requests</h2>
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentorship Requests</h2>
           </div>
           <div>
             {requests.length > 0 ? (
@@ -617,19 +905,19 @@ export default function MentorshipRequests() {
                     <motion.div
                       key={r.id}
                       whileHover={{ scale: 1.01 }}
-                      className="flex items-center justify-between p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300"
                     >
-                      <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                          <span className="text-white font-bold text-xl">{String(name).charAt(0).toUpperCase()}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                          {String(name).charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 text-xl">{name}</p>
-                          <div className="flex items-center mt-2 space-x-4">
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{r.status}</span>
+                          <p className="font-bold text-slate-900 text-[15px] truncate">{name}</p>
+                          <div className="mt-1.5 flex">
+                            <span className={statusBadge(r.status)}>{r.status}</span>
                           </div>
-                          <div className="text-sm text-slate-600 mt-1">Updated: {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</div>
-                          {r.message ? <div className="mt-2 text-sm text-slate-700">{r.message}</div> : null}
+                          <div className="text-[12px] text-slate-500 mt-1">Updated: {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</div>
+                          {r.message ? <div className="mt-2 text-[13px] text-slate-700">{r.message}</div> : null}
                         </div>
                       </div>
                     </motion.div>
@@ -648,10 +936,10 @@ export default function MentorshipRequests() {
           animate="visible"
           variants={fadeInUp}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-lg rounded-3xl p-10 shadow-xl border border-white/30"
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-slate-900">My Sessions</h2>
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Sessions</h2>
           </div>
           <div>
             {sessions.length > 0 ? (
@@ -663,27 +951,27 @@ export default function MentorshipRequests() {
                     <motion.div
                       key={s.id}
                       whileHover={{ scale: 1.01 }}
-                      className="p-6 border border-white/40 rounded-2xl hover:border-blue-300 transition-all duration-300 bg-gradient-to-r from-white/60 to-blue-50/60 backdrop-blur-sm shadow-sm hover:shadow-md"
+                      className="p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                            <span className="text-white font-bold">{String(name).charAt(0).toUpperCase()}</span>
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                            {String(name).charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900">Mentor: {name}</p>
-                            <p className="text-slate-600 text-sm">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
+                            <p className="font-bold text-slate-900 text-[15px]">Mentor: {name}</p>
+                            <p className="text-[12px] text-slate-500 mt-1">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
                           </div>
                         </div>
-                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${s.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : s.status === 'paid' ? 'bg-green-100 text-green-700' : s.status === 'completed' ? 'bg-slate-100 text-slate-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                        <span className={statusBadge(s.status)}>{s.status}</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="text-[13px] text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
                         {(() => {
                           if (!s.meeting_link || !s.scheduled_at) return null;
                           const href = normalizeExternalLink(s.meeting_link || undefined);
                           return (
-                            <div className="ml-4">
+                            <div>
                               <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md">Join</a>
                             </div>
                           );
@@ -711,21 +999,21 @@ export default function MentorshipRequests() {
                             onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
                           />
                           <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg"
+                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg disabled:opacity-60"
                             onClick={() => {
                               if (!ratingForm || ratingForm.session_id !== s.id) return;
                               const r = ratingForm.rating;
                               if (r < 1 || r > 5) { toast({ title: 'Invalid rating', description: 'Pick 1-5 stars.', variant: 'destructive' }); return; }
                               submitRating(s.id, s.mentor_email, r, ratingForm.feedback);
                             }}
-                            disabled={!ratingForm || ratingForm.session_id !== s.id || (ratingForm.rating < 1 || ratingForm.rating > 5)}
+                            disabled={!ratingForm || ratingForm.session_id !== s.id || (ratingForm.rating < 1 || ratingForm.rating > 5) || submittingSession === s.id}
                           >
-                            Submit Rating
+                            {submittingSession === s.id ? 'Submitting...' : 'Submit Rating'}
                           </Button>
                         </div>
                       ) : null}
                       {s.status === 'paid' ? (
-                        <div className="mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-100 text-slate-700">
+                        <div className="mt-4 p-4 rounded-[14px] bg-yellow-50 border border-yellow-100 text-slate-700">
                           <p className="font-medium">Session unlocked — waiting for mentor to schedule.</p>
                           <p className="text-sm mt-2">The mentor will provide a Google Meet link and schedule time. You will see the session details here and be able to join once scheduled.</p>
                         </div>

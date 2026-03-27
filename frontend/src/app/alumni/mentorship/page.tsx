@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import AlumniNavigation from '../AluminaNavigation';
+import StarRating from '@/components/ui/star-rating';
 import {
   Users, CheckCircle, Star, Calendar, Clock, UserX, ChevronDown, ChevronUp, Video, Sparkles
 } from 'lucide-react';
@@ -28,6 +29,21 @@ type Session = {
   meeting_link?: string | null;
 };
 
+type DailySessionPlan = {
+  id: number;
+  mentor_email: string;
+  title: string;
+  description?: string | null;
+  daily_time: string;
+  timezone?: string | null;
+  start_date: string;
+  end_date: string;
+  duration_minutes?: number;
+  meeting_link?: string | null;
+  max_mentees?: number;
+  is_active?: boolean;
+};
+
 type UserProfile = {
   email: string;
   name?: string | null;
@@ -46,11 +62,38 @@ function normalizeLink(link?: string) {
   return 'https://' + l;
 }
 
+function parseAvailabilityRange(value?: string) {
+  if (!value) return { from: '', to: '' };
+  const m = String(value).match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+  if (!m) return { from: '', to: '' };
+  return { from: m[1], to: m[2] };
+}
+
+function minutesBetweenTimes(from: string, to: string) {
+  const [fh, fm] = from.split(':').map(Number);
+  const [th, tm] = to.split(':').map(Number);
+  if ([fh, fm, th, tm].some(Number.isNaN)) return 60;
+  let start = fh * 60 + fm;
+  let end = th * 60 + tm;
+  if (end <= start) end += 24 * 60;
+  return Math.max(15, end - start);
+}
+
+function addMinutesToTime(time: string, minutes: number) {
+  const [h, m] = time.split(':').map(Number);
+  if ([h, m].some(Number.isNaN)) return time;
+  const total = h * 60 + m + (minutes || 0);
+  const hh = Math.floor((total % (24 * 60)) / 60).toString().padStart(2, '0');
+  const mm = (total % 60).toString().padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'bg-amber-50 text-amber-600 border-amber-200/60',
     accepted: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
     rejected: 'bg-rose-50 text-rose-600 border-rose-200/60',
+    removed: 'bg-slate-100 text-slate-600 border-slate-200/80',
     scheduled: 'bg-indigo-50 text-[#4F46E5] border-indigo-200/60',
     paid: 'bg-purple-50 text-purple-600 border-purple-200/60',
     completed: 'bg-slate-100 text-slate-600 border-slate-200/80',
@@ -63,8 +106,12 @@ export default function MentorshipPage() {
   const [skills, setSkills] = useState('');
   const [topics, setTopics] = useState('');
   const [availability, setAvailability] = useState('');
+  const [availabilityFrom, setAvailabilityFrom] = useState('');
+  const [availabilityTo, setAvailabilityTo] = useState('');
   const [experience, setExperience] = useState<number | ''>('');
   const [price, setPrice] = useState<number | ''>('');
+  const [subscriptionPrice, setSubscriptionPrice] = useState<number | ''>('');
+  const [subscriptionDurationDays, setSubscriptionDurationDays] = useState<number | ''>(30);
   const [paymentUpiId, setPaymentUpiId] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -80,6 +127,19 @@ export default function MentorshipPage() {
   } | null>(null);
   const [meetingDialog, setMeetingDialog] = useState<Session | null>(null);
   const [alertedStart, setAlertedStart] = useState<Record<number, boolean>>({});
+  const [dailySessions, setDailySessions] = useState<DailySessionPlan[]>([]);
+  const [savingDailyPlan, setSavingDailyPlan] = useState(false);
+  const [dailyPlanForm, setDailyPlanForm] = useState({
+    title: '',
+    description: '',
+    session_from_time: '18:00',
+    session_to_time: '19:00',
+    timezone: 'Asia/Kolkata',
+    start_date: '',
+    end_date: '',
+    meeting_link: '',
+    max_mentees: 50,
+  });
 
   const activeMenteesCount = useMemo(() => requests.filter(r => r.status === 'accepted').length, [requests]);
   const completedSessionsCount = useMemo(() => sessions.filter(s => s.status === 'completed').length, [sessions]);
@@ -134,6 +194,65 @@ export default function MentorshipPage() {
     } catch { }
   }
 
+  async function loadDailySessionPlans() {
+    if (!user?.email) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/mentorship/daily-sessions?mentor_email=${encodeURIComponent(user.email)}`);
+      const data = await res.json();
+      setDailySessions(data.daily_sessions || []);
+    } catch { }
+  }
+
+  async function createDailySessionPlan() {
+    if (!user?.email || !dailyPlanForm.title || !dailyPlanForm.start_date || !dailyPlanForm.end_date || !dailyPlanForm.session_from_time || !dailyPlanForm.session_to_time) return;
+    setSavingDailyPlan(true);
+    try {
+      const duration = minutesBetweenTimes(dailyPlanForm.session_from_time, dailyPlanForm.session_to_time);
+      const res = await fetch(`${API_BASE}/api/mentorship/daily-sessions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          mentor_email: user.email,
+          title: dailyPlanForm.title,
+          description: dailyPlanForm.description,
+          daily_time: dailyPlanForm.session_from_time,
+          timezone: dailyPlanForm.timezone,
+          start_date: dailyPlanForm.start_date,
+          end_date: dailyPlanForm.end_date,
+          duration_minutes: duration,
+          meeting_link: dailyPlanForm.meeting_link,
+          max_mentees: dailyPlanForm.max_mentees,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create daily session plan');
+      setDailyPlanForm({
+        title: '',
+        description: '',
+        session_from_time: '18:00',
+        session_to_time: '19:00',
+        timezone: 'Asia/Kolkata',
+        start_date: '',
+        end_date: '',
+        meeting_link: '',
+        max_mentees: 50,
+      });
+      await loadDailySessionPlans();
+    } catch { }
+    setSavingDailyPlan(false);
+  }
+
+  async function deactivateDailySessionPlan(id: number) {
+    if (!user?.email) return;
+    try {
+      await fetch(`${API_BASE}/api/mentorship/daily-sessions/${id}`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mentor_email: user.email }),
+      });
+      await loadDailySessionPlans();
+    } catch { }
+  }
+
   useEffect(() => {
     async function loadProfile() {
       if (!user?.email) return;
@@ -143,9 +262,15 @@ export default function MentorshipPage() {
         const { mentor } = await res.json();
         setSkills(mentor?.skills || '');
         setTopics(mentor?.topics || '');
-        setAvailability(mentor?.availability || '');
+        const av = mentor?.availability || '';
+        setAvailability(av);
+        const parsed = parseAvailabilityRange(av);
+        setAvailabilityFrom(parsed.from);
+        setAvailabilityTo(parsed.to);
         setExperience(mentor?.experience_years ?? '');
         setPrice(mentor?.price ?? '');
+        setSubscriptionPrice(mentor?.subscription_price ?? '');
+        setSubscriptionDurationDays(mentor?.subscription_duration_days ?? 30);
         setPaymentUpiId(mentor?.payment_upi_id || '');
         setMyRatingAvg(mentor?.rating_avg ?? null);
         setMyRatingCount(mentor?.rating_count ?? null);
@@ -153,6 +278,7 @@ export default function MentorshipPage() {
     }
     loadProfile();
     reloadMentorData();
+    loadDailySessionPlans();
   }, [user?.email]);
 
   async function respondRequest(request: Request, action: 'accept' | 'reject') {
@@ -183,11 +309,12 @@ export default function MentorshipPage() {
     if (!user?.email) return;
     setRemoving(student_email);
     try {
-      await fetch(`${API_BASE}/api/connections/remove`, {
+      const res = await fetch(`${API_BASE}/api/connections/remove`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ user_email: user.email, other_email: student_email }),
       });
+      if (!res.ok) throw new Error('Failed to remove connection');
       await reloadMentorData();
     } catch { }
     setRemoving(null);
@@ -197,6 +324,7 @@ export default function MentorshipPage() {
     if (!user?.email) return;
     setSaving(true);
     try {
+      const availabilityRange = availabilityFrom && availabilityTo ? `${availabilityFrom} - ${availabilityTo}` : availability;
       await fetch(`${API_BASE}/api/mentors/profile`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -204,9 +332,11 @@ export default function MentorshipPage() {
           email: user.email,
           skills,
           topics,
-          availability,
+          availability: availabilityRange,
           experience_years: experience === '' ? 0 : Number(experience),
           price: price === '' ? 0 : Number(price),
+          subscription_price: subscriptionPrice === '' ? 0 : Number(subscriptionPrice),
+          subscription_duration_days: subscriptionDurationDays === '' ? 30 : Number(subscriptionDurationDays),
           payment_upi_id: paymentUpiId
         }),
       });
@@ -301,12 +431,27 @@ export default function MentorshipPage() {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-widest">Availability</label>
-                <input
-                  value={availability}
-                  onChange={e => setAvailability(e.target.value)}
-                  placeholder="e.g., Weekends, 6–9 PM IST"
-                  className="w-full text-[14px] px-4 py-3.5 rounded-[20px] border border-slate-100 bg-[#f8fafc] text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 transition-all shadow-inner shadow-slate-100/50"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-slate-600 mb-1">From</label>
+                    <input
+                      type="time"
+                      value={availabilityFrom}
+                      onChange={e => setAvailabilityFrom(e.target.value)}
+                      className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[20px] border border-slate-100 bg-[#f8fafc] text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 transition-all shadow-inner shadow-slate-100/50 [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:invert-0 [&::-webkit-calendar-picker-indicator]:brightness-0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-slate-600 mb-1">To</label>
+                    <input
+                      type="time"
+                      value={availabilityTo}
+                      onChange={e => setAvailabilityTo(e.target.value)}
+                      className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[20px] border border-slate-100 bg-[#f8fafc] text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 transition-all shadow-inner shadow-slate-100/50 [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:invert-0 [&::-webkit-calendar-picker-indicator]:brightness-0"
+                    />
+                  </div>
+                </div>
+                <p className="text-[12px] font-medium text-slate-600 mt-1">From - To approach for availability.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -324,12 +469,22 @@ export default function MentorshipPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Session Price (₹)</label>
-                  <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
+                  <input className="w-full bg-white text-black placeholder:text-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500 focus:outline-none" type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Subscription Price (₹)</label>
+                  <input className="w-full bg-white text-black placeholder:text-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500 focus:outline-none" type="number" value={subscriptionPrice as any} onChange={(e) => setSubscriptionPrice(e.target.value ? Number(e.target.value) : '')} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Subscription Duration (Days)</label>
+                  <input className="w-full bg-white text-black placeholder:text-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500 focus:outline-none" type="number" min={1} value={subscriptionDurationDays as any} onChange={(e) => setSubscriptionDurationDays(e.target.value ? Number(e.target.value) : '')} />
                 </div>
               </div>
               <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-black bg-white px-2 py-1 rounded mb-1">Payment UPI ID (For Session Earnings)</label>
-                <Input className="bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:border-blue-500 focus:ring-blue-500" type="text" value={paymentUpiId} onChange={(e) => setPaymentUpiId(e.target.value)} placeholder="e.g., name@okbank" />
+                <input className="w-full bg-white text-black placeholder:text-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-blue-500 focus:outline-none" type="text" value={paymentUpiId} onChange={(e) => setPaymentUpiId(e.target.value)} placeholder="e.g., name@okbank" />
                 <p className="text-xs text-gray-500 mt-1">Platform will transfer your session earnings to this UPI ID.</p>
               </div>
               <div className="lg:col-span-2 grid grid-cols-2 gap-4">
@@ -344,6 +499,8 @@ export default function MentorshipPage() {
                   <div className="mb-1">
                     <span className="font-bold text-blue-800 text-sm">{price ? `₹${price}` : '—'}</span>
                   </div>
+                  <p className="text-xs text-blue-700 font-medium">Per Session</p>
+                  <p className="text-[11px] text-blue-600 mt-1">Subscription: {subscriptionPrice ? `₹${subscriptionPrice}` : '—'} / {subscriptionDurationDays || 30}d</p>
                 </div>
               </div>
 
@@ -417,6 +574,107 @@ export default function MentorshipPage() {
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Daily Session Plans */}
+            <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white">
+              <h3 className="text-[20px] font-bold text-slate-900 tracking-tight mb-5 flex items-center gap-3">
+                <Calendar size={22} className="text-indigo-500" strokeWidth={2} />
+                Daily Session Plans
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">Session Title</label>
+                  <input
+                    placeholder="e.g., Daily DSA Sprint"
+                    value={dailyPlanForm.title}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 placeholder:text-slate-500 px-4 py-3 rounded-[14px] border border-slate-200 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">Session From</label>
+                  <input
+                    type="time"
+                    value={dailyPlanForm.session_from_time}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, session_from_time: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 px-4 py-3 rounded-[14px] border border-slate-200 bg-white [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:invert-0 [&::-webkit-calendar-picker-indicator]:brightness-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">Session To</label>
+                  <input
+                    type="time"
+                    value={dailyPlanForm.session_to_time}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, session_to_time: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 px-4 py-3 rounded-[14px] border border-slate-200 bg-white [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:invert-0 [&::-webkit-calendar-picker-indicator]:brightness-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={dailyPlanForm.start_date}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, start_date: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 px-4 py-3 rounded-[14px] border border-slate-200 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={dailyPlanForm.end_date}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, end_date: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 px-4 py-3 rounded-[14px] border border-slate-200 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">Meeting Link</label>
+                  <input
+                    placeholder="https://..."
+                    value={dailyPlanForm.meeting_link}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, meeting_link: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 placeholder:text-slate-500 px-4 py-3 rounded-[14px] border border-slate-200 bg-white"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[12px] font-semibold text-slate-600 mb-1">Description</label>
+                  <input
+                    placeholder="What this daily session covers"
+                    value={dailyPlanForm.description}
+                    onChange={e => setDailyPlanForm(f => ({ ...f, description: e.target.value }))}
+                    className="w-full text-[14px] font-medium text-slate-900 placeholder:text-slate-500 px-4 py-3 rounded-[14px] border border-slate-200 bg-white"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={createDailySessionPlan}
+                  disabled={savingDailyPlan || !dailyPlanForm.title || !dailyPlanForm.start_date || !dailyPlanForm.end_date || !dailyPlanForm.session_from_time || !dailyPlanForm.session_to_time}
+                  className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {savingDailyPlan ? 'Saving...' : 'Create Daily Plan'}
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                {dailySessions.length === 0 ? (
+                  <p className="text-[13px] text-slate-600">No daily plans yet.</p>
+                ) : dailySessions.map(plan => (
+                  <div key={plan.id} className="p-4 rounded-[16px] border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-900 text-[14px]">{plan.title}</p>
+                      <p className="text-[12px] text-slate-700 mt-1">{plan.daily_time} - {addMinutesToTime(plan.daily_time, plan.duration_minutes || 60)} • {plan.start_date} to {plan.end_date}</p>
+                      {plan.description ? <p className="text-[12px] text-slate-700 mt-1">{plan.description}</p> : null}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {plan.meeting_link ? <a href={normalizeLink(plan.meeting_link)} target="_blank" rel="noopener noreferrer" className="px-3 py-2 text-[12px] rounded-lg bg-sky-500 text-white font-bold">Open Link</a> : null}
+                      <button onClick={() => deactivateDailySessionPlan(plan.id)} className="px-3 py-2 text-[12px] rounded-lg bg-rose-50 border border-rose-200 text-rose-600 font-bold">Deactivate</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Upcoming Sessions */}

@@ -14,10 +14,25 @@ async function createMessagesSchema(dbQuery) {
       iv BYTEA NOT NULL,
       auth_tag BYTEA NOT NULL,
       ciphertext BYTEA NOT NULL,
+      attachment_url TEXT,
+      attachment_name VARCHAR(512),
+      attachment_mime VARCHAR(255),
+      attachment_size BIGINT,
+      edited_at TIMESTAMPTZ NULL,
+      deleted_at TIMESTAMPTZ NULL,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       read_at TIMESTAMPTZ NULL
     )
   `);
+
+  // Backfill columns for existing deployments.
+  await dbQuery('ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT');
+  await dbQuery('ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(512)');
+  await dbQuery('ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_mime VARCHAR(255)');
+  await dbQuery('ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_size BIGINT');
+  await dbQuery('ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ NULL');
+  await dbQuery('ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL');
+
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_thread_key ON messages(thread_key)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_sender_email ON messages(sender_email)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_receiver_email ON messages(receiver_email)');

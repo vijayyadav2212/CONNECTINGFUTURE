@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { Search, Send, User as UserIcon, MessageCircle, CheckCheck } from "lucide-react";
+import { Search, Send, User as UserIcon, MessageCircle, CheckCheck, Paperclip, Pencil, Trash2, X, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function buildApiRoot() {
@@ -19,6 +19,13 @@ interface Message {
   content: string;
   created_at: string;
   read_at: string | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_mime?: string | null;
+  attachment_size?: number | null;
+  can_edit_delete?: boolean;
 }
 
 interface ThreadItem {
@@ -53,12 +60,19 @@ export default function MessagesPage() {
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string>("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [actionMessageId, setActionMessageId] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [editWindowMinutes, setEditWindowMinutes] = useState(15);
   const [connections, setConnections] = useState<ConnectionRecord[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [connectionActionLoading, setConnectionActionLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const canSend = useMemo(() => input.trim().length > 0 && !!selectedOther, [input, selectedOther]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const canSend = useMemo(() => (input.trim().length > 0 || !!selectedFile) && !!selectedOther, [input, selectedFile, selectedOther]);
   const prevUnreadRef = useRef<Record<string, number>>({});
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -181,6 +195,7 @@ export default function MessagesPage() {
         const data = isJson ? await resp.json() : await resp.text();
         if (!resp.ok) throw new Error(typeof data === "string" ? data.slice(0, 200) : data?.error || "Failed");
         setMessages(data.messages || []);
+        if (typeof data?.edit_window_minutes === 'number') setEditWindowMinutes(data.edit_window_minutes);
       } catch (e: any) { setError(e.message); }
       finally { setLoadingMessages(false); }
     };
@@ -190,13 +205,102 @@ export default function MessagesPage() {
   const sendMessage = async () => {
     if (!canSend || !selectedOther || !currentUserEmail) return;
     if (connectionStatus !== 'accepted') { setError('You must be connected to send messages'); return; }
-    const optimistic: Message = { id: Date.now(), sender_email: currentUserEmail, receiver_email: selectedOther, content: input.trim(), created_at: new Date().toISOString(), read_at: null };
+    const optimistic: Message = {
+      id: Date.now(),
+      sender_email: currentUserEmail,
+      receiver_email: selectedOther,
+      content: input.trim(),
+      created_at: new Date().toISOString(),
+      read_at: null,
+      attachment_name: selectedFile?.name || null,
+      attachment_mime: selectedFile?.type || null,
+      attachment_size: selectedFile?.size || null,
+      can_edit_delete: true,
+    };
     setMessages(prev => [...prev, optimistic]);
     setInput("");
+    setSelectedFile(null);
+    setSendingMessage(true);
     try {
-      const resp = await fetch(`${API_ROOT}/messages/connected`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sender_email: currentUserEmail, receiver_email: selectedOther, content: optimistic.content }) });
+      let attachmentPayload: any = null;
+      if (selectedFile) {
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        const uploadResp = await fetch(`${API_ROOT}/uploads/message-file`, { method: 'POST', body: fd });
+        const uploadData = await uploadResp.json().catch(() => ({}));
+        if (!uploadResp.ok) throw new Error(uploadData?.error || 'Failed to upload file');
+        attachmentPayload = {
+          attachment_url: uploadData.url,
+          attachment_name: uploadData.filename,
+          attachment_mime: uploadData.mimetype,
+          attachment_size: uploadData.size,
+        };
+      }
+
+      const resp = await fetch(`${API_ROOT}/messages/connected`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_email: currentUserEmail,
+          receiver_email: selectedOther,
+          content: optimistic.content,
+          ...(attachmentPayload || {}),
+        })
+      });
       if (!resp.ok) { const d = await resp.json().catch(() => ({})); throw new Error(d?.error || "Failed to send"); }
     } catch (e: any) { setError(e.message); }
+    finally { setSendingMessage(false); }
+  };
+
+  const startEditMessage = (m: Message) => {
+    setEditingMessageId(m.id);
+    setActionMessageId(m.id);
+    setEditingText(m.content || '');
+  };
+
+  const cancelEditMessage = () => {
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const saveEditMessage = async (messageId: number) => {
+    if (!currentUserEmail || !editingText.trim()) return;
+    try {
+      const resp = await fetch(`${API_ROOT}/messages/${messageId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_email: currentUserEmail, content: editingText.trim() }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || 'Failed to edit message');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: editingText.trim(), edited_at: new Date().toISOString(), can_edit_delete: false } : m));
+      cancelEditMessage();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const deleteMessage = async (messageId: number) => {
+    if (!currentUserEmail) return;
+    try {
+      const resp = await fetch(`${API_ROOT}/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_email: currentUserEmail }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || 'Failed to delete message');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted_at: new Date().toISOString(), content: '', can_edit_delete: false } : m));
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const formatFileSize = (size?: number | null) => {
+    if (!size || size <= 0) return '';
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const initials = (email: string) => email.split('@')[0].slice(0, 2).toUpperCase();
@@ -309,22 +413,79 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-gray-50/50">
+                <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-gray-50/50" onClick={() => setActionMessageId(null)}>
                   {loadingMessages && messages.length === 0 && (
                     <div className="flex items-center justify-center h-20 text-xs text-gray-400">Loading messages…</div>
                   )}
                   {messages.map(m => {
                     const mine = m.sender_email.toLowerCase() === currentUserEmail.toLowerCase();
+                    const canRevealActions = mine && !!m.can_edit_delete && !m.deleted_at;
                     return (
                       <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                         <div className="max-w-[72%]">
-                          <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${mine ? 'bg-green-600 text-white rounded-br-sm' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm shadow-sm'}`}>
-                            {m.content}
+                          <div
+                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${mine ? 'bg-green-600 text-white rounded-br-sm' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm shadow-sm'}`}
+                            onDoubleClick={() => { if (canRevealActions) setActionMessageId(m.id); }}
+                            onContextMenu={(e) => {
+                              if (!canRevealActions) return;
+                              e.preventDefault();
+                              setActionMessageId(m.id);
+                            }}
+                          >
+                            {m.deleted_at ? (
+                              <p className={`${mine ? 'text-green-100' : 'text-gray-400'} italic text-xs`}>This message was deleted</p>
+                            ) : (
+                              <>
+                                {m.content ? <p>{m.content}</p> : null}
+                                {m.attachment_url ? (
+                                  <a
+                                    href={m.attachment_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl ${mine ? 'bg-white/15 hover:bg-white/20' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'} transition-colors`}
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span className="text-xs font-semibold truncate max-w-[180px]">{m.attachment_name || 'Attachment'}</span>
+                                    {m.attachment_size ? <span className="text-[10px] opacity-80">({formatFileSize(m.attachment_size)})</span> : null}
+                                  </a>
+                                ) : null}
+                              </>
+                            )}
                           </div>
                           <div className={`flex items-center gap-1 mt-1 text-[10px] ${mine ? 'justify-end text-green-600' : 'justify-start text-gray-400'}`}>
                             <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {m.edited_at && !m.deleted_at && <span>(edited)</span>}
                             {mine && m.read_at && <CheckCheck className="w-3 h-3" />}
                           </div>
+                          {mine && m.can_edit_delete && !m.deleted_at && actionMessageId === m.id && (
+                            <div className="flex items-center justify-end gap-1.5 mt-1">
+                              <button
+                                onClick={() => startEditMessage(m)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={() => deleteMessage(m.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          )}
+                          {mine && editingMessageId === m.id && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="flex-1 px-3 py-2 text-xs rounded-lg border border-gray-300"
+                                placeholder="Edit message"
+                              />
+                              <button onClick={() => saveEditMessage(m.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700">Save</button>
+                              <button onClick={cancelEditMessage} className="px-2 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">Cancel</button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -337,7 +498,31 @@ export default function MessagesPage() {
                   {connectionStatus !== 'accepted' && (
                     <p className="text-xs text-center text-amber-600 bg-amber-50 border border-amber-200 rounded-xl py-2 mb-3">You must be connected to send messages</p>
                   )}
+                  <p className="text-[11px] text-gray-400 mb-2">Double-click or right-click your sent message to edit/delete for {editWindowMinutes} minutes.</p>
+                  {selectedFile && (
+                    <div className="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-700">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span className="max-w-[220px] truncate">{selectedFile.name}</span>
+                      <span className="text-gray-500">({formatFileSize(selectedFile.size)})</span>
+                      <button onClick={() => setSelectedFile(null)} className="text-gray-500 hover:text-gray-700"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={connectionStatus !== 'accepted'}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:bg-gray-100/60 disabled:text-gray-400 shrink-0"
+                      title="Attach file"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
                     <input
                       type="text"
                       placeholder={connectionStatus === 'accepted' ? 'Type a message…' : 'Connect to start messaging'}
@@ -347,7 +532,7 @@ export default function MessagesPage() {
                       disabled={connectionStatus !== 'accepted'}
                       className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 disabled:bg-gray-50 disabled:text-gray-400"
                     />
-                    <button onClick={sendMessage} disabled={!canSend || connectionStatus !== 'accepted'} className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-600 text-white hover:bg-green-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 shrink-0">
+                    <button onClick={sendMessage} disabled={!canSend || connectionStatus !== 'accepted' || sendingMessage} className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-600 text-white hover:bg-green-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 shrink-0">
                       <Send className="w-4 h-4" />
                     </button>
                   </div>

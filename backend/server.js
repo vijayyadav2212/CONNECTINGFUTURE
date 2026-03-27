@@ -36,12 +36,16 @@ app.use(express.json());
 const uploadsRoot = path.join(__dirname, 'uploads');
 const resumesDir = path.join(uploadsRoot, 'resumes');
 const memoriesDir = path.join(uploadsRoot, 'memories');
+const messagesDir = path.join(uploadsRoot, 'messages');
 try {
   if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
   if (!fs.existsSync(resumesDir)) fs.mkdirSync(resumesDir);
   if (!fs.existsSync(memoriesDir)) fs.mkdirSync(memoriesDir);
+  if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir);
 } catch { }
 app.use('/uploads', express.static(uploadsRoot));
+
+const MESSAGE_EDIT_WINDOW_MINUTES = Number(process.env.MESSAGE_EDIT_WINDOW_MINUTES || 15);
 
 // Event image upload configuration
 const eventImageStorage = multer.diskStorage({
@@ -85,6 +89,8 @@ const MGMT_CLIENT_SECRET = process.env.AUTH0_MGMT_CLIENT_SECRET || process.env.A
 
 // Simple in-memory token cache to avoid hitting Auth0 on every request
 let mgmtTokenCache = { token: null, expiresAt: 0 };
+let alumniLeaderboardCache = { data: null, expiresAt: 0 };
+const LEADERBOARD_CACHE_TTL_MS = Number(process.env.LEADERBOARD_CACHE_TTL_MS || 5 * 60 * 1000);
 
 async function getManagementToken() {
   // Return cached token if valid for at least 60s more
@@ -1601,11 +1607,51 @@ function toBuffer(val) {
   return Buffer.from([]);
 }
 
+// Message file upload (documents, images, videos, archives)
+const messageFileUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, messagesDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_').slice(0, 80);
+      cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`);
+    },
+  }),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
+app.post('/api/uploads/message-file', messageFileUpload.single('file'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File is required' });
+    const url = `${req.protocol}://${req.get('host')}/uploads/messages/${req.file.filename}`;
+    return res.json({
+      url,
+      filename: req.file.originalname,
+      storedName: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype || 'application/octet-stream',
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // Create/send a message
 app.post('/api/messages', async (req, res) => {
-  const { sender_email, receiver_email, content } = req.body || {};
-  if (!sender_email || !receiver_email || typeof content !== 'string' || content.trim() === '') {
-    return res.status(400).json({ error: 'sender_email, receiver_email and non-empty content are required' });
+  const {
+    sender_email,
+    receiver_email,
+    content,
+    attachment_url,
+    attachment_name,
+    attachment_mime,
+    attachment_size,
+  } = req.body || {};
+  const text = typeof content === 'string' ? content : '';
+  const hasText = text.trim().length > 0;
+  const hasAttachment = typeof attachment_url === 'string' && attachment_url.trim().length > 0;
+  if (!sender_email || !receiver_email || (!hasText && !hasAttachment)) {
+    return res.status(400).json({ error: 'sender_email, receiver_email and text or attachment are required' });
   }
 
   try {
@@ -1614,13 +1660,27 @@ app.post('/api/messages', async (req, res) => {
     if (!gate.allowed) {
       return res.status(402).json({ error: gate.reason || 'Chat locked. Purchase a session to continue.' });
     }
-    const { iv, tag, encrypted } = encryptText(content);
+    const { iv, tag, encrypted } = encryptText(text);
     const sql = `
-      INSERT INTO messages (thread_key, sender_email, receiver_email, iv, auth_tag, ciphertext)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (
+        thread_key, sender_email, receiver_email, iv, auth_tag, ciphertext,
+        attachment_url, attachment_name, attachment_mime, attachment_size
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id, created_at
     `;
-    const { rows } = await dbQuery(sql, [thread_key, sender_email, receiver_email, iv, tag, encrypted]);
+    const { rows } = await dbQuery(sql, [
+      thread_key,
+      sender_email,
+      receiver_email,
+      iv,
+      tag,
+      encrypted,
+      hasAttachment ? attachment_url : null,
+      hasAttachment ? (attachment_name || null) : null,
+      hasAttachment ? (attachment_mime || null) : null,
+      hasAttachment ? (Number(attachment_size) || null) : null,
+    ]);
     const row = rows && rows[0];
     return res.status(201).json({ id: row?.id, thread_key, created_at: row?.created_at });
   } catch (e) {
@@ -1644,6 +1704,10 @@ app.get('/api/messages', async (req, res) => {
       dbQuery('UPDATE messages SET read_at = NOW() WHERE thread_key = ? AND receiver_email = ? AND read_at IS NULL', [thread_key, user]).catch(() => { });
     }
 
+    const now = Date.now();
+    const editWindowMs = MESSAGE_EDIT_WINDOW_MINUTES * 60 * 1000;
+    const requestUser = String(user).toLowerCase();
+
     const messages = (rows || []).map((r) => {
       let content = '';
       try {
@@ -1654,17 +1718,31 @@ app.get('/api/messages', async (req, res) => {
       } catch (e) {
         content = '[Unable to decrypt message]';
       }
+
+      const createdTs = new Date(r.created_at).getTime();
+      const canEditDelete =
+        !r.deleted_at &&
+        String(r.sender_email || '').toLowerCase() === requestUser &&
+        now - createdTs <= editWindowMs;
+
       return {
         id: r.id,
         sender_email: r.sender_email,
         receiver_email: r.receiver_email,
-        content,
+        content: r.deleted_at ? '' : content,
         created_at: r.created_at,
         read_at: r.read_at,
+        edited_at: r.edited_at,
+        deleted_at: r.deleted_at,
+        attachment_url: r.attachment_url || null,
+        attachment_name: r.attachment_name || null,
+        attachment_mime: r.attachment_mime || null,
+        attachment_size: r.attachment_size || null,
+        can_edit_delete: canEditDelete,
       };
     });
 
-    return res.json({ thread_key, messages });
+    return res.json({ thread_key, messages, edit_window_minutes: MESSAGE_EDIT_WINDOW_MINUTES });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -1688,13 +1766,19 @@ app.get('/api/messages/threads', async (req, res) => {
       if (!map.has(r.thread_key)) {
         // First (newest) row for this thread
         let content = '';
-        try {
-          const iv = toBuffer(r.iv);
-          const tag = toBuffer(r.auth_tag);
-          const cipher = toBuffer(r.ciphertext);
-          content = decryptText(iv, tag, cipher);
-        } catch (e) {
-          content = '[Unable to decrypt message]';
+        if (r.deleted_at) {
+          content = 'Message deleted';
+        } else if (r.attachment_url && (!r.ciphertext || toBuffer(r.ciphertext).length === 0)) {
+          content = 'Attachment';
+        } else {
+          try {
+            const iv = toBuffer(r.iv);
+            const tag = toBuffer(r.auth_tag);
+            const cipher = toBuffer(r.ciphertext);
+            content = decryptText(iv, tag, cipher) || (r.attachment_url ? 'Attachment' : '');
+          } catch (e) {
+            content = '[Unable to decrypt message]';
+          }
         }
         // Determine the other participant
         const other = r.sender_email.toLowerCase() === String(user).toLowerCase() ? r.receiver_email : r.sender_email;
@@ -1824,16 +1908,42 @@ app.post('/api/connections/remove', async (req, res) => {
   if (!user_email || !other_email) return res.status(400).json({ error: 'user_email and other_email required' });
   try {
     const pair_key = buildPairKey(user_email, other_email);
-    const { rows } = await dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
-    const conn = rows[0];
-    if (!['pending', 'accepted', 'rejected'].includes(conn.status)) {
-      return res.status(400).json({ error: 'Cannot remove in current state' });
+    const [connResult, reqResult] = await Promise.all([
+      dbQuery('SELECT * FROM connections WHERE pair_key = ? LIMIT 1', [pair_key]),
+      dbQuery('SELECT * FROM mentorship_requests WHERE pair_key = ? LIMIT 1', [pair_key]),
+    ]);
+
+    const conn = connResult.rows && connResult.rows.length ? connResult.rows[0] : null;
+    const mentorshipReq = reqResult.rows && reqResult.rows.length ? reqResult.rows[0] : null;
+
+    if (!conn && !mentorshipReq) {
+      return res.status(404).json({ error: 'Not found' });
     }
-    const { rows: updated } = await dbQuery(`
-      UPDATE connections SET status = 'removed', updated_at = NOW() WHERE id = ? RETURNING *
-    `, [conn.id]);
-    return res.json({ connection: updated[0] });
+
+    let updatedConnection = null;
+    let updatedRequest = null;
+
+    if (conn && conn.status !== 'removed') {
+      const { rows } = await dbQuery(`
+        UPDATE connections SET status = 'removed', updated_at = NOW() WHERE id = ? RETURNING *
+      `, [conn.id]);
+      updatedConnection = rows && rows.length ? rows[0] : null;
+    }
+
+    if (mentorshipReq && mentorshipReq.status !== 'removed') {
+      const { rows } = await dbQuery(`
+        UPDATE mentorship_requests
+        SET status = 'removed', accepted_at = NULL, updated_at = NOW()
+        WHERE id = ?
+        RETURNING *
+      `, [mentorshipReq.id]);
+      updatedRequest = rows && rows.length ? rows[0] : null;
+    }
+
+    return res.json({
+      connection: updatedConnection || conn,
+      mentorship_request: updatedRequest || mentorshipReq,
+    });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1865,9 +1975,11 @@ async function canSendMentorshipMessage(aEmail, bEmail) {
     const count = rows && rows[0] ? Number(rows[0].cnt) : 0;
     if (count < 20) return { allowed: true };
     const pair_key = buildPairKey(aEmail, bEmail);
+    const { rows: subs } = await dbQuery("SELECT id FROM mentorship_subscriptions WHERE pair_key = ? AND status = 'active' AND end_at >= NOW() ORDER BY created_at DESC LIMIT 1", [pair_key]);
+    if (subs && subs.length) return { allowed: true };
     const { rows: sess } = await dbQuery("SELECT id, status FROM mentorship_sessions WHERE pair_key = ? AND status IN ('paid','scheduled','completed') ORDER BY created_at DESC LIMIT 1", [pair_key]);
     if (sess && sess.length) return { allowed: true };
-    return { allowed: false, reason: 'Free chat limit reached (20 messages). Please purchase a mentorship session.' };
+    return { allowed: false, reason: 'Free chat limit reached (20 messages). Please purchase a mentorship session or subscription.' };
   } catch (e) {
     return { allowed: true };
   }
@@ -1875,9 +1987,20 @@ async function canSendMentorshipMessage(aEmail, bEmail) {
 
 // Protected messaging endpoint variant enforcing accepted connection (optional usage by frontend)
 app.post('/api/messages/connected', async (req, res) => {
-  const { sender_email, receiver_email, content } = req.body || {};
-  if (!sender_email || !receiver_email || typeof content !== 'string' || !content.trim()) {
-    return res.status(400).json({ error: 'sender_email, receiver_email and content required' });
+  const {
+    sender_email,
+    receiver_email,
+    content,
+    attachment_url,
+    attachment_name,
+    attachment_mime,
+    attachment_size,
+  } = req.body || {};
+  const text = typeof content === 'string' ? content : '';
+  const hasText = text.trim().length > 0;
+  const hasAttachment = typeof attachment_url === 'string' && attachment_url.trim().length > 0;
+  if (!sender_email || !receiver_email || (!hasText && !hasAttachment)) {
+    return res.status(400).json({ error: 'sender_email, receiver_email and text or attachment required' });
   }
   try {
     const ok = await areConnected(sender_email, receiver_email);
@@ -1887,12 +2010,89 @@ app.post('/api/messages/connected', async (req, res) => {
       return res.status(402).json({ error: gate.reason || 'Chat locked. Purchase a session to continue.' });
     }
     const thread_key = buildThreadKey(sender_email, receiver_email);
-    const { iv, tag, encrypted } = encryptText(content);
+    const { iv, tag, encrypted } = encryptText(text);
     const { rows } = await dbQuery(`
-      INSERT INTO messages (thread_key, sender_email, receiver_email, iv, auth_tag, ciphertext)
-      VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
-    `, [thread_key, sender_email, receiver_email, iv, tag, encrypted]);
+      INSERT INTO messages (
+        thread_key, sender_email, receiver_email, iv, auth_tag, ciphertext,
+        attachment_url, attachment_name, attachment_mime, attachment_size
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id, created_at
+    `, [
+      thread_key,
+      sender_email,
+      receiver_email,
+      iv,
+      tag,
+      encrypted,
+      hasAttachment ? attachment_url : null,
+      hasAttachment ? (attachment_name || null) : null,
+      hasAttachment ? (attachment_mime || null) : null,
+      hasAttachment ? (Number(attachment_size) || null) : null,
+    ]);
     return res.status(201).json({ id: rows[0].id, created_at: rows[0].created_at, thread_key });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Edit a recently sent message (sender only, time-limited)
+app.put('/api/messages/:id', async (req, res) => {
+  const { id } = req.params;
+  const { user_email, content } = req.body || {};
+  if (!id || !user_email || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'id, user_email and non-empty content required' });
+  }
+  try {
+    const { rows } = await dbQuery('SELECT * FROM messages WHERE id = ? LIMIT 1', [id]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Message not found' });
+    const msg = rows[0];
+    if (String(msg.sender_email).toLowerCase() !== String(user_email).toLowerCase()) {
+      return res.status(403).json({ error: 'Only sender can edit message' });
+    }
+    if (msg.deleted_at) return res.status(400).json({ error: 'Cannot edit deleted message' });
+
+    const ageMs = Date.now() - new Date(msg.created_at).getTime();
+    const maxMs = MESSAGE_EDIT_WINDOW_MINUTES * 60 * 1000;
+    if (ageMs > maxMs) {
+      return res.status(403).json({ error: `Edit window expired (${MESSAGE_EDIT_WINDOW_MINUTES} minutes)` });
+    }
+
+    const { iv, tag, encrypted } = encryptText(content);
+    await dbQuery(
+      'UPDATE messages SET iv = ?, auth_tag = ?, ciphertext = ?, edited_at = NOW() WHERE id = ?',
+      [iv, tag, encrypted, id]
+    );
+    return res.json({ message: 'Message updated' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete a recently sent message (sender only, time-limited)
+app.delete('/api/messages/:id', async (req, res) => {
+  const { id } = req.params;
+  const { user_email } = req.body || {};
+  if (!id || !user_email) {
+    return res.status(400).json({ error: 'id and user_email required' });
+  }
+  try {
+    const { rows } = await dbQuery('SELECT * FROM messages WHERE id = ? LIMIT 1', [id]);
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Message not found' });
+    const msg = rows[0];
+    if (String(msg.sender_email).toLowerCase() !== String(user_email).toLowerCase()) {
+      return res.status(403).json({ error: 'Only sender can delete message' });
+    }
+    if (msg.deleted_at) return res.json({ message: 'Already deleted' });
+
+    const ageMs = Date.now() - new Date(msg.created_at).getTime();
+    const maxMs = MESSAGE_EDIT_WINDOW_MINUTES * 60 * 1000;
+    if (ageMs > maxMs) {
+      return res.status(403).json({ error: `Delete window expired (${MESSAGE_EDIT_WINDOW_MINUTES} minutes)` });
+    }
+
+    await dbQuery('UPDATE messages SET deleted_at = NOW(), edited_at = NOW() WHERE id = ?', [id]);
+    return res.json({ message: 'Message deleted' });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1921,6 +2121,61 @@ app.get('/api/users', async (req, res) => {
     const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM users ${whereSql}`, params);
     const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
     return res.json({ users: list, page: p, limit: l, total, totalPages: Math.ceil(total / l) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Alumni leaderboard (cached aggregate scores)
+app.get('/api/leaderboard/alumni', async (req, res) => {
+  try {
+    const force = String((req.query && req.query.force) || '').toLowerCase();
+    const shouldForceRefresh = force === '1' || force === 'true';
+    if (!shouldForceRefresh && alumniLeaderboardCache.data && alumniLeaderboardCache.expiresAt > Date.now()) {
+      return res.json({ leaders: alumniLeaderboardCache.data, cached: true, ttl_ms: Math.max(0, alumniLeaderboardCache.expiresAt - Date.now()) });
+    }
+
+    const sql = `
+      SELECT
+        u.id,
+        u.email,
+        COALESCE(u.name, u.email) AS name,
+        u.picture AS profile_pic,
+        COALESCE(j.jobs, 0) AS jobs,
+        COALESCE(r.roadmaps, 0) AS roadmaps,
+        COALESCE(m.mentorships, 0) AS mentorships,
+        0 AS memories,
+        (COALESCE(j.jobs, 0) + COALESCE(r.roadmaps, 0) + COALESCE(m.mentorships, 0)) AS total_points
+      FROM users u
+      LEFT JOIN (
+        SELECT LOWER(posted_by) AS email, COUNT(*)::int AS jobs
+        FROM jobs
+        GROUP BY LOWER(posted_by)
+      ) j ON LOWER(u.email) = j.email
+      LEFT JOIN (
+        SELECT LOWER(owner_email) AS email, COUNT(*)::int AS roadmaps
+        FROM roadmaps
+        GROUP BY LOWER(owner_email)
+      ) r ON LOWER(u.email) = r.email
+      LEFT JOIN (
+        SELECT LOWER(mentor_email) AS email, COUNT(*)::int AS mentorships
+        FROM mentorship_sessions
+        WHERE status = 'completed'
+        GROUP BY LOWER(mentor_email)
+      ) m ON LOWER(u.email) = m.email
+      WHERE u.user_type = 'alumni'
+      ORDER BY total_points DESC, name ASC
+      LIMIT 500
+    `;
+
+    const { rows } = await dbQuery(sql);
+    const leaders = rows || [];
+    alumniLeaderboardCache = {
+      data: leaders,
+      expiresAt: Date.now() + LEADERBOARD_CACHE_TTL_MS,
+    };
+
+    return res.json({ leaders, cached: false, ttl_ms: LEADERBOARD_CACHE_TTL_MS });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1958,7 +2213,7 @@ app.get('/api/mentors', async (req, res) => {
     if (max_price) { where.push('price <= ?'); params.push(Number(max_price)); }
     if (min_rating) { where.push('rating_avg >= ?'); params.push(Number(min_rating)); }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const { rows: list } = await dbQuery(`SELECT mentor_email AS mentor_email, skills, topics, availability, experience_years, price, rating_avg, rating_count FROM mentors ${whereSql} ORDER BY rating_avg DESC NULLS LAST LIMIT ? OFFSET ?`, [...params, l, offset]);
+    const { rows: list } = await dbQuery(`SELECT mentor_email AS mentor_email, skills, topics, availability, experience_years, price, subscription_price, subscription_duration_days, rating_avg, rating_count FROM mentors ${whereSql} ORDER BY rating_avg DESC NULLS LAST LIMIT ? OFFSET ?`, [...params, l, offset]);
     return res.json({ mentors: list, page: p, limit: l });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -1971,8 +2226,35 @@ app.get('/api/mentors/profile', async (req, res) => {
     const { email } = req.query || {};
     if (!email) return res.status(400).json({ error: 'email required' });
     const { rows } = await dbQuery('SELECT * FROM mentors WHERE LOWER(mentor_email) = LOWER(?) LIMIT 1', [email]);
-    if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
-    return res.json({ mentor: rows[0] });
+    const { rows: userRows } = await dbQuery('SELECT skills FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+    const registeredSkills = userRows && userRows[0] ? (userRows[0].skills || '') : '';
+
+    if (rows && rows.length) {
+      const mentor = rows[0];
+      return res.json({
+        mentor: {
+          ...mentor,
+          skills: (mentor.skills && String(mentor.skills).trim()) ? mentor.skills : registeredSkills,
+        }
+      });
+    }
+
+    // Fallback: return a default mentor profile seeded from registered user data
+    return res.json({
+      mentor: {
+        mentor_email: email,
+        skills: registeredSkills,
+        topics: '',
+        availability: '',
+        experience_years: 0,
+        price: 0,
+        subscription_price: 0,
+        subscription_duration_days: 30,
+        payment_upi_id: '',
+        rating_avg: 0,
+        rating_count: 0,
+      }
+    });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1980,19 +2262,39 @@ app.get('/api/mentors/profile', async (req, res) => {
 
 app.post('/api/mentors/profile', async (req, res) => {
   try {
-    const { email, skills, topics, availability, experience_years, price, payment_upi_id } = req.body || {};
+    const { email, skills, topics, availability, experience_years, price, subscription_price, subscription_duration_days, payment_upi_id } = req.body || {};
     if (!email) return res.status(400).json({ error: 'email required' });
     const { rows: existing } = await dbQuery('SELECT * FROM mentors WHERE LOWER(mentor_email) = LOWER(?) LIMIT 1', [email]);
     if (existing && existing.length) {
       const { rows } = await dbQuery(
-        'UPDATE mentors SET skills = ?, topics = ?, availability = ?, experience_years = ?, price = ?, payment_upi_id = ?, updated_at = NOW() WHERE LOWER(mentor_email) = LOWER(?) RETURNING *',
-        [skills || null, topics || null, availability || null, Number(experience_years) || 0, Number(price) || 0, payment_upi_id || null, email]
+        'UPDATE mentors SET skills = ?, topics = ?, availability = ?, experience_years = ?, price = ?, subscription_price = ?, subscription_duration_days = ?, payment_upi_id = ?, updated_at = NOW() WHERE LOWER(mentor_email) = LOWER(?) RETURNING *',
+        [
+          skills || null,
+          topics || null,
+          availability || null,
+          Number(experience_years) || 0,
+          Number(price) || 0,
+          Number(subscription_price) || 0,
+          Math.max(1, Number(subscription_duration_days) || 30),
+          payment_upi_id || null,
+          email
+        ]
       );
       return res.json({ mentor: rows[0] });
     }
     const { rows } = await dbQuery(
-      'INSERT INTO mentors (mentor_email, skills, topics, availability, experience_years, price, payment_upi_id) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *',
-      [email, skills || null, topics || null, availability || null, Number(experience_years) || 0, Number(price) || 0, payment_upi_id || null]
+      'INSERT INTO mentors (mentor_email, skills, topics, availability, experience_years, price, subscription_price, subscription_duration_days, payment_upi_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+      [
+        email,
+        skills || null,
+        topics || null,
+        availability || null,
+        Number(experience_years) || 0,
+        Number(price) || 0,
+        Number(subscription_price) || 0,
+        Math.max(1, Number(subscription_duration_days) || 30),
+        payment_upi_id || null
+      ]
     );
     return res.status(201).json({ mentor: rows[0] });
   } catch (e) {
@@ -2160,26 +2462,84 @@ app.get('/api/admin/mentorship-payments', checkJwt, async (req, res) => {
     const offset = (p - 1) * l;
 
     const { rows: sessions } = await dbQuery(`
-      SELECT m.*, 
-        stu.name AS student_name, 
-        alu.name AS mentor_name
-      FROM mentorship_sessions m
-      LEFT JOIN users stu ON LOWER(stu.email) = LOWER(m.student_email)
-      LEFT JOIN users alu ON LOWER(alu.email) = LOWER(m.mentor_email)
-      WHERE m.status IN ('paid', 'scheduled', 'completed')
-      ORDER BY m.created_at DESC
+      SELECT * FROM (
+        SELECT
+          m.id,
+          m.pair_key,
+          m.student_email,
+          m.mentor_email,
+          stu.name AS student_name,
+          alu.name AS mentor_name,
+          m.status,
+          m.amount,
+          m.platform_fee,
+          m.alumni_earnings,
+          m.currency,
+          m.payment_id,
+          m.order_id,
+          m.created_at,
+          m.payout_status,
+          'session'::text AS transaction_type,
+          NULL::int AS duration_days,
+          NULL::timestamptz AS start_at,
+          NULL::timestamptz AS end_at
+        FROM mentorship_sessions m
+        LEFT JOIN users stu ON LOWER(stu.email) = LOWER(m.student_email)
+        LEFT JOIN users alu ON LOWER(alu.email) = LOWER(m.mentor_email)
+        WHERE m.status IN ('paid', 'scheduled', 'completed')
+
+        UNION ALL
+
+        SELECT
+          s.id,
+          s.pair_key,
+          s.student_email,
+          s.mentor_email,
+          stu.name AS student_name,
+          alu.name AS mentor_name,
+          s.status,
+          s.amount,
+          s.platform_fee,
+          s.alumni_earnings,
+          s.currency,
+          s.payment_id,
+          s.order_id,
+          s.created_at,
+          COALESCE(s.payout_status, 'pending') AS payout_status,
+          'subscription'::text AS transaction_type,
+          s.duration_days,
+          s.start_at,
+          s.end_at
+        FROM mentorship_subscriptions s
+        LEFT JOIN users stu ON LOWER(stu.email) = LOWER(s.student_email)
+        LEFT JOIN users alu ON LOWER(alu.email) = LOWER(s.mentor_email)
+        WHERE s.status IN ('active', 'expired', 'cancelled')
+      ) t
+      ORDER BY t.created_at DESC
       LIMIT ? OFFSET ?
     `, [l, offset]);
 
-    const { rows: totalRows } = await dbQuery(`SELECT COUNT(*) as cnt FROM mentorship_sessions WHERE status IN ('paid', 'scheduled', 'completed')`);
+    const { rows: totalRows } = await dbQuery(`
+      SELECT (
+        (SELECT COUNT(*) FROM mentorship_sessions WHERE status IN ('paid', 'scheduled', 'completed')) +
+        (SELECT COUNT(*) FROM mentorship_subscriptions WHERE status IN ('active', 'expired', 'cancelled'))
+      )::bigint as cnt
+    `);
     const total = totalRows && totalRows[0] ? parseInt(totalRows[0].cnt, 10) : 0;
 
     const { rows: statsRows } = await dbQuery(`
-      SELECT 
+      SELECT
         SUM(amount) as total_volume,
         SUM(platform_fee) as total_platform_fee
-      FROM mentorship_sessions 
-      WHERE status IN ('paid', 'scheduled', 'completed')
+      FROM (
+        SELECT amount, platform_fee
+        FROM mentorship_sessions
+        WHERE status IN ('paid', 'scheduled', 'completed')
+        UNION ALL
+        SELECT amount, platform_fee
+        FROM mentorship_subscriptions
+        WHERE status IN ('active', 'expired', 'cancelled')
+      ) all_txn
     `);
     
     const stats = {
@@ -2214,18 +2574,41 @@ app.get('/api/admin/mentorship-payouts', checkJwt, async (req, res) => {
     const limitClause = limit ? `LIMIT ${Math.max(1, parseInt(limit, 10))}` : '';
 
     const { rows } = await dbQuery(`
-      SELECT 
-        m.mentor_email,
+      SELECT
+        p.mentor_email,
         u.name AS mentor_name,
         m2.payment_upi_id,
-        SUM(CASE WHEN m.payout_status = 'pending' THEN m.alumni_earnings ELSE 0 END) as pending_amount,
-        SUM(CASE WHEN m.payout_status = 'paid' THEN m.alumni_earnings ELSE 0 END) as paid_amount,
-        COUNT(CASE WHEN m.payout_status = 'pending' THEN 1 END) as pending_sessions
-      FROM mentorship_sessions m
-      LEFT JOIN users u ON LOWER(u.email) = LOWER(m.mentor_email)
-      LEFT JOIN mentors m2 ON LOWER(m2.mentor_email) = LOWER(m.mentor_email)
-      WHERE m.status IN ('paid', 'scheduled', 'completed')
-      GROUP BY m.mentor_email, u.name, m2.payment_upi_id
+        SUM(p.pending_amount) as pending_amount,
+        SUM(p.paid_amount) as paid_amount,
+        SUM(p.pending_sessions) as pending_sessions,
+        SUM(p.pending_subscriptions) as pending_subscriptions,
+        (SUM(p.pending_sessions) + SUM(p.pending_subscriptions)) as pending_transactions
+      FROM (
+        SELECT
+          m.mentor_email,
+          SUM(CASE WHEN COALESCE(m.payout_status, 'pending') = 'pending' THEN m.alumni_earnings ELSE 0 END) as pending_amount,
+          SUM(CASE WHEN COALESCE(m.payout_status, 'pending') = 'paid' THEN m.alumni_earnings ELSE 0 END) as paid_amount,
+          COUNT(CASE WHEN COALESCE(m.payout_status, 'pending') = 'pending' THEN 1 END) as pending_sessions,
+          0::bigint as pending_subscriptions
+        FROM mentorship_sessions m
+        WHERE m.status IN ('paid', 'scheduled', 'completed')
+        GROUP BY m.mentor_email
+
+        UNION ALL
+
+        SELECT
+          s.mentor_email,
+          SUM(CASE WHEN COALESCE(s.payout_status, 'pending') = 'pending' THEN s.alumni_earnings ELSE 0 END) as pending_amount,
+          SUM(CASE WHEN COALESCE(s.payout_status, 'pending') = 'paid' THEN s.alumni_earnings ELSE 0 END) as paid_amount,
+          0::bigint as pending_sessions,
+          COUNT(CASE WHEN COALESCE(s.payout_status, 'pending') = 'pending' THEN 1 END) as pending_subscriptions
+        FROM mentorship_subscriptions s
+        WHERE s.status IN ('active', 'expired', 'cancelled')
+        GROUP BY s.mentor_email
+      ) p
+      LEFT JOIN users u ON LOWER(u.email) = LOWER(p.mentor_email)
+      LEFT JOIN mentors m2 ON LOWER(m2.mentor_email) = LOWER(p.mentor_email)
+      GROUP BY p.mentor_email, u.name, m2.payment_upi_id
       ORDER BY pending_amount DESC
       ${limitClause}
     `);
@@ -2256,7 +2639,7 @@ app.post('/api/admin/mentorship-payouts/mark-paid', checkJwt, async (req, res) =
     const { mentor_email } = req.body;
     if (!mentor_email) return res.status(400).json({ error: 'mentor_email required' });
 
-    const { rows } = await dbQuery(`
+    const { rows: sessionRows } = await dbQuery(`
       UPDATE mentorship_sessions 
       SET payout_status = 'paid' 
       WHERE LOWER(mentor_email) = LOWER(?) 
@@ -2265,7 +2648,24 @@ app.post('/api/admin/mentorship-payouts/mark-paid', checkJwt, async (req, res) =
       RETURNING id
     `, [mentor_email]);
 
-    return res.json({ success: true, updated_count: rows ? rows.length : 0 });
+    const { rows: subscriptionRows } = await dbQuery(`
+      UPDATE mentorship_subscriptions
+      SET payout_status = 'paid', updated_at = NOW()
+      WHERE LOWER(mentor_email) = LOWER(?)
+        AND COALESCE(payout_status, 'pending') = 'pending'
+        AND status IN ('active', 'expired', 'cancelled')
+      RETURNING id
+    `, [mentor_email]);
+
+    const updatedSessionCount = sessionRows ? sessionRows.length : 0;
+    const updatedSubscriptionCount = subscriptionRows ? subscriptionRows.length : 0;
+
+    return res.json({
+      success: true,
+      updated_count: updatedSessionCount + updatedSubscriptionCount,
+      updated_session_count: updatedSessionCount,
+      updated_subscription_count: updatedSubscriptionCount,
+    });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2290,6 +2690,169 @@ app.post('/api/mentorship/sessions/purchase', async (req, res) => {
       [pair_key, student_email, mentor_email, totalPaid, currency || 'INR', payment_id || null, order_id || null, Number(platformFee.toFixed(2)), Number(alumniEarnings.toFixed(2))]
     );
     return res.status(201).json({ session: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Record a mentor subscription purchase
+app.post('/api/mentorship/subscriptions/purchase', async (req, res) => {
+  const { student_email, mentor_email, amount, currency = 'INR', duration_days = 30, payment_id, order_id } = req.body || {};
+  if (!student_email || !mentor_email || !amount) {
+    return res.status(400).json({ error: 'student_email, mentor_email and amount required' });
+  }
+  try {
+    const totalPaid = Number(amount);
+    const baseAmount = totalPaid / 1.06;
+    const alumniEarnings = baseAmount * 0.94;
+    const platformFee = totalPaid - alumniEarnings;
+    const pair_key = buildPairKey(student_email, mentor_email);
+    const days = Math.max(1, Number(duration_days) || 30);
+    const endAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+    const { rows } = await dbQuery(
+      `INSERT INTO mentorship_subscriptions
+        (pair_key, student_email, mentor_email, status, amount, currency, duration_days, start_at, end_at, payment_id, order_id, platform_fee, alumni_earnings)
+       VALUES (?, ?, ?, 'active', ?, ?, ?, NOW(), ?, ?, ?, ?, ?) RETURNING *`,
+      [
+        pair_key,
+        student_email,
+        mentor_email,
+        totalPaid,
+        currency || 'INR',
+        days,
+        endAt,
+        payment_id || null,
+        order_id || null,
+        Number(platformFee.toFixed(2)),
+        Number(alumniEarnings.toFixed(2)),
+      ]
+    );
+    return res.status(201).json({ subscription: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List subscriptions for mentor or student
+app.get('/api/mentorship/subscriptions', async (req, res) => {
+  const { mentor_email, student_email, active_only } = req.query || {};
+  if (!mentor_email && !student_email) return res.status(400).json({ error: 'mentor_email or student_email required' });
+  try {
+    let sql = 'SELECT * FROM mentorship_subscriptions WHERE 1=1';
+    const params = [];
+    if (mentor_email) { sql += ' AND mentor_email = ?'; params.push(mentor_email); }
+    if (student_email) { sql += ' AND student_email = ?'; params.push(student_email); }
+    if (active_only === '1' || active_only === 'true') {
+      sql += " AND status = 'active' AND end_at >= NOW()";
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 300';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ subscriptions: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mentor creates daily recurring session plan for mentees
+app.post('/api/mentorship/daily-sessions', async (req, res) => {
+  const {
+    mentor_email,
+    title,
+    description,
+    daily_time,
+    timezone = 'Asia/Kolkata',
+    start_date,
+    end_date,
+    duration_minutes = 60,
+    meeting_link,
+    max_mentees = 50,
+  } = req.body || {};
+
+  if (!mentor_email || !title || !daily_time || !start_date || !end_date) {
+    return res.status(400).json({ error: 'mentor_email, title, daily_time, start_date, end_date required' });
+  }
+
+  try {
+    const start = new Date(start_date);
+    const end = new Date(end_date);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+      return res.status(400).json({ error: 'Invalid start_date/end_date range' });
+    }
+    const { rows } = await dbQuery(
+      `INSERT INTO mentor_daily_sessions
+        (mentor_email, title, description, daily_time, timezone, start_date, end_date, duration_minutes, meeting_link, max_mentees, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+       RETURNING *`,
+      [
+        mentor_email,
+        title,
+        description || null,
+        daily_time,
+        timezone || 'Asia/Kolkata',
+        start_date,
+        end_date,
+        Math.max(15, Number(duration_minutes) || 60),
+        meeting_link || null,
+        Math.max(1, Number(max_mentees) || 50),
+      ]
+    );
+    return res.status(201).json({ daily_session: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List daily session plans (mentor view or student view)
+app.get('/api/mentorship/daily-sessions', async (req, res) => {
+  const { mentor_email, student_email, active_only } = req.query || {};
+  if (!mentor_email && !student_email) {
+    return res.status(400).json({ error: 'mentor_email or student_email required' });
+  }
+  try {
+    if (mentor_email) {
+      let sql = 'SELECT * FROM mentor_daily_sessions WHERE mentor_email = ?';
+      const params = [mentor_email];
+      if (active_only === '1' || active_only === 'true') {
+        sql += ' AND is_active = TRUE AND end_date >= CURRENT_DATE';
+      }
+      sql += ' ORDER BY created_at DESC LIMIT 300';
+      const { rows } = await dbQuery(sql, params);
+      return res.json({ daily_sessions: rows });
+    }
+
+    // Student can view active daily plans only from accepted mentors.
+    const { rows } = await dbQuery(
+      `SELECT ds.*
+       FROM mentor_daily_sessions ds
+       JOIN mentorship_requests mr
+         ON mr.mentor_email = ds.mentor_email
+       WHERE mr.student_email = ?
+         AND mr.status = 'accepted'
+         AND ds.is_active = TRUE
+         AND ds.end_date >= CURRENT_DATE
+       ORDER BY ds.daily_time ASC, ds.created_at DESC
+       LIMIT 300`,
+      [student_email]
+    );
+    return res.json({ daily_sessions: rows });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mentor delete/deactivate daily session plan
+app.delete('/api/mentorship/daily-sessions/:id', async (req, res) => {
+  const { id } = req.params;
+  const { mentor_email } = req.body || {};
+  if (!id || !mentor_email) return res.status(400).json({ error: 'id and mentor_email required' });
+  try {
+    const { rows } = await dbQuery(
+      'UPDATE mentor_daily_sessions SET is_active = FALSE, updated_at = NOW() WHERE id = ? AND mentor_email = ? RETURNING *',
+      [id, mentor_email]
+    );
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Daily session not found' });
+    return res.json({ daily_session: rows[0] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2363,6 +2926,9 @@ app.post('/api/mentorship/ratings', async (req, res) => {
     await dbQuery('UPDATE mentors SET rating_avg = ?, rating_count = ?, updated_at = NOW() WHERE mentor_email = ?', [avg, cnt, mentor_email]);
     return res.status(201).json({ rating: rows[0], ratingSummary: { rating_avg: Number(avg), rating_count: cnt } });
   } catch (e) {
+    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+      return res.status(409).json({ error: 'You have already submitted a rating for this session.' });
+    }
     return res.status(500).json({ error: e.message });
   }
 });

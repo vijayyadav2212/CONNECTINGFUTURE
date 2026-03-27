@@ -27,6 +27,10 @@ interface MentorshipSession {
   order_id: string;
   created_at: string;
   payout_status: string;
+  transaction_type?: 'session' | 'subscription';
+  duration_days?: number;
+  start_at?: string;
+  end_at?: string;
 }
 
 interface AlumniPayout {
@@ -36,6 +40,8 @@ interface AlumniPayout {
   pending_amount: number;
   paid_amount: number;
   pending_sessions: number;
+  pending_subscriptions?: number;
+  pending_transactions?: number;
 }
 
 interface PaymentStats {
@@ -148,7 +154,7 @@ export default function MentorshipPayments() {
             <div className="relative z-10 flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold mb-2">Mentorship Funds Tracking</h1>
-                <p className="text-white/90">Monitor platform fees, transactions, and alumni payouts.</p>
+                <p className="text-white/90">Monitor session and subscription revenue, platform fees, and alumni transfers.</p>
               </div>
             </div>
           </div>
@@ -254,7 +260,7 @@ export default function MentorshipPayments() {
               <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Recent Transactions</h2>
-                  <p className="text-sm text-gray-600 mt-1">Razorpay payments generated via mentorship</p>
+                  <p className="text-sm text-gray-600 mt-1">Session and subscription payments generated via mentorship</p>
                 </div>
                 {!showAllTransactions && sessions.length === 5 && (
                   <button onClick={() => setShowAllTransactions(true)} className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
@@ -272,6 +278,7 @@ export default function MentorshipPayments() {
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Type</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Alumni (Mentor)</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total Paid (₹)</th>
@@ -283,7 +290,7 @@ export default function MentorshipPayments() {
                   <tbody className="divide-y divide-gray-100">
                     {sessions.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                           No mentorship payments found.
                         </td>
                       </tr>
@@ -293,6 +300,11 @@ export default function MentorshipPayments() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {new Date(session.created_at).toLocaleDateString()}
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session.transaction_type === 'subscription' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'}`}>
+                              {session.transaction_type === 'subscription' ? 'Subscription' : 'Session'}
+                            </span>
+                          </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-gray-900">{session.student_name || 'N/A'}</div>
                             <div className="text-xs text-gray-500">{session.student_email}</div>
@@ -300,6 +312,11 @@ export default function MentorshipPayments() {
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-gray-900">{session.mentor_name || 'N/A'}</div>
                             <div className="text-xs text-gray-500">{session.mentor_email}</div>
+                            {session.transaction_type === 'subscription' && session.end_at ? (
+                              <div className="text-xs text-indigo-600 mt-1">
+                                Ends: {new Date(session.end_at).toLocaleDateString()} ({session.duration_days || 30}d)
+                              </div>
+                            ) : null}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-gray-900">
                             {Number(session.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -336,7 +353,7 @@ export default function MentorshipPayments() {
               <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Alumni Payouts Pipeline</h2>
-                  <p className="text-sm text-gray-600 mt-1">Track pending earnings and mark funds as transferred to Alumni accounts.</p>
+                  <p className="text-sm text-gray-600 mt-1">Track pending session and subscription earnings, then mark transfers to alumni accounts.</p>
                 </div>
                 {!showAllPayouts && payouts.length === 5 && (
                   <button onClick={() => setShowAllPayouts(true)} className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
@@ -355,7 +372,7 @@ export default function MentorshipPayments() {
                     <tr>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Alumni Profile</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Lifetime Transferred (₹)</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Pending Sessions</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Pending Items</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Pending Earnings (₹)</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
@@ -370,6 +387,9 @@ export default function MentorshipPayments() {
                     ) : (
                       payouts.map((p) => {
                         const hasPending = Number(p.pending_amount) > 0;
+                        const pendingSessions = Number(p.pending_sessions || 0);
+                        const pendingSubscriptions = Number(p.pending_subscriptions || 0);
+                        const pendingItems = Number(p.pending_transactions || (pendingSessions + pendingSubscriptions));
                         return (
                           <tr key={p.mentor_email} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4">
@@ -391,11 +411,16 @@ export default function MentorshipPayments() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                               {hasPending ? (
                                 <span className="bg-red-100 text-red-800 font-semibold px-2 py-0.5 rounded-full text-xs">
-                                  {p.pending_sessions}
+                                  {pendingItems}
                                 </span>
                               ) : (
                                 <span className="text-gray-400">0</span>
                               )}
+                              {(pendingSessions > 0 || pendingSubscriptions > 0) ? (
+                                <div className="text-[11px] text-gray-500 mt-1">
+                                  S: {pendingSessions} | Sub: {pendingSubscriptions}
+                                </div>
+                              ) : null}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right">
                               {hasPending ? (
