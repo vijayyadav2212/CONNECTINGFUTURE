@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, MessageCircle, Calendar, MapPin, Camera, Plus, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, MapPin, Camera, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,6 +49,7 @@ export default function MemoriesPage() {
   const [activeTab, setActiveTab] = useState('recent');
   const [showComments, setShowComments] = useState<Record<number, boolean>>({});
   const [newComment, setNewComment] = useState('');
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(new Set());
@@ -58,6 +59,27 @@ export default function MemoriesPage() {
     2: [{ id: 1, author: 'Team Member', text: 'Great teamwork everyone! 🚀', time: '1 day ago', likes: 8 }],
   });
   const [newMemory, setNewMemory] = useState({ title: '', description: '', location: '', tags: '', category: 'friendship' });
+
+  const fetchCommentsForMemory = async (memoryId: number) => {
+    try {
+      const resp = await apiClient.get(`/memories/${memoryId}/comments`);
+      const fetched = (resp?.comments || []).map((c: any) => ({
+        id: c.id,
+        author: c.author_name || 'Alumni',
+        text: c.text,
+        time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now',
+        likes: c.likes || 0,
+      }));
+      setComments(prev => ({ ...prev, [memoryId]: fetched }));
+      setMemories(p => p.map(m => m.id === memoryId ? { ...m, comments: fetched.length } : m));
+      setSelectedMemory((prev: any) => prev?.id === memoryId ? { ...prev, comments: fetched.length } : prev);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (!selectedMemory?.id) return;
+    fetchCommentsForMemory(selectedMemory.id);
+  }, [selectedMemory?.id]);
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -115,13 +137,7 @@ export default function MemoriesPage() {
     const open = !showComments[memoryId];
     setShowComments(prev => ({ ...prev, [memoryId]: open }));
     if (open) {
-      try {
-        const resp = await apiClient.get(`/memories/${memoryId}/comments`);
-        const fetched = (resp?.comments || []).map((c: any) => ({ id: c.id, author: c.author_name || 'Alumni', text: c.text, time: c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now', likes: c.likes || 0 }));
-        setComments(prev => ({ ...prev, [memoryId]: fetched }));
-        setMemories(p => p.map(m => m.id === memoryId ? { ...m, comments: fetched.length } : m));
-        if (selectedMemory?.id === memoryId) setSelectedMemory((prev: any) => ({ ...prev, comments: fetched.length }));
-      } catch {}
+      await fetchCommentsForMemory(memoryId);
     }
   };
 
@@ -171,6 +187,16 @@ export default function MemoriesPage() {
     return matchCat && matchSearch;
   });
 
+  const totalLikes = filteredMemories.reduce((sum, m) => sum + (m.likes || 0), 0);
+  const totalComments = filteredMemories.reduce((sum, m) => sum + (m.comments || 0), 0);
+  const activeAuthors = new Set(filteredMemories.map(m => m.author?.name || 'Alumni')).size;
+  const categoryCount = filteredMemories.reduce((acc: Record<string, number>, m) => {
+    const cat = m.category || 'friendship';
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {});
+  const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'friendship';
+
   const TABS = [
     { value: 'recent', label: 'Recent', icon: <Clock className="w-3.5 h-3.5" /> },
     { value: 'trending', label: 'Trending', icon: <TrendingUp className="w-3.5 h-3.5" /> },
@@ -181,25 +207,25 @@ export default function MemoriesPage() {
     <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5">
       <h4 className="flex items-center gap-2 text-sm font-black text-slate-800 mb-4 tracking-wider uppercase">
         <MessageCircle className="w-4 h-4 text-indigo-500" />
-        Comments ({comments[memoryId]?.length || 0})
+        Comments ({comments[memoryId]?.length ?? memories.find((m: any) => m.id === memoryId)?.comments ?? 0})
       </h4>
       <div className="space-y-4 max-h-60 overflow-y-auto mb-4 pr-1">
         {(comments[memoryId] || []).map((c: any, i: number) => (
           <div key={`${c.id}-${i}`} className="flex gap-3">
             <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
             <div className="flex-1 bg-slate-50/70 rounded-[16px] p-4 border border-slate-100/60">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[13px] font-black text-slate-800">{c.author}</span>
-                <span className="text-[10px] uppercase font-bold text-slate-400">{c.time}</span>
+              <div className="flex items-start justify-between gap-3 mb-1.5">
+                <span className="text-[13px] font-black text-slate-800 leading-none shrink-0">{c.author}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 text-right leading-tight break-words">{c.time}</span>
               </div>
               <p className="text-[13px] text-slate-600 font-medium leading-relaxed">{c.text}</p>
             </div>
           </div>
         ))}
       </div>
-      <div className="flex gap-2">
-        <input value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment…" className="flex-1 px-4 py-2 text-[14px] rounded-[16px] border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" />
-        <button onClick={() => handleAddComment(memoryId)} className="px-4 py-2 bg-indigo-500 text-white rounded-[16px] text-sm font-bold hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-200">
+      <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+        <input id={`comment-input-${memoryId}`} value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment..." className="min-w-0 w-full px-4 py-2.5 text-[14px] rounded-[16px] border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" />
+        <button onClick={() => handleAddComment(memoryId)} className="w-11 h-11 inline-flex items-center justify-center bg-indigo-500 text-white rounded-[14px] text-sm font-bold hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-200 shrink-0">
           <Send className="w-4 h-4" />
         </button>
       </div>
@@ -210,11 +236,11 @@ export default function MemoriesPage() {
     const CatIcon = categoryIcons[memory.category] || Users;
     const a = memory.author || { name: 'Alumni', avatar: '', batch: '', department: '' };
     return (
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_16px_40px_rgb(79,70,229,0.15)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
         {memory.image && (
-          <div className="relative h-48 overflow-hidden cursor-pointer" onClick={async () => { setSelectedMemory(memory); try { const v = await apiClient.post(`/memories/${memory.id}/view`, {}); setMemories(p => p.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m)); } catch {} }}>
-            <img src={memory.image} alt={memory.title} className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+          <div className="relative h-52 overflow-hidden cursor-pointer bg-slate-100" onClick={async () => { setSelectedMemory(memory); try { const v = await apiClient.post(`/memories/${memory.id}/view`, {}); setMemories(p => p.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m)); } catch {} }}>
+            <img src={memory.image} alt={memory.title} className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/35 via-slate-900/5 to-transparent" />
             <div className="absolute top-3 left-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-white/95 backdrop-blur-md text-[10px] uppercase font-black tracking-widest text-slate-800 shadow-sm border border-white/20">
                 <CatIcon className="w-3.5 h-3.5 text-indigo-500" />{memory.category}
@@ -223,44 +249,56 @@ export default function MemoriesPage() {
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
               <span className="flex items-center gap-1.5 text-white/90 text-xs font-bold bg-slate-900/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10"><Eye className="w-3.5 h-3.5" />{memory.views || 0} views</span>
             </div>
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <button onClick={() => setSelectedMemory(memory)} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full bg-white/90 text-slate-700 border border-white/30 backdrop-blur-md hover:bg-white">
+                Open
+              </button>
+            </div>
           </div>
         )}
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+        <div className="p-6 flex flex-col min-h-[242px]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0 w-full">
               <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[12px] font-black flex items-center justify-center shrink-0 shadow-sm">{a.name.charAt(0)}</div>
-              <div className="min-w-0">
-                <p className="text-[14px] font-black text-slate-800 leading-tight block truncate">{a.name}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block truncate">{a.batch}{a.department ? ` · ${a.department}` : ''}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] sm:text-[14px] font-black text-slate-800 leading-tight break-words sm:truncate">{a.name}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 break-words sm:truncate">{a.batch}{a.department ? ` · ${a.department}` : ''}</p>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
+            <span className="self-start sm:self-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
               <Clock className="w-3 h-3" />
               {new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
           
-          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-indigo-600 transition-colors block truncate" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
-          <p className="text-[13px] font-medium text-slate-500 line-clamp-2 mb-4 leading-relaxed">{memory.description}</p>
+          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-indigo-600 transition-colors line-clamp-2 min-h-[44px]" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
+          <p className="text-[13px] font-medium text-slate-500 line-clamp-2 min-h-[40px] mb-4 leading-relaxed">{memory.description}</p>
           
-          {memory.location && <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4"><MapPin className="w-3.5 h-3.5 text-slate-300" />{memory.location}</p>}
-          
-          {Array.isArray(memory.tags) && memory.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-5">
-              {memory.tags.slice(0, 3).map((t: string, i: number) => <span key={i} className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500">#{t}</span>)}
-            </div>
+          {memory.location ? (
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 min-h-[16px] line-clamp-1"><MapPin className="w-3.5 h-3.5 text-slate-300" />{memory.location}</p>
+          ) : (
+            <div className="mb-4 min-h-[16px]" />
           )}
           
-          <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-            <button onClick={() => handleLike(memory.id)} disabled={pendingLikeIds.has(memory.id)} className={`flex items-center justify-center flex-1 gap-2 text-[12px] font-bold px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest ${memory.isLiked ? 'text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100' : 'text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 shadow-sm'}`}>
-              <Heart className={`w-4 h-4 ${memory.isLiked ? 'fill-current' : ''}`} />{memory.likes}
-            </button>
-            <button onClick={() => toggleComments(memory.id)} className={`flex items-center justify-center flex-1 gap-2 text-[12px] font-bold px-4 py-2.5 rounded-xl transition-all uppercase tracking-widest ${showComments[memory.id] ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' : 'text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 shadow-sm'}`}>
-              <MessageCircle className="w-4 h-4" />{memory.comments}
+          {Array.isArray(memory.tags) && memory.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mb-5 min-h-[30px]">
+              {memory.tags.slice(0, 3).map((t: string, i: number) => <span key={i} className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500">#{t}</span>)}
+            </div>
+          ) : (
+            <div className="mb-5 min-h-[30px]" />
+          )}
+          
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 gap-3 mt-auto">
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Open to like and comment</span>
+            <button
+              onClick={() => setSelectedMemory(memory)}
+              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors shadow-sm"
+            >
+              View Details
             </button>
           </div>
-          {showComments[memory.id] && renderCommentThread(memory.id)}
         </div>
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-400/0 via-indigo-400 to-indigo-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
     );
   };
@@ -269,34 +307,63 @@ export default function MemoriesPage() {
     <AlumniNavigation>
       <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans px-2 md:px-4">
 
-        {/* Dashboard Header Style */}
-        <div className="bg-gradient-to-r from-[#e7eaff] to-[#eaddff] rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-          <div className="relative z-10 max-w-2xl">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold text-[15px] mb-3">
-              <Sparkles className="w-5 h-5" /> <span>Memories Hub</span>
+        {/* Alumni Hero */}
+        <div className="rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-indigo-100/60 bg-[radial-gradient(circle_at_top_left,_#eef2ff_0,_#f8faff_42%,_#ffffff_100%)]">
+          <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-indigo-200/35 blur-3xl" />
+          <div className="absolute -bottom-10 left-1/3 w-56 h-56 rounded-full bg-cyan-200/30 blur-3xl" />
+          <div className="relative z-10 max-w-3xl">
+            <div className="inline-flex items-center gap-2 text-indigo-700 font-bold text-[12px] mb-4 uppercase tracking-[0.15em] bg-white/70 border border-indigo-100 px-3 py-1.5 rounded-full">
+              <Sparkles className="w-4 h-4" />
+              Alumni Memories Hub
             </div>
-            <h1 className="text-4xl md:text-[44px] font-extrabold text-[#1e293b] mb-4 tracking-tight leading-tight">Memories Wall</h1>
-            <p className="text-slate-600 text-[17px] font-medium opacity-90 mt-2">Relive, share, and celebrate moments that defined your journey.</p>
+            <h1 className="text-4xl md:text-[46px] font-extrabold text-slate-800 mb-4 tracking-tight leading-[1.05]">
+              Preserve Campus Stories,
+              <span className="text-indigo-600"> Professionally</span>
+            </h1>
+            <p className="text-slate-600 text-[16px] md:text-[17px] font-medium opacity-95 mt-2 max-w-2xl">
+              Relive milestones, celebrate achievements, and keep every alumni memory discoverable through one consistent and modern experience.
+            </p>
           </div>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="absolute top-1/2 right-8 md:right-12 -translate-y-1/2 bg-white/50 hover:bg-white text-indigo-500 p-4 rounded-2xl backdrop-blur-sm shadow-[0_8px_20px_rgb(0,0,0,0.03)] border border-white/60 transition-all duration-300 group hidden sm:block"
+            className="absolute top-1/2 right-8 md:right-12 -translate-y-1/2 bg-white/80 hover:bg-white text-indigo-500 p-4 rounded-2xl backdrop-blur-sm shadow-[0_12px_24px_rgb(79,70,229,0.2)] border border-indigo-100/60 transition-all duration-300 group hidden sm:block hover:scale-105"
             title="Share Memory"
           >
             <Camera className="w-8 h-8 text-indigo-500 stroke-[2.5]" />
           </button>
         </div>
+
+        {/* Overview Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Visible Memories</p>
+            <p className="text-2xl font-extrabold text-slate-800">{filteredMemories.length}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Community Likes</p>
+            <p className="text-2xl font-extrabold text-rose-600">{totalLikes}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Active Authors</p>
+            <p className="text-2xl font-extrabold text-emerald-600">{activeAuthors}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Top Category</p>
+            <p className="text-xl font-extrabold text-indigo-600 capitalize">{topCategory}</p>
+            <p className="text-[11px] font-bold text-slate-400 mt-1">{totalComments} comments</p>
+          </div>
+        </div>
         
         {/* Mobile FAB */}
         <button 
           onClick={() => setShowAddForm(!showAddForm)}
-          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30 z-[90] hover:bg-indigo-600 transition-colors"
+          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30 z-[90] hover:bg-indigo-600 transition-colors hover:scale-105"
         >
           <Camera className="w-6 h-6" />
         </button>
 
         {/* Controls */}
-        <div className="bg-white rounded-[32px] p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white flex flex-col gap-6">
+        <div className="bg-white rounded-[32px] p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white flex flex-col gap-6 sticky top-4 z-20">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -327,9 +394,9 @@ export default function MemoriesPage() {
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 p-2 border border-slate-100">
             {TABS.map(t => (
-              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-white text-indigo-600 shadow-sm border border-indigo-100' : 'text-slate-500 hover:bg-white hover:text-slate-800 border border-transparent'}`}>
                 {t.icon}{t.label}
               </button>
             ))}
@@ -421,79 +488,116 @@ export default function MemoriesPage() {
 
       {/* Memory Detail Modal */}
       <Dialog open={!!selectedMemory} onOpenChange={() => setSelectedMemory(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 bg-white rounded-[32px] border border-slate-100 shadow-2xl flex flex-col md:flex-row">
+        <DialogContent className="max-w-[980px] max-h-[92vh] overflow-hidden p-0 bg-white rounded-[32px] border border-slate-100 shadow-2xl flex flex-col md:flex-row">
+          <DialogTitle className="sr-only">
+            {selectedMemory ? `${selectedMemory.title || 'Memory'} details` : 'Memory details'}
+          </DialogTitle>
           {selectedMemory && (
             <>
               {selectedMemory.image ? (
-                <div className="w-full md:w-1/2 h-64 md:h-auto bg-slate-900/5 relative overflow-hidden flex items-center justify-center border-r border-slate-100">
-                  <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-3xl scale-110" style={{ backgroundImage: `url(${selectedMemory.image})`, backgroundSize: 'cover' }}></div>
-                  <img src={selectedMemory.image} alt={selectedMemory.title} className="max-w-full max-h-full object-contain relative z-10 scale-[1.02] drop-shadow-2xl" />
+                <div className="w-full md:w-1/2 h-72 md:h-auto bg-slate-100 relative overflow-hidden flex items-center justify-center border-r border-slate-100">
+                  <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url(${selectedMemory.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                  <img
+                    src={selectedMemory.image}
+                    alt={selectedMemory.title}
+                    onDoubleClick={() => setExpandedImage(selectedMemory.image)}
+                    className="w-full h-full object-contain p-4 relative z-10 drop-shadow-xl transition-transform duration-500 hover:scale-[1.02] cursor-zoom-in"
+                    title="Double-click to view full image"
+                  />
+                  <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/90 text-slate-700 border border-white/40">
+                      <Eye className="w-3.5 h-3.5 text-indigo-500" />
+                      {selectedMemory.views || 0} views
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/90 text-slate-700 border border-white/40 capitalize">
+                      {(selectedMemory.category || 'friendship')}
+                    </span>
+                  </div>
+                  <span className="absolute bottom-4 right-4 z-20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-slate-900/60 text-white border border-white/20 backdrop-blur-sm">
+                    Double-click to expand
+                  </span>
                 </div>
               ) : (
-                <div className="hidden md:flex w-1/3 bg-indigo-50 items-center justify-center border-r border-indigo-100">
+                <div className="hidden md:flex w-[45%] bg-indigo-50 items-center justify-center border-r border-indigo-100">
                   <Camera className="w-20 h-20 text-indigo-200" />
                 </div>
               )}
               
-              <div className="w-full flex-1 flex flex-col max-h-[90vh] overflow-y-auto bg-white">
-                <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-[16px] bg-indigo-50 border border-indigo-100 text-indigo-600 font-black text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
-                    <div>
-                      <p className="font-black text-slate-800 text-[15px]">{selectedMemory.author?.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{selectedMemory.author?.batch}{selectedMemory.author?.department ? ` · ${selectedMemory.author.department}` : ''}</p>
+              <div className="w-full flex-1 flex flex-col max-h-[92vh] overflow-y-auto bg-white">
+                <div className="p-5 sm:p-6 md:p-8 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
+                  <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-indigo-50 border border-indigo-100 text-indigo-600 font-black text-[16px] sm:text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-slate-800 text-[16px] sm:text-[18px] leading-tight break-words">{selectedMemory.author?.name}</p>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1 break-words">{selectedMemory.author?.batch}{selectedMemory.author?.department ? ` · ${selectedMemory.author.department}` : ''}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 shadow-sm">{selectedMemory.category}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-sm">{selectedMemory.type || 'photo'}</span>
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 shadow-sm hidden sm:block">{selectedMemory.category}</span>
                 </div>
                 
-                <div className="p-6 md:p-8 space-y-6 flex-1">
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight leading-tight mb-3">{selectedMemory.title}</h2>
-                    <p className="text-[14px] text-slate-600 leading-relaxed font-medium whitespace-pre-line">{selectedMemory.description}</p>
-                  </div>
+                <div className="p-6 md:p-8 flex flex-col flex-1">
+                  <div className="flex-grow">
+                    <h2 className="text-[30px] md:text-[34px] font-extrabold text-slate-800 tracking-tight leading-[1.1] mb-3 break-words">{selectedMemory.title}</h2>
+                    <p className="text-[15px] text-slate-600 leading-relaxed font-medium whitespace-pre-line mb-6">{selectedMemory.description}</p>
                   
-                  {Array.isArray(selectedMemory.tags) && selectedMemory.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500">#{t}</span>)}
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 rounded-[20px] p-4 md:p-5 border border-slate-100 flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm shrink-0"><Calendar className="w-4 h-4 text-indigo-500" /></div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>
-                        <p className="text-[13px] font-bold text-slate-800 leading-tight">{new Date(selectedMemory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                      </div>
-                    </div>
-                    {selectedMemory.location && (
-                      <div className="bg-slate-50 rounded-[20px] p-4 md:p-5 border border-slate-100 flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm shrink-0"><MapPin className="w-4 h-4 text-emerald-500" /></div>
-                        <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Location</p>
-                          <p className="text-[13px] font-bold text-slate-800 leading-tight">{selectedMemory.location}</p>
-                        </div>
+                    {Array.isArray(selectedMemory.tags) && selectedMemory.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-2 mb-6">
+                        {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors">#{t}</span>)}
                       </div>
                     )}
+                  
+                    
                   </div>
                   
-                  <div className="flex items-center gap-3 pt-6 border-t border-slate-100 mt-auto">
-                    <button onClick={() => { handleLike(selectedMemory.id); setSelectedMemory({ ...selectedMemory, isLiked: !selectedMemory.isLiked, likes: selectedMemory.isLiked ? selectedMemory.likes - 1 : selectedMemory.likes + 1 }); }} className={`flex items-center justify-center flex-1 gap-2.5 px-4 py-3.5 text-[12px] font-bold uppercase tracking-widest rounded-[16px] transition-all ${selectedMemory.isLiked ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shadow-sm shadow-rose-100' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}>
-                      <Heart className={`w-4 h-4 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />{selectedMemory.likes}
-                    </button>
-                    <div className="flex items-center justify-center flex-1 gap-2.5 px-4 py-3.5 text-[12px] font-bold uppercase tracking-widest rounded-[16px] bg-slate-50 text-slate-600 border border-slate-100 shadow-sm">
-                      <MessageCircle className="w-4 h-4 text-indigo-500" />{comments[selectedMemory.id]?.length || selectedMemory.comments}
+                  <div className="mt-auto space-y-4 pt-6 border-t border-slate-100">
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => { handleLike(selectedMemory.id); setSelectedMemory({ ...selectedMemory, isLiked: !selectedMemory.isLiked, likes: selectedMemory.isLiked ? selectedMemory.likes - 1 : selectedMemory.likes + 1 }); }} className={`h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] transition-all ${selectedMemory.isLiked ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shadow-sm shadow-rose-100' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}>
+                        <Heart className={`w-4 h-4 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />
+                        <span>{selectedMemory.likes || 0}</span>
+                      </button>
+                      <button
+                        onClick={() => document.getElementById(`comment-input-${selectedMemory.id}`)?.focus()}
+                        className="h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] bg-slate-50 text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-100 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4 text-indigo-500" />
+                        <span>{comments[selectedMemory.id]?.length || selectedMemory.comments || 0}</span>
+                      </button>
                     </div>
+                    
+                    <div>{renderCommentThread(selectedMemory.id)}</div>
                   </div>
-                  
-                  <div className="pt-2">{renderCommentThread(selectedMemory.id)}</div>
                 </div>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
+          onClick={() => setExpandedImage(null)}
+        >
+          <button
+            onClick={() => setExpandedImage(null)}
+            className="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-colors"
+            aria-label="Close image preview"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <div className="w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+            <img
+              src={expandedImage}
+              alt="Expanded memory"
+              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+              onDoubleClick={() => setExpandedImage(null)}
+            />
+          </div>
+        </div>
+      )}
     </AlumniNavigation>
   );
 }

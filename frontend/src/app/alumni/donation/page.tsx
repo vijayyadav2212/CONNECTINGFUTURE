@@ -88,38 +88,39 @@ export default function DonationPage() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
+          <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-100/60 blur-2xl pointer-events-none" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
               <Heart className="w-6 h-6 text-red-500" />Support Our Mission
             </h1>
-            <p className="text-gray-500 text-sm mt-1">Help us connect alumni with students and create opportunities</p>
+            <p className="text-slate-500 text-sm mt-1 font-medium">Help us connect alumni with students and create opportunities</p>
           </div>
-          <button onClick={() => router.push('/alumni/donation/history')} className="flex items-center gap-2 px-4 py-2.5 bg-white text-sm font-semibold text-gray-700 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
-            <History className="w-4 h-4 text-green-600" />Donation History<ArrowRight className="w-3.5 h-3.5 text-gray-400" />
+          <button onClick={() => router.push('/alumni/donation/history')} className="relative z-10 flex items-center gap-2 px-4 py-2.5 bg-white text-sm font-semibold text-slate-700 rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
+            <History className="w-4 h-4 text-indigo-600" />Donation History<ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
 
         {/* Personal Impact Stats */}
         {user && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 text-sm">Your Donation Impact, {user.name?.split(' ')[0] || 'Friend'}</h3>
-              <button onClick={() => router.push('/alumni/donation/history')} className="text-xs text-green-600 font-semibold hover:underline">View All →</button>
+              <h3 className="font-bold text-slate-900 text-sm">Your Donation Impact, {user.name?.split(' ')[0] || 'Friend'}</h3>
+              <button onClick={() => router.push('/alumni/donation/history')} className="text-xs text-indigo-600 font-semibold hover:underline">View All →</button>
             </div>
             {loadingStats ? (
-              <div className="flex items-center gap-2 py-4"><div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" /><span className="text-sm text-gray-400">Loading…</span></div>
+              <div className="flex items-center gap-2 py-4"><div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /><span className="text-sm text-slate-400">Loading…</span></div>
             ) : (
               <>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
-                    { label: 'Total Donated', value: `₹${userDonations.totalAmount.toLocaleString('en-IN')}`, icon: <Gift className="w-4 h-4 text-green-600" />, bg: 'bg-green-50', color: 'text-green-600' },
+                    { label: 'Total Donated', value: `₹${userDonations.totalAmount.toLocaleString('en-IN')}`, icon: <Gift className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-50', color: 'text-emerald-600' },
                     { label: 'Total Donations', value: String(userDonations.totalDonations), icon: <Award className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-50', color: 'text-blue-600' },
                     { label: 'Last Donation', value: userDonations.lastDonation ? new Date(userDonations.lastDonation).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'None yet', icon: <History className="w-4 h-4 text-purple-600" />, bg: 'bg-purple-50', color: 'text-purple-600' },
                   ].map((s, i) => (
-                    <div key={i} className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
+                    <div key={i} className="rounded-xl border border-slate-100 p-4 flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center shrink-0`}>{s.icon}</div>
-                      <div><p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{s.label}</p><p className={`text-sm font-bold ${s.color}`}>{s.value}</p></div>
+                      <div><p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{s.label}</p><p className={`text-sm font-bold ${s.color}`}>{s.value}</p></div>
                     </div>
                   ))}
                 </div>
@@ -134,16 +135,16 @@ export default function DonationPage() {
         )}
 
         {/* Community Impact */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { value: '500+', label: 'Students Helped', icon: <Users className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-50' },
             { value: '200+', label: 'Jobs Created', icon: <TrendingUp className="w-4 h-4 text-green-600" />, bg: 'bg-green-50' },
             { value: '50+', label: 'Programs Launched', icon: <Globe className="w-4 h-4 text-purple-600" />, bg: 'bg-purple-50' },
           ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
+            <div key={i} className="bg-white rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 text-center">
               <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center mx-auto mb-2`}>{s.icon}</div>
-              <p className="text-lg font-black text-gray-900">{s.value}</p>
-              <p className="text-xs text-gray-500">{s.label}</p>
+              <p className="text-lg font-black text-slate-900">{s.value}</p>
+              <p className="text-xs text-slate-500">{s.label}</p>
             </div>
           ))}
         </div>
@@ -153,45 +154,45 @@ export default function DonationPage() {
 
           {/* Left: Tier + Custom */}
           <div className="lg:col-span-3 space-y-4">
-            <h3 className="font-bold text-gray-900 text-sm">Choose Your Impact</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Choose Your Impact</h3>
 
             {/* Quick Amounts */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Custom Amount</p>
+            <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Custom Amount</p>
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {QUICK_AMOUNTS.map(amt => (
-                  <button key={amt} onClick={() => { setCustomAmount(amt); setSelectedTier(null); }} className={`py-2 text-sm font-bold rounded-xl border transition-all ${customAmount === amt && !selectedTier ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-200 hover:border-green-300 hover:text-green-700'}`}>₹{amt}</button>
+                  <button key={amt} onClick={() => { setCustomAmount(amt); setSelectedTier(null); }} className={`py-2 text-sm font-bold rounded-xl border transition-all ${customAmount === amt && !selectedTier ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-700'}`}>₹{amt}</button>
                 ))}
               </div>
               <div className="flex gap-2">
-                <input type="number" placeholder="Enter custom amount" value={customAmount || ''} onChange={e => { setCustomAmount(Number(e.target.value)); setSelectedTier(null); }} className="flex-1 px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400" />
-                <button onClick={() => setCustomAmount(0)} className="px-4 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors">Clear</button>
+                <input type="number" placeholder="Enter custom amount" value={customAmount || ''} onChange={e => { setCustomAmount(Number(e.target.value)); setSelectedTier(null); }} className="flex-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
+                <button onClick={() => setCustomAmount(0)} className="px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-colors">Clear</button>
               </div>
             </div>
 
             {/* Donation Tiers */}
             <div className="space-y-3">
               {donationTiers.map(tier => (
-                <div key={tier.id} onClick={() => { setSelectedTier(tier); setCustomAmount(0); }} className={`bg-white rounded-2xl border shadow-sm p-4 cursor-pointer transition-all hover:shadow-md ${selectedTier?.id === tier.id ? 'border-green-400 ring-2 ring-green-200' : 'border-gray-100 hover:border-green-200'} relative`}>
+                <div key={tier.id} onClick={() => { setSelectedTier(tier); setCustomAmount(0); }} className={`bg-white rounded-[24px] border shadow-[0_8px_30px_rgb(0,0,0,0.03)] p-4 cursor-pointer transition-all hover:shadow-md ${selectedTier?.id === tier.id ? 'border-indigo-400 ring-2 ring-indigo-200' : 'border-slate-100 hover:border-indigo-200'} relative`}>
                   {tier.popular && <span className="absolute -top-2.5 right-4 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-white">POPULAR</span>}
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tier.accentColor === 'orange' ? 'bg-orange-50' : tier.accentColor === 'gray' ? 'bg-gray-100' : tier.accentColor === 'amber' ? 'bg-amber-50' : 'bg-purple-50'}`}>{tier.icon}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="font-bold text-gray-900 text-sm">{tier.name}</p>
-                        <p className="font-black text-gray-900 text-base">₹{tier.amount.toLocaleString()}</p>
+                        <p className="font-bold text-slate-900 text-sm">{tier.name}</p>
+                        <p className="font-black text-slate-900 text-base">₹{tier.amount.toLocaleString()}</p>
                       </div>
-                      <p className="text-xs text-gray-400">{tier.description}</p>
+                      <p className="text-xs text-slate-400">{tier.description}</p>
                     </div>
-                    {selectedTier?.id === tier.id && <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />}
+                    {selectedTier?.id === tier.id && <CheckCircle className="w-5 h-5 text-indigo-600 shrink-0" />}
                   </div>
                   {selectedTier?.id === tier.id && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Benefits included</p>
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Benefits included</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {tier.benefits.map((b, i) => (
-                          <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />{b}
+                          <div key={i} className="flex items-center gap-1.5 text-xs text-slate-600">
+                            <CheckCircle className="w-3.5 h-3.5 text-indigo-500 shrink-0" />{b}
                           </div>
                         ))}
                       </div>
@@ -204,14 +205,14 @@ export default function DonationPage() {
 
           {/* Right: Payment */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="font-bold text-gray-900 text-sm">Complete Your Donation</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Complete Your Donation</h3>
 
             {paymentAmount > 0 ? (
               <>
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-                  <p className="text-xs text-green-600 font-semibold mb-1">You're donating</p>
-                  <p className="text-3xl font-black text-green-700">₹{paymentAmount.toLocaleString()}</p>
-                  <p className="text-xs text-green-600 mt-1">{getPaymentDescription()}</p>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-[24px] p-4 text-center">
+                  <p className="text-xs text-indigo-600 font-semibold mb-1">You're donating</p>
+                  <p className="text-3xl font-black text-indigo-700">₹{paymentAmount.toLocaleString()}</p>
+                  <p className="text-xs text-indigo-600 mt-1">{getPaymentDescription()}</p>
                 </div>
                 <RazorpayPayment
                   paymentDetails={{
@@ -228,25 +229,25 @@ export default function DonationPage() {
                   onSuccess={handlePaymentSuccess}
                   onFailure={handlePaymentFailure}
                 />
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
+                <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 space-y-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <p className="text-xs font-bold text-gray-900">Secure Payment via Razorpay</p>
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    <p className="text-xs font-bold text-slate-900">Secure Payment via Razorpay</p>
                   </div>
                   {['256-bit SSL encryption', 'PCI DSS compliant', 'Instant payment verification'].map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
-                      <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />{s}
+                    <div key={i} className="flex items-center gap-2 text-xs text-slate-500">
+                      <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />{s}
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                  <Heart className="w-6 h-6 text-gray-300" />
+              <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                  <Heart className="w-6 h-6 text-slate-300" />
                 </div>
-                <p className="font-bold text-gray-900 text-sm mb-1">Choose your donation</p>
-                <p className="text-xs text-gray-400">Select a tier or enter a custom amount to proceed</p>
+                <p className="font-bold text-slate-900 text-sm mb-1">Choose your donation</p>
+                <p className="text-xs text-slate-400">Select a tier or enter a custom amount to proceed</p>
               </div>
             )}
 
