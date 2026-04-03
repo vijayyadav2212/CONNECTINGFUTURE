@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400";
-const iconInputCls = (icon: boolean) => `w-full ${icon ? 'pl-9' : 'px-3'} pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400`;
+const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400";
+const iconInputCls = (icon: boolean) => `w-full ${icon ? 'pl-9' : 'px-3'} pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400`;
 const labelCls = "block text-xs font-bold text-gray-600 mb-1.5";
 
 const InputField = ({ label, value, onChange, type = 'text', placeholder = '', icon, readOnly }: any) => (
@@ -43,7 +43,7 @@ const Toggle = ({ checked, onChange, label, description, setDirty }: any) => (
       {description && <p className="text-[11px] text-gray-500 mt-0.5">{description}</p>}
     </div>
     <button type="button" onClick={() => { onChange(!checked); setDirty?.(); }}
-      className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${checked ? 'bg-green-500' : 'bg-gray-300'}`}>
+      className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${checked ? 'bg-red-600' : 'bg-gray-300'}`}>
       <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
   </div>
@@ -92,15 +92,19 @@ export default function SettingsPage() {
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-purple-100 gap-5">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Settings className="w-6 h-6 text-green-600" />Settings</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Manage your platform configuration and preferences</p>
+            <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
+              <Settings className="w-[18px] h-[18px]" />
+              <span className="text-sm tracking-wide">Admin Actions</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Settings</h1>
+            <p className="text-gray-600 text-[15px] sm:text-base">Manage your platform configuration and preferences</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleReset} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors"><RefreshCw className="w-3.5 h-3.5" />Reset</button>
             <button onClick={handleSave} disabled={!unsaved}
-              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl transition-colors shadow-sm ${unsaved ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl transition-colors shadow-sm ${unsaved ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
               <Save className="w-3.5 h-3.5" />Save Changes
             </button>
           </div>
@@ -108,7 +112,7 @@ export default function SettingsPage() {
 
         {/* Alerts */}
         {saved && (
-          <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl text-sm font-semibold text-green-700">
+          <div className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-xl text-sm font-semibold text-red-700">
             <CheckCircle className="w-4 h-4 shrink-0" />Settings saved successfully!
           </div>
         )}
@@ -125,9 +129,9 @@ export default function SettingsPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 sticky top-6 h-fit">
             {tabs.map(t => (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl mb-0.5 transition-colors text-left ${activeTab===t.id ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}>
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl mb-0.5 transition-colors text-left ${activeTab===t.id ? 'bg-purple-100 text-red-700 border border-purple-200' : 'text-gray-700 hover:bg-gray-50'}`}>
                 <div className="flex items-center gap-2.5">{t.icon}<span className="text-xs font-bold">{t.label}</span></div>
-                {t.badge && <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab===t.id ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'}`}>{t.badge}</span>}
+                {t.badge && <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab===t.id ? 'bg-white/20 text-white' : 'bg-purple-100 text-red-600'}`}>{t.badge}</span>}
               </button>
             ))}
           </div>
@@ -138,7 +142,7 @@ export default function SettingsPage() {
             {/* ── General ── */}
             {activeTab === 'general' && (
               <div className="space-y-4">
-                <SectionHead icon={<Settings className="w-4 h-4 text-green-600" />} title="General Settings" desc="Configure basic platform information" iconBg="bg-green-50" />
+                <SectionHead icon={<Settings className="w-4 h-4 text-red-500" />} title="General Settings" desc="Configure basic platform information" iconBg="bg-purple-50" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField label="Site Name" value={gen.siteName} onChange={(v:string) => { setGen(g=>({...g,siteName:v})); dirty(); }} placeholder="Site name" icon={<Globe className="w-4 h-4" />} />
                   <InputField label="Admin Email" value={gen.adminEmail} onChange={(v:string) => { setGen(g=>({...g,adminEmail:v})); dirty(); }} type="email" placeholder="admin@example.com" icon={<Mail className="w-4 h-4" />} />
@@ -220,7 +224,7 @@ export default function SettingsPage() {
                     <label className={labelCls}>SMTP Password</label>
                     <div className="relative">
                       <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input type={showPassword?'text':'password'} value={email.smtpPassword} onChange={e=>{setEmail(em=>({...em,smtpPassword:e.target.value}));dirty();}} placeholder="••••••••" className="w-full pl-9 pr-9 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400" />
+                      <input type={showPassword?'text':'password'} value={email.smtpPassword} onChange={e=>{setEmail(em=>({...em,smtpPassword:e.target.value}));dirty();}} placeholder="••••••••" className="w-full pl-9 pr-9 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400" />
                       <button type="button" onClick={()=>setShowPassword(p=>!p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                     </div>
                   </div>
@@ -228,14 +232,14 @@ export default function SettingsPage() {
                   <InputField label="From Email" value={email.fromEmail} onChange={(v:string)=>{setEmail(e=>({...e,fromEmail:v}));dirty();}} type="email" placeholder="noreply@example.com" icon={<Mail className="w-4 h-4" />} />
                   <InputField label="From Name"  value={email.fromName}  onChange={(v:string)=>{setEmail(e=>({...e,fromName:v}));dirty();}}  placeholder="ConnectingFuture"             icon={<FileText className="w-4 h-4" />} />
                 </div>
-                <div className="pt-3 border-t border-gray-100"><button className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 transition-colors"><Send className="w-4 h-4" />Send Test Email</button></div>
+                <div className="pt-3 border-t border-gray-100"><button className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-purple-50 border border-purple-200 text-red-700 hover:bg-purple-100 transition-colors"><Send className="w-4 h-4" />Send Test Email</button></div>
               </div>
             )}
 
             {/* ── Appearance ── */}
             {activeTab === 'appearance' && (
               <div className="space-y-4">
-                <SectionHead icon={<Palette className="w-4 h-4 text-pink-600" />} title="Appearance Settings" desc="Customize the look and feel of your platform" iconBg="bg-pink-50" />
+                <SectionHead icon={<Palette className="w-4 h-4 text-purple-600" />} title="Appearance Settings" desc="Customize the look and feel of your platform" iconBg="bg-purple-50" />
                 <div className="space-y-2">
                   <Toggle checked={appear.darkMode}          onChange={(v:boolean)=>setAppear(a=>({...a,darkMode:v}))}          label="Dark Mode"         description="Enable dark theme across the platform"          setDirty={dirty} />
                   <Toggle checked={appear.compactMode}       onChange={(v:boolean)=>setAppear(a=>({...a,compactMode:v}))}       label="Compact Mode"      description="Reduce spacing for more content"                setDirty={dirty} />
@@ -252,7 +256,7 @@ export default function SettingsPage() {
                   ))}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-                  {[['Platform Logo','CF','bg-green-600'],['Favicon','?','bg-gray-100 text-gray-400']].map(([l,t,bg]) => (
+                  {[['Platform Logo','CF','bg-red-600'],['Favicon','?','bg-gray-100 text-gray-400']].map(([l,t,bg]) => (
                     <div key={l}><label className={labelCls}>{l}</label>
                       <div className="flex items-center gap-3">
                         <div className={`w-14 h-14 ${bg} rounded-xl flex items-center justify-center text-white text-sm font-black shrink-0`}>{t}</div>
@@ -267,16 +271,16 @@ export default function SettingsPage() {
             {/* ── Database ── */}
             {activeTab === 'database' && (
               <div className="space-y-4">
-                <SectionHead icon={<Database className="w-4 h-4 text-green-600" />} title="Database Management" desc="Backup and maintain your database" iconBg="bg-green-50" />
+                <SectionHead icon={<Database className="w-4 h-4 text-red-500" />} title="Database Management" desc="Backup and maintain your database" iconBg="bg-purple-50" />
                 <div className="grid grid-cols-3 gap-3">
                   {[{icon:<Database className="w-5 h-5 text-blue-600"/>,label:'DB Size',val:'2.4 GB',bg:'bg-blue-50 border-blue-100 text-blue-900'},
-                    {icon:<CheckCircle className="w-5 h-5 text-green-600"/>,label:'Last Backup',val:'2 hrs ago',bg:'bg-green-50 border-green-100 text-green-900'},
+                    {icon:<CheckCircle className="w-5 h-5 text-red-600"/>,label:'Last Backup',val:'2 hrs ago',bg:'bg-purple-50 border-purple-100 text-red-900'},
                     {icon:<Zap className="w-5 h-5 text-purple-600"/>,label:'Total Records',val:'24,891',bg:'bg-purple-50 border-purple-100 text-purple-900'}].map(s=>(
                     <div key={s.label} className={`p-4 rounded-xl border-2 ${s.bg}`}>{s.icon}<p className="text-[10px] font-bold text-gray-600 mt-2">{s.label}</p><p className="text-xl font-black mt-0.5">{s.val}</p></div>
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <button className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"><Download className="w-4 h-4" />Backup Database</button>
+                  <button className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"><Download className="w-4 h-4" />Backup Database</button>
                   <button className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"><Upload className="w-4 h-4" />Restore Backup</button>
                   <button className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors"><RefreshCw className="w-4 h-4" />Optimize DB</button>
                   <button className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" />Clear Cache</button>
@@ -306,7 +310,7 @@ export default function SettingsPage() {
                   <div><label className={labelCls}>API Key</label>
                     <div className="flex items-center gap-2">
                       <input type="password" value="sk_live_51234567890abcdefghijk" readOnly className={`${inputCls} font-mono flex-1`} />
-                      <button className="px-4 py-2.5 text-sm font-bold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors shrink-0">Regenerate</button>
+                       <button className="px-4 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors shrink-0">Regenerate</button>
                     </div>
                   </div>
                   <div><label className={labelCls}>Custom CSS</label><textarea placeholder="/* Add your custom CSS here */" rows={5} className={`${inputCls} resize-none font-mono`} /></div>

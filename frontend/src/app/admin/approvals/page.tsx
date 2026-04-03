@@ -5,7 +5,7 @@ import AdminNavigation from '../AdminNavigation/AdminNavigation';
 import {
   UserCheck, UserX, Search, Filter, CheckCircle,
   XCircle, Clock, Eye, Mail, Phone, Linkedin,
-  GraduationCap, Building, MapPin, Calendar
+  GraduationCap, Building, MapPin, Calendar, Sparkles
 } from 'lucide-react';
 
 interface AlumniApproval {
@@ -31,7 +31,7 @@ type FilterType = 'all' | 'pending' | 'approved' | 'rejected';
 const statusBadge = (status: string) => {
   switch (status) {
     case 'pending':  return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200"><Clock className="w-3 h-3" />Pending</span>;
-    case 'approved': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" />Approved</span>;
+    case 'approved': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-red-700 border border-purple-200"><CheckCircle className="w-3 h-3" />Approved</span>;
     case 'rejected': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200"><XCircle className="w-3 h-3" />Rejected</span>;
     default: return null;
   }
@@ -120,7 +120,7 @@ export default function AlumniApprovalsPage() {
   const filterBtns: { key: FilterType; label: string; activeColor: string }[] = [
     { key: 'all',      label: `All (${counts.all})`,           activeColor: 'bg-gray-700 text-white' },
     { key: 'pending',  label: `Pending (${counts.pending})`,   activeColor: 'bg-amber-500 text-white' },
-    { key: 'approved', label: `Approved (${counts.approved})`, activeColor: 'bg-green-600 text-white' },
+    { key: 'approved', label: `Approved (${counts.approved})`, activeColor: 'bg-red-100 text-red-700 border border-red-200' },
     { key: 'rejected', label: `Rejected (${counts.rejected})`, activeColor: 'bg-red-500 text-white' },
   ];
 
@@ -129,19 +129,23 @@ export default function AlumniApprovalsPage() {
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-purple-100 gap-5">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><UserCheck className="w-6 h-6 text-green-600" />Alumni Approvals</h1>
-            <p className="text-gray-500 text-sm mt-1">Review and approve alumni registration requests</p>
+            <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
+              <Sparkles className="w-[18px] h-[18px]" />
+              <span className="text-sm tracking-wide">Admin Actions</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2 flex items-center gap-2">Alumni Approvals</h1>
+            <p className="text-gray-600 text-[15px] sm:text-base">Review and approve alumni registration requests</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 shrink-0">
             {[
-              { label: 'Pending', value: counts.pending, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
-              { label: 'Approved', value: counts.approved, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+              { label: 'Pending', value: counts.pending, color: 'text-amber-700', bg: 'bg-white/60 border-white/50 shadow-sm' },
+              { label: 'Approved', value: counts.approved, color: 'text-red-600', bg: 'bg-white/60 border-white/50 shadow-sm' },
             ].map(s => (
-              <div key={s.label} className={`px-4 py-2 rounded-xl border ${s.bg} text-center`}>
-                <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
-                <p className={`text-[10px] font-bold uppercase tracking-wide ${s.color} opacity-70`}>{s.label}</p>
+              <div key={s.label} className={`px-5 py-3 rounded-2xl border ${s.bg} text-center min-w-[110px]`}>
+                <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+                <p className={`text-[11px] font-bold uppercase tracking-wider ${s.color} opacity-70 mt-0.5`}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -151,7 +155,7 @@ export default function AlumniApprovalsPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Search by name, email or major…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400" />
+            <input type="text" placeholder="Search by name, email or major…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400" />
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <Filter className="w-4 h-4 text-gray-400 shrink-0" />
@@ -164,7 +168,7 @@ export default function AlumniApprovalsPage() {
         {/* List */}
         {loading ? (
           <div className="flex items-center justify-center py-14 bg-white rounded-2xl border border-gray-100">
-            <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-b-2 border-green-500 mr-3" />
+            <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-b-2 border-red-500 mr-3" />
             <p className="text-sm text-gray-400">Loading requests…</p>
           </div>
         ) : filteredAlumni.length === 0 ? (
@@ -179,7 +183,7 @@ export default function AlumniApprovalsPage() {
               <div key={alumni.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 text-sm font-black flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 text-red-700 text-sm font-black flex items-center justify-center shrink-0">
                     {alumni.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
 
@@ -202,7 +206,7 @@ export default function AlumniApprovalsPage() {
                     {alumni.bio && <p className="text-xs text-gray-500 line-clamp-2 mb-2">{alumni.bio}</p>}
                     {alumni.skills && alumni.skills.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-2">
-                        {alumni.skills.slice(0, 6).map((sk, i) => <span key={i} className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full text-[10px] font-semibold">{sk}</span>)}
+                        {alumni.skills.slice(0, 6).map((sk, i) => <span key={i} className="px-2 py-0.5 bg-purple-50 text-red-700 border border-purple-200 rounded-full text-[10px] font-semibold">{sk}</span>)}
                       </div>
                     )}
                     <p className="text-[10px] text-gray-400">Submitted {alumni.submittedAt ? new Date(alumni.submittedAt).toLocaleDateString() : '—'}</p>
@@ -214,7 +218,7 @@ export default function AlumniApprovalsPage() {
                       <button onClick={() => setSelectedAlumni(alumni)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
                         <Eye className="w-3 h-3" />View
                       </button>
-                      <button onClick={() => handleApprove(alumni.auth0Id ?? alumni.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors">
+                      <button onClick={() => handleApprove(alumni.auth0Id ?? alumni.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors">
                         <CheckCircle className="w-3 h-3" />Approve
                       </button>
                       <button onClick={() => { setSelectedAlumni(alumni); setShowRejectionModal(true); }} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-colors">
@@ -229,6 +233,97 @@ export default function AlumniApprovalsPage() {
         )}
       </div>
 
+      {/* View Modal */}
+      {selectedAlumni && !showRejectionModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar p-6 sm:p-8">
+            <div className="flex items-start justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-purple-100 text-red-700 text-2xl font-black flex items-center justify-center shrink-0">
+                  {selectedAlumni.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 leading-tight flex items-center gap-2">
+                    {selectedAlumni.name}
+                    {statusBadge(selectedAlumni.status)}
+                  </h3>
+                  <p className="text-gray-500 text-sm mt-1">{selectedAlumni.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedAlumni(null)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors shrink-0">
+                <XCircle className="w-7 h-7" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
+              <div className="space-y-6">
+                <div>
+                   <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><GraduationCap className="w-4 h-4" />Education</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedAlumni.major}</p>
+                  <p className="text-sm text-gray-600">Class of {selectedAlumni.graduationYear}</p>
+                </div>
+                <div>
+                   <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Building className="w-4 h-4" />Current Role</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedAlumni.jobTitle || 'Not specified'}</p>
+                  <p className="text-sm text-gray-600">{selectedAlumni.company || ''}</p>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div>
+                   <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><MapPin className="w-4 h-4" />Contact</p>
+                  <div className="space-y-2.5">
+                    {selectedAlumni.phone && <p className="text-sm text-gray-900 flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400 shrink-0" /> {selectedAlumni.phone}</p>}
+                    {selectedAlumni.location && <p className="text-sm text-gray-900 flex items-center gap-2"><MapPin className="w-4 h-4 text-gray-400 shrink-0" /> {selectedAlumni.location}</p>}
+                  </div>
+                </div>
+                {selectedAlumni.linkedinUrl && (
+                  <div>
+                     <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Linkedin className="w-4 h-4" />Social</p>
+                    <a href={selectedAlumni.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5">
+                      LinkedIn Profile
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {selectedAlumni.bio && (
+              <div className="mb-8">
+                <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2">About / Bio</p>
+                <div className="bg-purple-50/50 p-4 rounded-2xl text-sm text-gray-700 leading-relaxed border border-purple-100/50">
+                  {selectedAlumni.bio}
+                </div>
+              </div>
+            )}
+
+            {selectedAlumni.skills && selectedAlumni.skills.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2">Skills &amp; Tags</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAlumni.skills.map((sk: string, i: number) => (
+                    <span key={i} className="px-3 py-1 bg-purple-50 text-red-700 border border-purple-200 rounded-full text-xs font-semibold">{sk}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-gray-100 mt-8">
+              <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">Submitted {new Date(selectedAlumni.submittedAt).toLocaleDateString()}</span>
+              {selectedAlumni.status === 'pending' && (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button onClick={() => setShowRejectionModal(true)} className="flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-colors">
+                    Reject
+                  </button>
+                  <button onClick={() => { handleApprove(selectedAlumni.auth0Id ?? selectedAlumni.id); }} className="flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 shadow-sm transition-all">
+                    Approve
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rejection Modal */}
       {showRejectionModal && selectedAlumni && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -238,7 +333,7 @@ export default function AlumniApprovalsPage() {
             <textarea value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Enter rejection reason…" rows={4} className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 resize-none" />
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => { setShowRejectionModal(false); setRejectionReason(''); }} className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={() => handleReject(selectedAlumni.auth0Id ?? selectedAlumni.id, rejectionReason)} disabled={!rejectionReason.trim()} className="px-4 py-2 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Reject Application</button>
+              <button onClick={() => handleReject(selectedAlumni.auth0Id ?? selectedAlumni.id, rejectionReason)} disabled={!rejectionReason.trim()} className="px-4 py-2 text-sm font-semibold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Reject Application</button>
             </div>
           </div>
         </div>

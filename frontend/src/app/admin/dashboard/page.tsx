@@ -7,7 +7,7 @@ import AdminNavigation from '../AdminNavigation/AdminNavigation';
 import {
   Users, UserCheck, UserX, Briefcase, Calendar,
   TrendingUp, AlertCircle, CheckCircle, Clock,
-  Eye, Activity, Send, RefreshCw
+  Eye, Activity, Send, RefreshCw, Sparkles
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useAuth0Token } from '../../../hooks/useAuth0Token';
@@ -162,14 +162,17 @@ export default function AdminDashboard() {
         <div className="space-y-5">
 
           {/* Welcome Banner */}
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-5 flex items-center justify-between">
+          <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex items-center justify-between border border-purple-100">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Welcome back, Admin!</h1>
-              <p className="text-gray-500 text-sm mt-1">Here's what's happening with your platform today.</p>
+              <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
+                <Sparkles className="w-[18px] h-[18px]" />
+                <span className="text-sm tracking-wide">Welcome Back</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Hello, {user?.name || 'Admin'}!</h1>
+              <p className="text-gray-600 text-[15px] sm:text-base">Your community is growing. Ready to make an impact today?</p>
             </div>
-            <button onClick={() => fetchDashboardData(true)} disabled={refreshing} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors shadow-sm">
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing…' : 'Refresh'}
+            <button onClick={() => fetchDashboardData(true)} disabled={refreshing} className="flex items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/60 border border-white text-gray-700 hover:bg-white disabled:opacity-60 transition-all shadow-sm self-start sm:self-center shrink-0 ml-4">
+              <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
@@ -202,7 +205,7 @@ export default function AdminDashboard() {
                 <h3 className="font-bold text-gray-900 text-sm">Pending Approvals</h3>
                 <p className="text-xs text-gray-400 mt-0.5">Items requiring your review</p>
               </div>
-              <Link href="/admin/approvals/alumni" className="text-xs font-bold text-green-600 hover:underline">View All →</Link>
+              <Link href="/admin/approvals/alumni" className="text-xs font-bold text-red-600 hover:underline">View All →</Link>
             </div>
             {pendingApprovals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -225,7 +228,7 @@ export default function AdminDashboard() {
                         <button onClick={() => router.push(typeRoute(a.type))} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
                           <Eye className="w-3 h-3" />Review
                         </button>
-                        <button onClick={() => quickApprove(a)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors">
+                        <button onClick={() => quickApprove(a)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors">
                           <CheckCircle className="w-3 h-3" />Approve
                         </button>
                         <button onClick={() => quickReject(a)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-colors">

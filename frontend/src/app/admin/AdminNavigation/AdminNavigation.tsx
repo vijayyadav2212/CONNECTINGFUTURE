@@ -3,7 +3,11 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Shield, LayoutDashboard, UserCheck, Briefcase, Calendar, Users, Bell, Settings, FileText, BarChart3, CheckCircle, XCircle } from 'lucide-react';
+import { 
+  Shield, LayoutDashboard, UserCheck, Briefcase, 
+  Calendar, Users, Bell, Settings, FileText, 
+  ChevronRight 
+} from 'lucide-react';
 
 // Interfaces
 interface NavItem {
@@ -19,9 +23,7 @@ interface AdminNavigationProps {
 }
 
 export default function AdminNavigation({ children }: AdminNavigationProps) {
-  const router = useRouter();
   const pathname = usePathname();
-  const [pendingApprovals, setPendingApprovals] = useState<number>(12); // Mock data
 
   const navigationItems: NavItem[] = [
     {
@@ -57,18 +59,6 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
       icon: <FileText className="w-5 h-5" />,
       route: "/admin/mentorship-payments"
     },
-    // { 
-    //   id: "users", 
-    //   label: "User Management", 
-    //   icon: <Users className="w-5 h-5" />, 
-    //   route: "/admin/users" 
-    // },
-    // { 
-    //   id: "reports", 
-    //   label: "Reports & Analytics", 
-    //   icon: <BarChart3 className="w-5 h-5" />, 
-    //   route: "/admin/reports" 
-    // },
     {
       id: "notifications",
       label: "Notifications",
@@ -83,126 +73,106 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
     },
   ];
 
-  const isActiveRoute = (route: string): any => {
-    return pathname === route || pathname?.startsWith(route + '/');
+  const isActive = (route: string): boolean => {
+    return !!(pathname === route || pathname?.startsWith(route + '/'));
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 w-64 h-screen bg-white shadow-xl border-r border-gray-200">
-        {/* Scrollable Container */}
-        <div className="h-full overflow-y-auto">
-          {/* Logo & Branding */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-                <p className="text-sm text-gray-500">VPPCOE & VA</p>
-              </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 z-40 w-60 h-screen bg-white border-r border-gray-100 shadow-sm flex flex-col">
+        {/* Logo */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shadow-sm border border-emerald-200">
+              <Shield className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-gray-900 leading-none">Admin Panel</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">VPPCOE &amp; VA</p>
             </div>
           </div>
+        </div>
 
-          {/* Admin Profile Summary */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-lg">AD</span>
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Admin User</h3>
-                <p className="text-sm text-gray-500">System Administrator</p>
-                <div className="flex items-center mt-1">
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full border border-purple-200 font-medium">Super Admin</span>
-                </div>
-              </div>
+        {/* Admin Profile */}
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 text-sm font-black flex items-center justify-center">AD</div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-gray-900 leading-none">Admin User</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">System Administrator</p>
+              <span className="inline-block mt-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">Super Admin</span>
             </div>
           </div>
+        </div>
 
-          {/* Quick Stats */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="grid grid-cols-2 gap-2">
-              {/* <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-3 rounded-lg border border-orange-200">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-orange-600" />
-                  <span className="text-xs text-gray-600 font-medium">Pending</span>
-                </div>
-                <p className="text-xl font-bold text-gray-900 mt-1">{pendingApprovals}</p>
-              </div> */}
-              {/* <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
-                <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs text-gray-600 font-medium">Users</span>
-                </div>
-                <p className="text-xl font-bold text-gray-900 mt-1">1,234</p>
-              </div> */}
-            </div>
-          </div>
-
-          {/* Navigation Menu */}
-          <nav className="p-4">
-            {navigationItems.map((item: NavItem) => (
-              <Link
-                key={item.id}
-                href={item.route}
-                className={`w-full flex items-center justify-between px-4 py-3 mb-1 rounded-lg text-left transition-all duration-200 group ${isActiveRoute(item.route)
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20'
-                  : 'text-gray-700 hover:bg-gray-100'
+        {/* Nav Items */}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto">
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 mb-2">Navigation</p>
+          <div className="space-y-0.5">
+            {navigationItems.map(item => {
+              const active = isActive(item.route);
+              return (
+                <Link
+                  key={item.id}
+                  href={item.route}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                    active
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`${isActiveRoute(item.route) ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                >
+                  <span className={active ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'}>
                     {item.icon}
-                  </div>
-                  <span className="font-medium text-sm">{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold shadow-lg">
-                    {item.badge}
                   </span>
-                )}
-              </Link>
-            ))}
-          </nav>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge ? (
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600 text-white">
+                      {item.badge}
+                    </span>
+                  ) : active ? (
+                    <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
 
-          {/* System Status */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-green-700">Online</span>
-              </div>
-              <span className="text-xs text-gray-500">System Status</span>
+        {/* System Status */}
+        <div className="px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-xs font-bold text-emerald-700">All Systems Online</span>
             </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="ml-64 min-h-screen">
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Admin Dashboard</h2>
-              <p className="text-sm text-gray-500 mt-1">Manage and monitor your platform</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-200">
-                Quick Actions
-              </button>
+      <main className="ml-60 flex-1 min-h-screen flex flex-col">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-7 py-3.5 flex items-center justify-between shadow-sm">
+          <div>
+            <h2 className="text-lg font-black text-gray-900">Admin Dashboard</h2>
+            <p className="text-xs text-gray-400">Manage and monitor your platform</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="relative w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
+            </button>
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black flex items-center justify-center">AD</div>
+              <p className="text-xs font-bold text-emerald-700">Admin</p>
             </div>
           </div>
-        </div>
+        </header>
+
         <div className="p-8">
           {children}
         </div>

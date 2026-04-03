@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AdminNavigation from '../AdminNavigation/AdminNavigation';
 import {
   Calendar, Search, Filter, CheckCircle, XCircle,
-  Clock, Plus, Trash2, MapPin, Users, Video, ExternalLink
+  Clock, Plus, Trash2, MapPin, Users, Video, ExternalLink, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -32,7 +32,7 @@ const getApprovalStatus = (status: string): FilterType => {
 const statusBadge = (status: FilterType) => {
   switch (status) {
     case 'pending':  return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200"><Clock className="w-3 h-3" />Pending</span>;
-    case 'approved': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" />Approved</span>;
+    case 'approved': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-red-700 border border-purple-200"><CheckCircle className="w-3 h-3" />Approved</span>;
     case 'rejected': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200"><XCircle className="w-3 h-3" />Rejected</span>;
   }
 };
@@ -40,9 +40,9 @@ const statusBadge = (status: FilterType) => {
 const eventTypeStyle: Record<string, string> = {
   webinar:    'bg-blue-50 text-blue-700 border-blue-200',
   workshop:   'bg-purple-50 text-purple-700 border-purple-200',
-  networking: 'bg-green-50 text-green-700 border-green-200',
+  networking: 'bg-purple-50 text-red-700 border-purple-200',
   meetup:     'bg-orange-50 text-orange-700 border-orange-200',
-  conference: 'bg-pink-50 text-pink-700 border-pink-200',
+  conference: 'bg-red-50 text-red-700 border-red-200',
   seminar:    'bg-teal-50 text-teal-700 border-teal-200',
   hackathon:  'bg-indigo-50 text-indigo-700 border-indigo-200',
 };
@@ -120,7 +120,7 @@ export default function EventManagementPage() {
   const filterBtns: { key: FilterType; label: string; active: string }[] = [
     { key: 'all',      label: `All (${events.length})`,          active: 'bg-gray-700 text-white' },
     { key: 'pending',  label: `Pending (${count('pending')})`,   active: 'bg-amber-500 text-white' },
-    { key: 'approved', label: `Approved (${count('approved')})`, active: 'bg-green-600 text-white' },
+    { key: 'approved', label: `Approved (${count('approved')})`, active: 'bg-red-100 text-red-700 border border-red-200' },
     { key: 'rejected', label: `Rejected (${count('rejected')})`, active: 'bg-red-500 text-white' },
   ];
 
@@ -129,22 +129,26 @@ export default function EventManagementPage() {
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-purple-100 gap-5">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Calendar className="w-6 h-6 text-green-600" />Event Management</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage and host alumni events</p>
+            <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
+              <Sparkles className="w-[18px] h-[18px]" />
+              <span className="text-sm tracking-wide">Admin Actions</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Event Management</h1>
+            <p className="text-gray-600 text-[15px] sm:text-base">Manage and host alumni events</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {[
-              { label: 'Pending', value: count('pending'),  color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
-              { label: 'Active',  value: count('approved'), color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+              { label: 'Pending', value: count('pending'),  color: 'text-amber-700', bg: 'bg-white/60 border-white/50 shadow-sm' },
+              { label: 'Active',  value: count('approved'), color: 'text-red-600',   bg: 'bg-white/60 border-white/50 shadow-sm' },
             ].map(s => (
-              <div key={s.label} className={`px-4 py-2 rounded-xl border ${s.bg} text-center`}>
-                <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
-                <p className={`text-[10px] font-bold uppercase tracking-wide ${s.color} opacity-70`}>{s.label}</p>
+              <div key={s.label} className={`px-5 py-3 rounded-2xl border ${s.bg} text-center min-w-[90px]`}>
+                <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+                <p className={`text-[11px] font-bold uppercase tracking-wider ${s.color} opacity-70 mt-0.5`}>{s.label}</p>
               </div>
             ))}
-            <Link href="/admin/events/create" className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm">
+            <Link href="/admin/events/create" className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors">
               <Plus className="w-4 h-4" />Create Event
             </Link>
           </div>
@@ -154,7 +158,7 @@ export default function EventManagementPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Search events…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400" />
+            <input type="text" placeholder="Search events…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400" />
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <Filter className="w-4 h-4 text-gray-400 shrink-0" />
@@ -167,7 +171,7 @@ export default function EventManagementPage() {
         {/* Events List */}
         {loading ? (
           <div className="flex items-center justify-center py-14 bg-white rounded-2xl border border-gray-100">
-            <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-b-2 border-green-500 mr-3" />
+            <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-b-2 border-red-500 mr-3" />
             <p className="text-sm text-gray-400">Loading events…</p>
           </div>
         ) : filteredEvents.length === 0 ? (
@@ -184,7 +188,7 @@ export default function EventManagementPage() {
                 <div key={event.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0"><Calendar className="w-5 h-5" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-red-500 flex items-center justify-center shrink-0"><Calendar className="w-5 h-5" /></div>
 
                     {/* Details */}
                     <div className="flex-1 min-w-0">
@@ -215,7 +219,7 @@ export default function EventManagementPage() {
                       )}
                       {approvalStatus === 'pending' && (
                         <>
-                          <button onClick={() => handleApprove(event.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors"><CheckCircle className="w-3 h-3" />Approve</button>
+                          <button onClick={() => handleApprove(event.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"><CheckCircle className="w-3 h-3" />Approve</button>
                           <button onClick={() => handleReject(event.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-colors"><XCircle className="w-3 h-3" />Reject</button>
                         </>
                       )}

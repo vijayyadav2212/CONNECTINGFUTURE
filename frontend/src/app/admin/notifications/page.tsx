@@ -36,7 +36,7 @@ const typeIcon = (type: Notification['type']) => ({
 
 const typeColor = (type: Notification['type']) => ({
   info:    { bg: 'bg-blue-100',   text: 'text-blue-700'   },
-  success: { bg: 'bg-green-100',  text: 'text-green-700'  },
+  success: { bg: 'bg-purple-100',   text: 'text-red-700'   },
   warning: { bg: 'bg-amber-100',  text: 'text-amber-700'  },
   error:   { bg: 'bg-red-100',    text: 'text-red-700'    },
   alert:   { bg: 'bg-purple-100', text: 'text-purple-700' },
@@ -57,7 +57,7 @@ const priorityStyle = (p: Notification['priority']) => ({
   low:    'bg-gray-100 text-gray-600 border-gray-200',
 }[p]);
 
-const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400";
+const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400";
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 const SEED: Notification[] = [
@@ -171,12 +171,12 @@ export default function NotificationsPage() {
     const isActive = activeId === n.id;
     return (
       <div role="button" tabIndex={0} onClick={() => { setActiveId(n.id); setMobileOpen(true); }} onKeyDown={e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); setActiveId(n.id); setMobileOpen(true); }}}
-        className={`px-4 py-3.5 flex items-start gap-3 cursor-pointer transition-colors border-l-2 ${isActive ? 'bg-green-50 border-green-500' : 'hover:bg-gray-50 border-transparent'}`}>
-        <input type="checkbox" checked={selectedIds.includes(n.id)} onChange={e => { e.stopPropagation(); toggleOne(n.id); }} className="mt-0.5 w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-400" />
+        className={`px-4 py-3.5 flex items-start gap-3 cursor-pointer transition-colors border-l-2 ${isActive ? 'bg-purple-50 border-red-500' : 'hover:bg-gray-50 border-transparent'}`}>
+        <input type="checkbox" checked={selectedIds.includes(n.id)} onChange={e => { e.stopPropagation(); toggleOne(n.id); }} className="mt-0.5 w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-400" />
         <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.text}`}>{typeIcon(n.type)}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />}
+            {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
             <p className={`text-xs font-bold truncate ${n.read ? 'text-gray-600' : 'text-gray-900'}`}>{n.title}</p>
           </div>
           <p className="text-[11px] text-gray-500 line-clamp-2">{n.message}</p>
@@ -201,16 +201,16 @@ export default function NotificationsPage() {
             <div className="flex flex-wrap items-center gap-1.5">
               <p className="text-sm font-black text-gray-900">{n.title}</p>
               <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full border ${priorityStyle(n.priority)}`}>{n.priority}</span>
-              {!n.read && <span className="px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold rounded-full">Unread</span>}
+              {!n.read && <span className="px-1.5 py-0.5 bg-purple-50 text-red-700 border border-purple-200 text-[10px] font-bold rounded-full">Unread</span>}
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-gray-500">
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.timestamp}</span>
-              {n.sender && <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full bg-green-600 text-white flex items-center justify-center text-[9px] font-bold">{n.sender.avatar}</span>{n.sender.name}</span>}
+              {n.sender && <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] font-bold">{n.sender.avatar}</span>{n.sender.name}</span>}
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {!n.read
-              ? <button onClick={() => markRead(n.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors"><Check className="w-3 h-3" />Mark read</button>
+              ? <button onClick={() => markRead(n.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"><Check className="w-3 h-3" />Mark read</button>
               : <button onClick={() => markUnread(n.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"><Mail className="w-3 h-3" />Unread</button>}
             <button onClick={() => { del(n.id); onClose?.(); }} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors"><Trash2 className="w-3 h-3" />Delete</button>
           </div>
@@ -219,7 +219,7 @@ export default function NotificationsPage() {
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4"><p className="text-sm text-gray-700 leading-relaxed">{n.message}</p></div>
           {n.action && (
             <div className="mt-4 flex justify-end">
-              <Link href={n.action.link} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm">
+              <Link href={n.action.link} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors shadow-sm">
                 {n.action.label}<ArrowUpRight className="w-4 h-4" />
               </Link>
             </div>
@@ -236,24 +236,28 @@ export default function NotificationsPage() {
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-purple-100 gap-5">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Bell className="w-6 h-6 text-green-600" />Notifications</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Manage and monitor all system notifications</p>
+            <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
+              <Bell className="w-[18px] h-[18px]" />
+              <span className="text-sm tracking-wide">Admin Actions</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Notifications</h1>
+            <p className="text-gray-600 text-[15px] sm:text-base">Manage and monitor all system notifications</p>
           </div>
           <div className="flex items-center gap-3">
             {[
-              { label:'Unread', value: unreadCount,         bg:'bg-amber-50 border-amber-200',  txt:'text-amber-700'  },
-              { label:'Today',  value: todayCount,           bg:'bg-green-50 border-green-200',  txt:'text-green-700'  },
-              { label:'Week',   value: weekCount,            bg:'bg-blue-50 border-blue-200',    txt:'text-blue-700'   },
-              { label:'Total',  value: notifications.length, bg:'bg-gray-50 border-gray-200',    txt:'text-gray-700'   },
+              { label:'Unread', value: unreadCount,         bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-rose-600'   },
+              { label:'Today',  value: todayCount,           bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-amber-700'  },
+              { label:'Week',   value: weekCount,            bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-blue-700'   },
+              { label:'Total',  value: notifications.length, bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-gray-700'   },
             ].map(s => (
-              <div key={s.label} className={`px-3 py-2 rounded-xl border ${s.bg} text-center hidden sm:block`}>
-                <p className={`text-lg font-black ${s.txt}`}>{s.value}</p>
-                <p className={`text-[10px] font-bold uppercase tracking-wide ${s.txt} opacity-70`}>{s.label}</p>
+              <div key={s.label} className={`px-5 py-3 rounded-2xl border ${s.bg} text-center min-w-[70px] hidden sm:block`}>
+                <p className={`text-2xl font-black ${s.txt}`}>{s.value}</p>
+                <p className={`text-[11px] font-bold uppercase tracking-wider ${s.txt} opacity-70 mt-0.5`}>{s.label}</p>
               </div>
             ))}
-            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm">
+            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors shadow-sm">
               <Send className="w-4 h-4" />Send
             </button>
           </div>
@@ -271,7 +275,7 @@ export default function NotificationsPage() {
           <div className="flex gap-1.5">
             {([['all','All'], ['unread','Unread'], ['read','Read']] as const).map(([v, l]) => (
               <button key={v} onClick={() => setSelectedFilter(v)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${selectedFilter===v ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${selectedFilter===v ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 {l}{v==='all' ? ` (${notifications.length})` : v==='unread' ? ` (${unreadCount})` : ` (${notifications.length-unreadCount})`}
               </button>
             ))}
@@ -286,7 +290,7 @@ export default function NotificationsPage() {
               <div className="absolute left-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-20">
                 {['all','approval','system','user','job','event','message'].map(cat => (
                   <button key={cat} onClick={() => { setSelectedCategory(cat); setShowCatMenu(false); }}
-                    className={`w-full px-4 py-2 text-left flex items-center gap-2 text-xs font-bold hover:bg-gray-50 transition-colors capitalize ${selectedCategory===cat ? 'text-green-700 bg-green-50' : 'text-gray-700'}`}>
+                    className={`w-full px-4 py-2 text-left flex items-center gap-2 text-xs font-bold hover:bg-gray-50 transition-colors capitalize ${selectedCategory===cat ? 'text-red-700 bg-purple-50' : 'text-gray-700'}`}>
                     {cat !== 'all' && catIcon(cat as any)}{cat}
                   </button>
                 ))}
@@ -303,9 +307,9 @@ export default function NotificationsPage() {
 
         {/* Bulk bar */}
         {selectedIds.length > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5 flex items-center gap-3 flex-wrap text-xs font-bold">
-            <span className="text-green-800">{selectedIds.length} selected</span>
-            <button onClick={() => bulk('read')}   className="flex items-center gap-1 px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-xl hover:bg-green-100 transition-colors"><CheckCheck className="w-3.5 h-3.5" />Mark read</button>
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl px-4 py-2.5 flex items-center gap-3 flex-wrap text-xs font-bold">
+            <span className="text-red-800">{selectedIds.length} selected</span>
+            <button onClick={() => bulk('read')}   className="flex items-center gap-1 px-3 py-1.5 bg-white border border-purple-200 text-red-700 rounded-xl hover:bg-purple-100 transition-colors"><CheckCheck className="w-3.5 h-3.5" />Mark read</button>
             <button onClick={() => bulk('unread')} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-amber-200 text-amber-700 rounded-xl hover:bg-amber-50 transition-colors"><Mail className="w-3.5 h-3.5" />Mark unread</button>
             <button onClick={() => bulk('delete')} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5" />Delete</button>
             <button onClick={() => setSelectedIds([])} className="ml-auto text-gray-500 hover:text-gray-900 transition-colors">Clear</button>
@@ -320,7 +324,7 @@ export default function NotificationsPage() {
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div><p className="text-sm font-black text-gray-900">Inbox</p><p className="text-[11px] text-gray-400">{filtered.length} shown · {unread.length} unread</p></div>
               <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-                <input type="checkbox" checked={filtered.length>0 && selectedIds.length===filtered.length} onChange={toggleAll} className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-400" />Select all
+                <input type="checkbox" checked={filtered.length>0 && selectedIds.length===filtered.length} onChange={toggleAll} className="w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-400" />Select all
               </label>
             </div>
             {filtered.length === 0 ? (
@@ -404,7 +408,7 @@ export default function NotificationsPage() {
                 </div>
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
                   <button onClick={() => { setShowModal(false); setFormErrors({}); }} disabled={isSending} className="px-4 py-2.5 text-sm font-bold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors">Cancel</button>
-                  <button onClick={handleSend} disabled={isSending} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors shadow-sm">
+                  <button onClick={handleSend} disabled={isSending} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors">
                     {isSending ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Sending…</> : <><Send className="w-4 h-4" />Send</>}
                   </button>
                 </div>
@@ -416,8 +420,8 @@ export default function NotificationsPage() {
         {/* Success toast */}
         {showSuccess && (
           <div className="fixed top-4 right-4 z-[60]">
-            <div className="bg-white rounded-2xl shadow-2xl border border-green-200 p-4 flex items-center gap-3 max-w-sm">
-              <div className="w-9 h-9 rounded-xl bg-green-600 text-white flex items-center justify-center shrink-0"><CheckCircle className="w-4 h-4" /></div>
+            <div className="bg-white rounded-2xl shadow-2xl border border-purple-200 p-4 flex items-center gap-3 max-w-sm">
+              <div className="w-9 h-9 rounded-xl bg-red-100 border border-red-200 text-red-600 flex items-center justify-center shrink-0"><CheckCircle className="w-4 h-4" /></div>
               <div className="flex-1">
                 <p className="text-sm font-black text-gray-900">Sent successfully!</p>
                 <p className="text-xs text-gray-500">Notification sent to {form.recipients === 'all' ? 'all users' : form.recipients}.</p>
