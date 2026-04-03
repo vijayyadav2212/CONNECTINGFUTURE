@@ -480,17 +480,17 @@ const AlumniDirectoryPage = () => {
                       {/* Profile Header */}
                       <div className="flex items-center gap-4 mb-6">
                         <div className="relative">
-                          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg lg:text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg lg:text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                             {alum.name.split(' ').map(n => n[0]).join('')}
                           </div>
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white"></div>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg lg:text-xl group-hover:text-blue-600 transition-colors duration-200 mb-1">
+                          <h3 className="font-bold text-gray-900 text-lg lg:text-xl group-hover:text-emerald-600 transition-colors duration-200 mb-1">
                             {alum.name}
                           </h3>
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                            <GraduationCap className="w-4 h-4 text-blue-500" />
+                            <GraduationCap className="w-4 h-4 text-emerald-500" />
                             <span className="font-medium">Class of {alum.graduationYear}</span>
                           </div>
                           <div className="text-xs text-gray-500 font-medium">
@@ -503,13 +503,13 @@ const AlumniDirectoryPage = () => {
                       <div className="bg-gradient-to-r from-gray-50/80 to-blue-50/80 p-4 rounded-xl mb-6 border border-gray-200/50 backdrop-blur-sm">
                         <div className="space-y-3">
                           <div className="flex items-center gap-3">
-                            <div className="bg-blue-100 p-2 rounded-lg">
-                              <Building className="w-4 h-4 text-blue-600" />
+                            <div className="bg-emerald-100 p-2 rounded-lg">
+                              <Building className="w-4 h-4 text-emerald-600" />
                             </div>
                             <div className="flex-1">
                               <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Current Role</p>
                               <p className="font-bold text-gray-900 text-sm">{alum.position}</p>
-                              <p className="text-blue-600 font-medium text-sm">{alum.company}</p>
+                              <p className="text-emerald-600 font-medium text-sm">{alum.company}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -532,7 +532,7 @@ const AlumniDirectoryPage = () => {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {alum.expertise.slice(0, 3).map((exp, index) => (
-                            <span key={index} className="px-3 py-2 bg-gradient-to-r from-orange-50 to-blue-50 border border-orange-200 text-orange-800 text-xs font-semibold rounded-lg hover:from-orange-100 hover:to-blue-100 transition-colors duration-200">
+                            <span key={index} className="px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg hover:from-emerald-100 hover:to-teal-100 transition-colors duration-200">
                               {exp}
                             </span>
                           ))}
@@ -553,11 +553,11 @@ const AlumniDirectoryPage = () => {
                           </div>
                           <p className="text-xs text-yellow-700 font-medium">Rating</p>
                         </div>
-                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
                           <div className="mb-1">
-                            <span className="font-bold text-blue-800 text-sm">{alum.responseTime}</span>
+                            <span className="font-bold text-emerald-800 text-sm">{alum.responseTime}</span>
                           </div>
-                          <p className="text-xs text-blue-700 font-medium">Response Time</p>
+                          <p className="text-xs text-emerald-700 font-medium">Response Time</p>
                         </div>
                       </div>
 
@@ -594,7 +594,7 @@ const AlumniDirectoryPage = () => {
                             return (
                               <Button
                                 className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${alum.email
-                                  ? 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transform hover:scale-105'
                                   : 'bg-gray-200 text-gray-600 cursor-not-allowed'
                                   }`}
                                 disabled={!alum.email}
@@ -648,9 +648,9 @@ const AlumniDirectoryPage = () => {
                         )}
                         <Button
                           variant="outline"
-                          className="px-4 py-3 rounded-xl border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-500 transition-all duration-200 group"
+                          className="px-4 py-3 rounded-xl border-2 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-500 transition-all duration-200 group bg-white shadow-sm"
                         >
-                          <Mail className="w-4 h-4 text-gray-600 group-hover:text-gray-700" />
+                          <Mail className="w-4 h-4 text-emerald-600 group-hover:text-emerald-700" />
                         </Button>
                       </div>
                     </div>

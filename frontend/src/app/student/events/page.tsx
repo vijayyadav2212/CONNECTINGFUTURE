@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { toast } from 'sonner';
 import StudentNavigation from '../StudentNavigation';
-import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus, Sparkles } from 'lucide-react';
+import Image from 'next/image';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
@@ -30,6 +31,21 @@ interface Event {
 }
 
 export default function Events() {
+  return (
+    <>
+      <style jsx global>{`
+        @keyframes shimmer {
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
+      <EventsContent />
+    </>
+  );
+}
+
+function EventsContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedTime, setSelectedTime] = useState('all');
@@ -256,93 +272,118 @@ export default function Events() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="p-6 lg:p-8">
-          {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-              Discover Events
-            </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Join workshops, seminars, and networking opportunities to enhance your skills and expand your professional network
-            </p>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-white p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-[40px] p-10 border border-emerald-100/20 shadow-[0_20px_50px_rgba(0,0,0,0.03)] mb-10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-20 -mt-20 blur-3xl" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="flex-1">
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight uppercase">
+                  Discover Events
+                </h1>
+                <p className="text-slate-600 text-lg font-medium max-w-[600px] leading-relaxed mb-8">
+                  Join workshops, seminars, and networking opportunities to enhance your skills and expand your professional network.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[13px] font-bold text-slate-600 border border-slate-50 shadow-sm flex items-center gap-2.5">
+                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                     {events.length} Total Events
+                   </div>
+                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[13px] font-bold text-slate-600 border border-slate-50 shadow-sm flex items-center gap-2.5">
+                     <div className="w-2 h-2 rounded-full bg-blue-500" />
+                     {events.filter(e => e.isRegistered).length} Registered
+                   </div>
+                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[13px] font-bold text-slate-600 border border-slate-50 shadow-sm flex items-center gap-2.5">
+                     <div className="w-2 h-2 rounded-full bg-orange-500" />
+                     Live Updates
+                   </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">Total Events</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-1">{events.length}</p>
+                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Total Events</p>
+                  <p className="text-3xl font-black text-slate-900 mt-1">{events.length}</p>
                 </div>
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg">
-                  <Calendar className="w-6 h-6 text-white" />
+                <div className="p-4 bg-blue-50 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">Registered</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mt-1">{events.filter(e => e.isRegistered).length}</p>
+                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Registered</p>
+                  <p className="text-3xl font-black text-slate-900 mt-1">{events.filter(e => e.isRegistered).length}</p>
                 </div>
-                <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="p-4 bg-emerald-50 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6 text-emerald-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">Saved Events</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mt-1">{events.filter(e => e.isSaved).length}</p>
+                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Saved</p>
+                  <p className="text-3xl font-black text-slate-900 mt-1">{events.filter(e => e.isSaved).length}</p>
                 </div>
-                <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg shadow-lg">
-                  <BookmarkPlus className="w-6 h-6 text-white" />
+                <div className="p-4 bg-amber-50 rounded-2xl group-hover:scale-110 transition-transform">
+                  <BookmarkPlus className="w-6 h-6 text-amber-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">Virtual Events</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent mt-1">{events.filter(e => e.isVirtual).length}</p>
+                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Virtual</p>
+                  <p className="text-3xl font-black text-slate-900 mt-1">{events.filter(e => e.isVirtual).length}</p>
                 </div>
-                <div className="p-3 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-lg shadow-lg">
-                  <ExternalLink className="w-6 h-6 text-white" />
+                <div className="p-4 bg-indigo-50 rounded-2xl group-hover:scale-110 transition-transform">
+                  <ExternalLink className="w-6 h-6 text-indigo-600" />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Upcoming Events Highlight */}
-          <div className="bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-indigo-500/10 rounded-2xl p-6 mb-8 border border-white/20 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
-              🚀 Upcoming Events
+          <div className="bg-gradient-to-br from-slate-50/50 via-white to-white rounded-[40px] p-10 border border-slate-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.02)] mb-10">
+            <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                🚀
+              </div>
+              Upcoming Events
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {upcomingEvents.map(event => (
-                <div key={event.id} className="bg-white/80 backdrop-blur-sm rounded-xl p-5 border border-white/30 hover:shadow-xl transition-all duration-300 hover:transform hover:scale-105">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(event.eventType ?? '')} shadow-sm`}>
-                      {(event.eventType ?? '').replace('-', ' ').toUpperCase()}
+                <div key={event.id} className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100 hover:bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-1 group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getTypeColor(event.eventType ?? '')} shadow-sm`}>
+                      {(event.eventType ?? '').replace('-', ' ')}
                     </span>
-                    <span className="text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                    <span className="text-[11px] font-black text-amber-600 uppercase tracking-widest">
                       {getDaysUntil(event.date ?? '')}
                     </span>
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-2 text-lg leading-tight">{event.title}</h3>
-                  <div className="flex items-center text-sm text-gray-600 mb-2">
-                    <Calendar className="w-4 h-4 mr-2 text-blue-500" />
-                    {formatDate(event.date ?? '')} at {event.time}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2 text-purple-500" />
-                    {event.location}
+                  <h3 className="font-extrabold text-slate-900 mb-3 text-[17px] leading-tight group-hover:text-emerald-600 transition-colors">{event.title}</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-xs font-bold text-slate-500">
+                      <Calendar className="w-3.5 h-3.5 mr-2 text-emerald-500" />
+                      {formatDate(event.date ?? '')} <span className="mx-2 text-slate-300">•</span> {event.time}
+                    </div>
+                    <div className="flex items-center text-xs font-bold text-slate-500">
+                      <MapPin className="w-3.5 h-3.5 mr-2 text-blue-500" />
+                      {event.location}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -350,26 +391,26 @@ export default function Events() {
           </div>
 
           {/* Search and Filters */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4 mb-4">
-              <div className="flex-1 relative">
-                <Search className="w-5 h-5 text-blue-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
+          <div className="bg-gradient-to-br from-slate-50/50 via-white to-white rounded-[40px] p-10 border border-slate-100/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] mb-10">
+            <div className="flex flex-col lg:flex-row gap-6 mb-8">
+              <div className="flex-1 relative group">
+                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
                 <input
                   type="text"
                   placeholder="Search events by title, description, or tags..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500 transition-all duration-200"
+                  className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-3xl bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-medium text-slate-900 placeholder-slate-400 transition-all duration-200"
                 />
               </div>
               <div className="flex gap-4">
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 font-medium min-w-[140px]"
+                  className="px-6 py-4 border border-slate-200 rounded-3xl bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[180px] appearance-none cursor-pointer transition-all"
                 >
                   {eventTypes.map(type => (
-                    <option key={type.value} value={type.value} className="text-gray-900 bg-white">
+                    <option key={type.value} value={type.value}>
                       {type.label}
                     </option>
                   ))}
@@ -377,171 +418,150 @@ export default function Events() {
                 <select
                   value={selectedTime}
                   onChange={(e) => setSelectedTime(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 font-medium min-w-[120px]"
+                  className="px-6 py-4 border border-slate-200 rounded-3xl bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[150px] appearance-none cursor-pointer transition-all"
                 >
                   {timeFilters.map(filter => (
-                    <option key={filter.value} value={filter.value} className="text-gray-900 bg-white">
+                    <option key={filter.value} value={filter.value}>
                       {filter.label}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="virtual-only"
-                  checked={virtualOnly}
-                  onChange={(e) => setVirtualOnly(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="virtual-only" className="text-sm text-gray-800 font-medium">
-                  🌐 Virtual events only
-                </label>
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <input
-                  type="checkbox"
-                  id="auto-refresh"
-                  checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
-                />
-                <label htmlFor="auto-refresh" className="text-sm text-gray-800 font-medium">
-                  🔄 Auto-refresh (10s)
-                </label>
-              </div>
+            <div className="flex flex-wrap items-center gap-6">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={virtualOnly}
+                    onChange={(e) => setVirtualOnly(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-5 rounded-full transition-colors ${virtualOnly ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${virtualOnly ? 'translate-x-6' : 'translate-x-1'}`} />
+                </div>
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Virtual Only</span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-5 rounded-full transition-colors ${autoRefresh ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoRefresh ? 'translate-x-6' : 'translate-x-1'}`} />
+                </div>
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Auto-refresh (10s)</span>
+              </label>
             </div>
           </div>
 
           {/* Events Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {filteredEvents.map(event => (
-              <div key={event.id} className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden hover:shadow-2xl hover:transform hover:scale-105 transition-all duration-300 group">
-                <div className="relative overflow-hidden">
-                  <img
-                    src={event.image_url || event.image}
+              <div key={event.id} className="bg-white rounded-[40px] shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 group relative">
+                <div className="relative overflow-hidden aspect-video bg-slate-100">
+                  <Image
+                    src={event.image_url || event.image || "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=2070&auto=format&fit=crop"}
                     alt={event.title}
-                    className="w-full h-52 object-cover group-hover:scale-110 transition-transform duration-500"
+                    fill
+                    className="object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
+                    unoptimized={true} // Using unoptimized as backend domains vary
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-                  <div className="absolute top-4 right-4">
+                  {/* Subtle Shimmer Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity"></div>
+                  
+                  <div className="absolute top-5 right-5 flex gap-2">
                     {event.isVirtual && (
-                      <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs rounded-full font-semibold shadow-lg">
+                      <div className="px-4 py-2 bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-xl border border-white/20">
                         🌐 Virtual
-                      </span>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(event.eventType ?? '')} shadow-sm`}>
-                      {(event.eventType ?? '').replace('-', ' ').toUpperCase()}
+                <div className="p-8 lg:p-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getTypeColor(event.eventType ?? '')} shadow-sm border border-current opacity-80`}>
+                      {(event.eventType ?? '').replace('-', ' ')}
                     </span>
-                    <span className="text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                    <span className="text-[11px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-full border border-amber-100/50">
                       {getDaysUntil(event.date ?? '')}
                     </span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 leading-tight">{event.title}</h3>
-                  <p className="text-gray-600 text-sm mb-6 line-clamp-2 leading-relaxed">{event.description}</p>
+                  <h3 className="text-2xl font-black text-slate-900 mb-4 leading-tight group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{event.title}</h3>
+                  <p className="text-slate-500 font-medium text-[15px] mb-8 line-clamp-2 leading-relaxed">{event.description}</p>
 
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="w-4 h-4 mr-3 text-blue-500" />
-                      <span className="font-medium">{formatDate(event.date ?? '')} at {event.time}</span>
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                      <Calendar className="w-4 h-4 mr-3 text-emerald-500" />
+                      <span>{formatDate(event.date ?? '')}</span>
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="w-4 h-4 mr-3 text-green-500" />
-                      <span className="font-medium">Duration: {event.duration}</span>
+                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                      <Clock className="w-4 h-4 mr-3 text-blue-500" />
+                      <span>{event.time}</span>
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
+                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
                       <MapPin className="w-4 h-4 mr-3 text-purple-500" />
-                      <span className="font-medium">{event.location}</span>
+                      <span className="truncate">{event.location}</span>
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
+                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
                       <Users className="w-4 h-4 mr-3 text-indigo-500" />
-                      <span className="font-medium">{event.currentAttendees} {event.maxAttendees ? `/ ${event.maxAttendees}` : ''} attendees</span>
+                      <span>{event.currentAttendees}{event.maxAttendees ? `/${event.maxAttendees}` : ''} joined</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 mb-6">
+                  <div className="flex flex-wrap gap-2 mb-8">
                     {(event.tags ?? []).slice(0, 3).map(tag => (
-                      <span key={tag} className="px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-xs rounded-full font-medium border border-gray-200">
+                      <span key={tag} className="px-4 py-1.5 bg-slate-50 text-slate-400 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-100 hover:bg-white hover:text-emerald-500 transition-all cursor-default">
                         #{tag}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pt-8 border-t border-slate-50">
                     <div className="flex flex-col">
-                      <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                      <span className="text-2xl font-black text-emerald-600 tracking-tight">
                         {event.price === 0 ? 'FREE' : `$${event.price}`}
                       </span>
-                      <span className="text-xs text-gray-500 font-medium">by {event.organizer}</span>
+                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">by {event.organizer}</span>
                     </div>
-                    <div className="flex items-center gap-3" onClickCapture={(ev) => {
-                      try {
-                        const clientX = (ev as any).clientX || 0;
-                        const clientY = (ev as any).clientY || 0;
-                        const el = document.elementFromPoint(clientX, clientY as any);
-                        console.log('click capture', { target: ev.target, elemAtPoint: el, userAtClick: user });
-                        const id = (ev.target as any)?.dataset?.eventId || (el as any)?.dataset?.eventId || '';
-                        if (id) setLastRegisterLog(`clicked:${id}@${new Date().toISOString()}`);
-                      } catch (e) { /* ignore */ }
-                    }}>
+                    <div className="flex items-center gap-3">
                       <button
-                        className={`p-2 rounded-xl transition-all duration-200 shadow-sm ${event.isSaved
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:scale-110'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-110'
+                        className={`p-3 rounded-2xl transition-all duration-300 shadow-sm border ${event.isSaved
+                          ? 'bg-amber-500 text-white border-amber-600 hover:scale-110'
+                          : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-white hover:text-emerald-500 hover:scale-110'
                           }`}
                       >
-                        <BookmarkPlus className="w-4 h-4" />
+                        <BookmarkPlus className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleShare(event)}
-                        className="p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all duration-200 hover:scale-110 shadow-sm"
+                        className="p-3 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl hover:bg-white hover:text-emerald-500 hover:scale-110 transition-all duration-300"
                         title="Share Event"
                       >
-                        <Share2 className="w-4 h-4" />
+                        <Share2 className="w-5 h-5" />
                       </button>
                       <button
-                        style={{ position: 'relative', zIndex: 60, pointerEvents: 'auto' }}
-                        className={`px-6 py-2 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg flex items-center gap-2 ${event.isRegistered
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white cursor-not-allowed'
+                        className={`px-8 py-3 rounded-2xl font-black text-[13px] uppercase tracking-widest transition-all duration-300 shadow-lg active:scale-95 ${event.isRegistered
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-not-allowed shadow-none'
                           : registeringEventId === event.id
-                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white cursor-wait'
-                            : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-105'
+                            ? 'bg-slate-200 text-slate-400 cursor-wait'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20 hover:shadow-xl hover:-translate-y-0.5'
                           }`}
                         disabled={event.isRegistered || registeringEventId === event.id}
-                        data-event-id={event.id}
-                        onPointerDown={() => console.log('pointerdown', event.id)}
-                        onMouseDown={() => console.log('mousedown', event.id)}
                         onClickCapture={(ev) => {
-                          console.log('button click capture', event.id);
-                          // Guard to avoid double-submitting
                           if (event.isRegistered || registeringEventId === event.id) return;
-                          try { handleRegister(event.id, event.title); } catch (e) { console.error(e); }
-                        }}
-                        onClick={() => !event.isRegistered && handleRegister(event.id, event.title)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            if (!event.isRegistered) handleRegister(event.id, event.title);
-                          }
+                          handleRegister(event.id, event.title);
                         }}
                       >
-                        {registeringEventId === event.id ? (
-                          <>
-                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Registering...
-                          </>
-                        ) : event.isRegistered ? '✓ Registered' : 'Register Now'}
+                        {registeringEventId === event.id ? 'Registering...' : event.isRegistered ? 'Registered' : 'Register Now'}
                       </button>
                     </div>
                   </div>
@@ -551,10 +571,12 @@ export default function Events() {
           </div>
 
           {filteredEvents.length === 0 && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-12 shadow-lg border border-white/20 text-center">
-              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-6" />
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent mb-3">No events found</h3>
-              <p className="text-gray-600 text-lg">Try adjusting your search criteria or filters to discover more events</p>
+            <div className="bg-white rounded-[40px] p-20 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 text-center">
+              <div className="bg-slate-50 w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto mb-8">
+                <Calendar className="w-12 h-12 text-slate-300" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">No Events Found</h3>
+              <p className="text-slate-500 font-medium text-lg max-w-md mx-auto">Try adjusting your search criteria or filters to discover more events</p>
             </div>
           )}
         </div>
@@ -562,17 +584,14 @@ export default function Events() {
 
       {/* Loading Modal */}
       {isRegistering && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center relative animate-in zoom-in-95 duration-200 border border-white/20">
-            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-blue-100 mb-6">
-              <svg className="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-md w-full text-center relative animate-in zoom-in-95 duration-300 border border-slate-100">
+            <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-[32px] bg-emerald-50 mb-8 items-center justify-center">
+              <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Processing Registration...</h3>
-            <p className="text-gray-600 text-base">
-              Please wait while we register you for this event.
+            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight uppercase">Processing...</h3>
+            <p className="text-slate-500 font-medium px-4">
+              Please wait while we secure your spot for this event.
             </p>
           </div>
         </div>
@@ -580,24 +599,23 @@ export default function Events() {
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center relative animate-in zoom-in-95 duration-200 border border-white/20">
-            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6 animate-bounce">
-              <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-lg w-full text-center relative animate-in zoom-in-95 duration-300 border border-slate-100">
+            <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-[32px] bg-emerald-500 shadow-xl shadow-emerald-500/20 mb-8 animate-bounce">
+              <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-2">Registration Confirmed!</h3>
-            <p className="text-gray-600 mb-6 text-lg">
-              You are all set for <span className="font-semibold text-blue-600">{successEventTitle}</span>.
-              <br /><br />
-              A confirmation email has been sent to your inbox with all the details.
+            <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">Registration Confirmed!</h2>
+            <p className="text-slate-600 mb-10 text-lg font-medium px-4 leading-relaxed">
+              Awesome! You've successfully registered for <span className="font-extrabold text-emerald-600">"{successEventTitle}"</span>.
+              Check your inbox for the confirmation details.
             </p>
             <button
               onClick={() => setShowSuccessModal(false)}
-              className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="w-full py-5 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-[24px] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 uppercase tracking-widest text-sm"
             >
-              Okay, Great!
+              Okay, Let's Go!
             </button>
           </div>
         </div>
