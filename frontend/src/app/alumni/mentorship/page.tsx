@@ -88,6 +88,18 @@ function addMinutesToTime(time: string, minutes: number) {
   return `${hh}:${mm}`;
 }
 
+function isSessionCompletedByTime(session: Session) {
+  if (!session.scheduled_at) return false;
+  const start = new Date(session.scheduled_at).getTime();
+  const durationMs = (session.duration_minutes || 60) * 60 * 1000;
+  return Date.now() >= start + durationMs;
+}
+
+function getSessionDisplayStatus(session: Session) {
+  if (session.status === 'completed' || isSessionCompletedByTime(session)) return 'completed';
+  return session.status;
+}
+
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'bg-amber-50 text-amber-600 border-amber-200/60',
@@ -129,6 +141,8 @@ export default function MentorshipPage() {
   const [alertedStart, setAlertedStart] = useState<Record<number, boolean>>({});
   const [dailySessions, setDailySessions] = useState<DailySessionPlan[]>([]);
   const [savingDailyPlan, setSavingDailyPlan] = useState(false);
+  const [deactivatingPlanId, setDeactivatingPlanId] = useState<number | null>(null);
+  const [dailyPlanMsg, setDailyPlanMsg] = useState('');
   const [dailyPlanForm, setDailyPlanForm] = useState({
     title: '',
     description: '',
@@ -142,9 +156,9 @@ export default function MentorshipPage() {
   });
 
   const activeMenteesCount = useMemo(() => requests.filter(r => r.status === 'accepted').length, [requests]);
-  const completedSessionsCount = useMemo(() => sessions.filter(s => s.status === 'completed').length, [sessions]);
+  const completedSessionsCount = useMemo(() => sessions.filter(s => getSessionDisplayStatus(s) === 'completed').length, [sessions]);
   const upcomingSessions = useMemo(() =>
-    sessions.filter(s => s.status === 'scheduled' && s.scheduled_at)
+    sessions.filter(s => s.status === 'scheduled' && s.scheduled_at && !isSessionCompletedByTime(s))
       .sort((a, b) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime()),
     [sessions]);
   const sortedSessions = useMemo(() =>
@@ -197,15 +211,23 @@ export default function MentorshipPage() {
   async function loadDailySessionPlans() {
     if (!user?.email) return;
     try {
-      const res = await fetch(`${API_BASE}/api/mentorship/daily-sessions?mentor_email=${encodeURIComponent(user.email)}`);
+      const res = await fetch(`${API_BASE}/api/mentorship/daily-sessions?mentor_email=${encodeURIComponent(user.email)}&active_only=1`);
+      if (!res.ok) throw new Error('Failed to fetch daily plans');
       const data = await res.json();
       setDailySessions(data.daily_sessions || []);
-    } catch { }
+    } catch {
+      setDailyPlanMsg('Unable to load daily plans right now.');
+    }
   }
 
   async function createDailySessionPlan() {
     if (!user?.email || !dailyPlanForm.title || !dailyPlanForm.start_date || !dailyPlanForm.end_date || !dailyPlanForm.session_from_time || !dailyPlanForm.session_to_time) return;
+    if (new Date(dailyPlanForm.end_date) < new Date(dailyPlanForm.start_date)) {
+      setDailyPlanMsg('End date cannot be before start date.');
+      return;
+    }
     setSavingDailyPlan(true);
+    setDailyPlanMsg('');
     try {
       const duration = minutesBetweenTimes(dailyPlanForm.session_from_time, dailyPlanForm.session_to_time);
       const res = await fetch(`${API_BASE}/api/mentorship/daily-sessions`, {
@@ -237,20 +259,30 @@ export default function MentorshipPage() {
         max_mentees: 50,
       });
       await loadDailySessionPlans();
-    } catch { }
+      setDailyPlanMsg('Daily plan created successfully.');
+    } catch {
+      setDailyPlanMsg('Could not create daily plan. Please try again.');
+    }
     setSavingDailyPlan(false);
   }
 
   async function deactivateDailySessionPlan(id: number) {
     if (!user?.email) return;
+    setDeactivatingPlanId(id);
+    setDailyPlanMsg('');
     try {
-      await fetch(`${API_BASE}/api/mentorship/daily-sessions/${id}`, {
+      const res = await fetch(`${API_BASE}/api/mentorship/daily-sessions/${id}`, {
         method: 'DELETE',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ mentor_email: user.email }),
       });
+      if (!res.ok) throw new Error('Failed to deactivate plan');
       await loadDailySessionPlans();
-    } catch { }
+      setDailyPlanMsg('Daily plan deactivated.');
+    } catch {
+      setDailyPlanMsg('Could not deactivate this plan. Please retry.');
+    }
+    setDeactivatingPlanId(null);
   }
 
   useEffect(() => {
@@ -657,6 +689,9 @@ export default function MentorshipPage() {
                   {savingDailyPlan ? 'Saving...' : 'Create Daily Plan'}
                 </button>
               </div>
+              {dailyPlanMsg ? (
+                <p className="mt-3 text-[12px] font-semibold text-slate-600">{dailyPlanMsg}</p>
+              ) : null}
 
               <div className="mt-6 space-y-3">
                 {dailySessions.length === 0 ? (
@@ -670,7 +705,13 @@ export default function MentorshipPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       {plan.meeting_link ? <a href={normalizeLink(plan.meeting_link)} target="_blank" rel="noopener noreferrer" className="px-3 py-2 text-[12px] rounded-lg bg-sky-500 text-white font-bold">Open Link</a> : null}
-                      <button onClick={() => deactivateDailySessionPlan(plan.id)} className="px-3 py-2 text-[12px] rounded-lg bg-rose-50 border border-rose-200 text-rose-600 font-bold">Deactivate</button>
+                      <button
+                        onClick={() => deactivateDailySessionPlan(plan.id)}
+                        disabled={deactivatingPlanId === plan.id}
+                        className="px-3 py-2 text-[12px] rounded-lg bg-rose-50 border border-rose-200 text-rose-600 font-bold disabled:opacity-50"
+                      >
+                        {deactivatingPlanId === plan.id ? 'Deactivating...' : 'Deactivate'}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -741,6 +782,7 @@ export default function MentorshipPage() {
                     const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
                     const link = normalizeLink(s.meeting_link || '');
                     const isActive = scheduleForm?.session_id === s.id;
+                    const displayStatus = getSessionDisplayStatus(s);
 
                     return (
                       <div key={s.id} className={`rounded-[24px] border border-slate-100 transition-all duration-300 overflow-hidden ${isActive ? 'bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-indigo-100' : 'bg-[#f8fafc] hover:bg-white hover:shadow-sm'}`}>
@@ -750,7 +792,7 @@ export default function MentorshipPage() {
                             <div>
                               <p className="font-bold text-slate-900 text-[15px] mb-1.5">{name}</p>
                               <div className="flex items-center gap-2.5 flex-wrap">
-                                <span className={statusBadge(s.status)}>{s.status}</span>
+                                <span className={statusBadge(displayStatus)}>{displayStatus}</span>
                                 {s.scheduled_at && (
                                   <span className="text-[12px] text-slate-500 font-medium flex items-center gap-1">
                                     <Clock size={12} className="text-slate-400" /> {new Date(s.scheduled_at).toLocaleString()}
@@ -764,7 +806,7 @@ export default function MentorshipPage() {
                           </div>
 
                           <div className="flex gap-2 shrink-0">
-                            {link && s.status === 'scheduled' && (
+                            {link && s.status === 'scheduled' && !isSessionCompletedByTime(s) && (
                               <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-bold rounded-[14px] bg-sky-500 text-white hover:bg-sky-600 transition-all shadow-md shadow-sky-500/20">
                                 <Video size={16} /> Join
                               </a>

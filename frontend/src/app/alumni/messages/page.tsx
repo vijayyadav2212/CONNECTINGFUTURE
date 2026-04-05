@@ -31,6 +31,7 @@ interface Message {
 interface ThreadItem {
   thread_key: string;
   other: string;
+  other_name?: string;
   last_message: string;
   last_at: string;
   unread: number;
@@ -93,7 +94,7 @@ export default function MessagesPage() {
         const prev = prevUnreadRef.current;
         latest.forEach(t => {
           const delta = Number(t.unread || 0) - Number(prev[t.thread_key] || 0);
-          if (delta > 0) toast({ title: 'New message', description: `${delta} new message${delta > 1 ? 's' : ''} from ${t.other}` });
+          if (delta > 0) toast({ title: 'New message', description: `${delta} new message${delta > 1 ? 's' : ''} from ${displayNameFor(t)}` });
         });
         setThreads(latest);
         const snap: Record<string, number> = {};
@@ -177,10 +178,15 @@ export default function MessagesPage() {
     const present = new Set(threads.map(t => t.other.toLowerCase()));
     const synthetic: ThreadItem[] = connections.filter(c => c.status === 'accepted').map(c => {
       const other = c.requester_email.toLowerCase() === currentUserEmail.toLowerCase() ? c.target_email : c.requester_email;
-      return { thread_key: `conn|${other}`, other, last_message: 'Connected · say hi!', last_at: c.accepted_at || c.updated_at || new Date().toISOString(), unread: 0 };
+      return { thread_key: `conn|${other}`, other, other_name: other, last_message: 'Connected · say hi!', last_at: c.accepted_at || c.updated_at || new Date().toISOString(), unread: 0 };
     }).filter(t => !present.has(t.other.toLowerCase()));
     return [...threads, ...synthetic].sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime());
   }, [threads, connections, currentUserEmail]);
+
+  const displayNameFor = (thread: ThreadItem | string) => {
+    if (typeof thread === 'string') return thread.split('@')[0];
+    return thread.other_name || thread.other.split('@')[0];
+  };
 
   // Load messages for selected thread every 5s
   useEffect(() => {
@@ -357,11 +363,11 @@ export default function MessagesPage() {
               {filteredThreads.map(t => (
                 <button key={t.thread_key} onClick={() => setSelectedOther(t.other)} className={`w-full text-left px-4 py-3 border-b border-slate-50 flex items-center gap-3 hover:bg-slate-50 transition-colors ${selectedOther === t.other ? 'bg-indigo-50/70 border-l-2 border-l-indigo-500' : ''}`}>
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${selectedOther === t.other ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {initials(t.other)}
+                    {initials(displayNameFor(t))}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <p className="text-xs font-bold text-slate-900 truncate">{t.other.split('@')[0]}</p>
+                      <p className="text-xs font-bold text-slate-900 truncate">{displayNameFor(t)}</p>
                       <span className="text-[10px] text-slate-400 shrink-0 ml-2">{new Date(t.last_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -381,10 +387,10 @@ export default function MessagesPage() {
                 {/* Chat header */}
                 <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold flex items-center justify-center shrink-0">
-                    {initials(selectedOther)}
+                    {initials(displayNameFor(selectedOther))}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 leading-none">{selectedOther.split('@')[0]}</p>
+                    <p className="text-sm font-bold text-slate-900 leading-none">{displayNameFor(selectedOther)}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">{selectedOther}</p>
                   </div>
                   {/* Connection status + actions */}

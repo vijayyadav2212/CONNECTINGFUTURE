@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import StudentNavigation from '../StudentNavigation';
-import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase } from 'lucide-react';
+import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase, AlertTriangle, Bookmark, BookmarkCheck, CheckCircle, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -28,6 +28,62 @@ interface JobOpportunity {
   companyLogo?: string | null;
 }
 
+interface ExternalJob {
+  job_id: string;
+  title: string;
+  company: string;
+  location: string;
+  apply_link: string;
+  employment_type: string;
+  salary: string;
+  posted_date: string | null;
+  logo_url?: string | null;
+  source?: string;
+  view_count?: number;
+  apply_click_count?: number;
+  applied_confirm_count?: number;
+  application_response_count?: number;
+}
+
+interface JobSearchSettings {
+  role: string;
+  location: string;
+  employment_type: string;
+}
+
+const EXTERNAL_BOOKMARK_STORAGE_KEY = 'student-external-job-bookmarks';
+const EXTERNAL_PENDING_APPLY_KEY = 'student-external-job-pending-apply';
+const DEFAULT_EXTERNAL_SETTINGS: JobSearchSettings = {
+  role: '',
+  location: '',
+  employment_type: 'All Types',
+};
+
+const JOB_TYPE_OPTIONS = ['All Types', 'Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary', 'Remote'];
+
+function formatExternalDate(value: string | null) {
+  if (!value) return 'Recently posted';
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return 'Recently posted';
+  return dt.toLocaleDateString();
+}
+
+function buildExternalJobsUrl(filters: JobSearchSettings, refresh = false) {
+  const params = new URLSearchParams();
+  params.set('source', 'external');
+  if (filters.role && filters.role.trim()) {
+    params.set('role', filters.role.trim());
+  }
+  if (filters.location && filters.location.trim()) {
+    params.set('location', filters.location.trim());
+  }
+  if (filters.employment_type && filters.employment_type !== 'All Types') {
+    params.set('employment_type', filters.employment_type);
+  }
+  if (refresh) params.set('refresh', 'true');
+  return `${API_BASE}/jobs?${params.toString()}`;
+}
+
 const JobOpportunitiesPage = () => {
   const { user } = useUser();
   const { toast } = useToast();
@@ -45,6 +101,17 @@ const JobOpportunitiesPage = () => {
   const [applySubmitting, setApplySubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [externalJobs, setExternalJobs] = useState<ExternalJob[]>([]);
+  const [analyticsJobs, setAnalyticsJobs] = useState<ExternalJob[]>([]);
+  const [externalBookmarkedIds, setExternalBookmarkedIds] = useState<string[]>([]);
+  const [externalLoading, setExternalLoading] = useState(true);
+  const [externalRefreshing, setExternalRefreshing] = useState(false);
+  const [externalError, setExternalError] = useState<string | null>(null);
+  const [externalFilters, setExternalFilters] = useState<JobSearchSettings>(DEFAULT_EXTERNAL_SETTINGS);
+  const [activeJobsSection, setActiveJobsSection] = useState<'portal' | 'external'>('portal');
+  const [externalApplyPromptOpen, setExternalApplyPromptOpen] = useState(false);
+  const [externalApplyPromptJob, setExternalApplyPromptJob] = useState<ExternalJob | null>(null);
+  const [submittingExternalFeedback, setSubmittingExternalFeedback] = useState(false);
 
   // Snapshots for notifications
   const prevJobsRef = useRef<JobOpportunity[]>([]);
@@ -113,9 +180,100 @@ const JobOpportunitiesPage = () => {
     }
   };
 
+  const fetchExternalAnalytics = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/jobs/external/analytics/summary`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.jobs)) setAnalyticsJobs(data.jobs);
+      else setAnalyticsJobs([]);
+    } catch {
+      setAnalyticsJobs([]);
+    }
+  };
+
+  const fetchExternalJobs = async (next: JobSearchSettings, refresh = false) => {
+    try {
+      refresh ? setExternalRefreshing(true) : setExternalLoading(true);
+      setExternalError(null);
+      const res = await fetch(buildExternalJobsUrl(next, refresh), { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch external jobs');
+      }
+      setExternalJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      void fetchExternalAnalytics();
+    } catch (e: any) {
+      setExternalJobs([]);
+      const msg = String(e?.message || 'Failed to fetch external jobs');
+      if (msg.toLowerCase().includes('not subscribed')) {
+        setExternalError('RapidAPI JSearch is not subscribed for this key. Subscribe on RapidAPI, then refresh this page.');
+      } else {
+        setExternalError(msg);
+      }
+    } finally {
+      setExternalLoading(false);
+      setExternalRefreshing(false);
+    }
+  };
+
   useEffect(() => { fetchJobs(); }, []);
   useEffect(() => { fetchJobs(); }, [searchTerm, filterType]);
   useEffect(() => { fetchMyApplications(); }, [user?.email]);
+  useEffect(() => {
+    void fetchExternalJobs(externalFilters, false);
+    void fetchExternalAnalytics();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(EXTERNAL_BOOKMARK_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setExternalBookmarkedIds(parsed.map(String));
+      }
+    } catch {
+      setExternalBookmarkedIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(EXTERNAL_BOOKMARK_STORAGE_KEY, JSON.stringify(externalBookmarkedIds));
+  }, [externalBookmarkedIds]);
+
+  useEffect(() => {
+    const tryOpenPendingPrompt = () => {
+      if (!user?.email || externalApplyPromptOpen) return;
+      try {
+        const raw = window.localStorage.getItem(EXTERNAL_PENDING_APPLY_KEY);
+        if (!raw) return;
+        const pending = JSON.parse(raw);
+        if (!pending || pending.user_email !== user.email || !pending.job) return;
+        const startedAt = Number(pending.started_at || 0);
+        if (startedAt && Date.now() - startedAt > 1000 * 60 * 60 * 24) {
+          window.localStorage.removeItem(EXTERNAL_PENDING_APPLY_KEY);
+          return;
+        }
+        setExternalApplyPromptJob(pending.job as ExternalJob);
+        setExternalApplyPromptOpen(true);
+        window.localStorage.removeItem(EXTERNAL_PENDING_APPLY_KEY);
+      } catch {
+        window.localStorage.removeItem(EXTERNAL_PENDING_APPLY_KEY);
+      }
+    };
+
+    const onFocus = () => setTimeout(tryOpenPendingPrompt, 150);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') setTimeout(tryOpenPendingPrompt, 150);
+    };
+
+    tryOpenPendingPrompt();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [user?.email, externalApplyPromptOpen]);
 
   // Poll for new jobs/internships and toast updates
   useEffect(() => {
@@ -214,6 +372,82 @@ const JobOpportunitiesPage = () => {
       const savedIds = updated.filter(j => j.isBookmarked).map(j => j.id);
       localStorage.setItem('savedJobs', JSON.stringify(savedIds));
     } catch {}
+  };
+
+  const toggleExternalBookmark = (jobId: string) => {
+    setExternalBookmarkedIds(curr => (curr.includes(jobId) ? curr.filter(id => id !== jobId) : [...curr, jobId]));
+  };
+
+  const bookmarkedExternalJobs = externalJobs.filter(j => externalBookmarkedIds.includes(j.job_id));
+
+  const submitExternalApplicationFeedback = async (applied: boolean) => {
+    if (!externalApplyPromptJob || !user?.email) {
+      setExternalApplyPromptOpen(false);
+      setExternalApplyPromptJob(null);
+      return;
+    }
+    setSubmittingExternalFeedback(true);
+    try {
+      await fetch(`${API_BASE}/jobs/external/${encodeURIComponent(externalApplyPromptJob.job_id)}/application-feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job: externalApplyPromptJob,
+          applied,
+          user_email: user.email,
+              user_name: user.name || user.email,
+          source_page: 'student-job-opportunities',
+        }),
+      });
+      if (applied) {
+        toast({ title: 'Application tracked', description: 'Thanks. Your application was counted for analytics.' });
+      }
+      void fetchExternalAnalytics();
+    } catch {
+      // no-op
+    } finally {
+      setSubmittingExternalFeedback(false);
+      setExternalApplyPromptOpen(false);
+      setExternalApplyPromptJob(null);
+    }
+  };
+
+  const handleExternalApply = async (job: ExternalJob) => {
+    const openedAt = Date.now();
+    const win = window.open(job.apply_link, '_blank', 'noopener,noreferrer');
+
+    if (user?.email) {
+      try {
+        window.localStorage.setItem(EXTERNAL_PENDING_APPLY_KEY, JSON.stringify({
+          job,
+          user_email: user.email,
+          started_at: openedAt,
+        }));
+      } catch {
+        // no-op
+      }
+
+      const onReturnFocus = () => {
+        if (Date.now() - openedAt < 1200) return;
+        window.removeEventListener('focus', onReturnFocus);
+        setExternalApplyPromptJob(job);
+        setExternalApplyPromptOpen(true);
+        window.localStorage.removeItem(EXTERNAL_PENDING_APPLY_KEY);
+      };
+      window.addEventListener('focus', onReturnFocus);
+    }
+
+    try {
+      await fetch(`${API_BASE}/jobs/external/${encodeURIComponent(job.job_id)}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job }),
+      });
+      void fetchExternalAnalytics();
+    } catch {
+      // no-op
+    }
+    if (!win) window.location.href = job.apply_link;
   };
 
   const openApplyForm = (job: JobOpportunity) => {
@@ -457,8 +691,34 @@ const JobOpportunitiesPage = () => {
             </div>
           </div>
 
-          {/* Job Listings */}
-          <div className="space-y-6">
+          <div className="mb-6">
+            <div className="inline-flex w-full sm:w-auto p-1 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <button
+                type="button"
+                onClick={() => setActiveJobsSection('portal')}
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeJobsSection === 'portal' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                Portal Jobs
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveJobsSection('external')}
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeJobsSection === 'external' ? 'bg-rose-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                External Jobs
+              </button>
+            </div>
+          </div>
+
+          {activeJobsSection === 'portal' && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-2xl font-extrabold text-gray-900">Portal Jobs</h2>
+                <p className="text-sm text-gray-600">Jobs posted directly on the platform.</p>
+              </div>
+
+              {/* Job Listings */}
+              <div className="space-y-6">
             {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
                 <div className="bg-gradient-to-br from-gray-100 to-gray-200 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -633,26 +893,95 @@ const JobOpportunitiesPage = () => {
                 </div>
               ))
             )}
-          </div>
+              </div>
 
-          {/* Load More Button */}
-          {filteredJobs.length > 0 && (
-            <div className="text-center mt-8">
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="px-8 py-4 rounded-xl font-semibold border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <Briefcase className="w-5 h-5 mr-2" />
-                Load More Opportunities
-              </Button>
-              <p className="text-sm text-gray-500 mt-3">
-                Showing {filteredJobs.length} of {jobs.length} total opportunities
-              </p>
-            </div>
+              {/* Load More Button */}
+              {filteredJobs.length > 0 && (
+                <div className="text-center mt-8">
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    className="px-8 py-4 rounded-xl font-semibold border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    <Briefcase className="w-5 h-5 mr-2" />
+                    Load More Opportunities
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-3">
+                    Showing {filteredJobs.length} of {jobs.length} total opportunities
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
-          {/* Saved Jobs */}
+          {activeJobsSection === 'external' && (
+            <>
+              <div className="mt-1 mb-4">
+                <h2 className="text-2xl font-extrabold text-gray-900">External Jobs</h2>
+                <p className="text-sm text-gray-600">Jobs sourced from external providers.</p>
+              </div>
+
+              {/* External Jobs */}
+              <div className="mt-6 space-y-3">
+            {externalError ? (
+              <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-sm">Jobs fetch issue</p>
+                  <p className="text-sm">{externalError}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {externalLoading ? (
+              <div className="flex items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+                <Loader2 className="w-6 h-6 text-rose-500 animate-spin mr-3" />
+                <p className="text-sm text-gray-500">Loading external jobs...</p>
+              </div>
+            ) : externalJobs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100 text-center">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><Briefcase className="w-6 h-6 text-gray-300" /></div>
+                <p className="font-bold text-gray-900 text-xl">No jobs found</p>
+                <p className="text-sm text-gray-500 mt-1">Try refreshing external jobs.</p>
+              </div>
+            ) : (
+              externalJobs.map(job => {
+                const isBookmarked = externalBookmarkedIds.includes(job.job_id);
+                return (
+                  <div key={job.job_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 overflow-hidden">
+                        {job.logo_url ? <img src={job.logo_url} alt={job.company} className="w-full h-full object-contain" /> : <Briefcase className="w-5 h-5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className="font-bold text-gray-900 text-sm truncate">{job.title}</p>
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200"><Clock className="w-3 h-3" />{formatExternalDate(job.posted_date)}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 mb-2">
+                          <span className="flex items-center gap-1"><Building className="w-3 h-3" />{job.company}</span>
+                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200">{job.employment_type || 'Not specified'}</span>
+                        </div>
+                        <p className="text-xs text-gray-500">Salary: <span className="font-semibold text-gray-700">{job.salary || 'Not specified'}</span></p>
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <button onClick={() => toggleExternalBookmark(job.job_id)} className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors">
+                          {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-rose-600" /> : <Bookmark className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => handleExternalApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors">
+                          Apply <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+              </div>
+            </>
+          )}
+
           <div className="mt-10">
             <Card className="border border-gray-100 shadow-lg">
               <CardHeader>
@@ -770,6 +1099,41 @@ const JobOpportunitiesPage = () => {
                 {applySubmitting ? 'Submitting...' : 'Submit Application'}
               </Button>
               <Button variant="outline" onClick={() => setApplyOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={externalApplyPromptOpen}
+        onOpenChange={(open) => {
+          setExternalApplyPromptOpen(open);
+          if (!open) setExternalApplyPromptJob(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Did You Apply For This Job?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {externalApplyPromptJob ? `Did you complete your application for "${externalApplyPromptJob.title}"?` : 'Did you complete your external application?'}
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => submitExternalApplicationFeedback(true)}
+                disabled={submittingExternalFeedback}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Yes, I Applied
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => submitExternalApplicationFeedback(false)}
+                disabled={submittingExternalFeedback}
+              >
+                No, Not Yet
+              </Button>
             </div>
           </div>
         </DialogContent>

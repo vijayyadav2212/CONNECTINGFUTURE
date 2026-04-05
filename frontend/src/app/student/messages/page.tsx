@@ -23,6 +23,8 @@ interface Message {
 interface Conversation {
   id: string;
   name: string;
+  email: string;
+  displayName: string;
   avatar?: string;
   lastMessage: string;
   lastMessageTime: Date;
@@ -31,7 +33,7 @@ interface Conversation {
   role: 'alumni' | 'student' | 'mentor';
 }
 
-interface ThreadItem { thread_key:string; other:string; last_message:string; last_at:string; unread:number }
+interface ThreadItem { thread_key:string; other:string; other_name?: string; last_message:string; last_at:string; unread:number }
 
 interface ConnectionRecord {
   id: number;
@@ -63,6 +65,8 @@ const MessagesPage = () => {
   const currentUserEmail = (user?.email as string | undefined) || '';
   const prevUnreadRef = useRef<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const displayNameFor = (value: string) => value.includes('@') ? value.split('@')[0] : value;
 
   function buildPairKey(a:string,b:string) {
     const [x,y] = [a.toLowerCase().trim(), b.toLowerCase().trim()].sort();
@@ -130,6 +134,8 @@ const MessagesPage = () => {
     {
       id: '1',
       name: 'Sarah Johnson',
+      email: 'sarah.johnson@example.com',
+      displayName: 'Sarah Johnson',
       lastMessage: 'Thanks for your advice on the internship application!',
       lastMessageTime: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
       unreadCount: 0,
@@ -139,6 +145,8 @@ const MessagesPage = () => {
     {
       id: '2',
       name: 'Michael Chen (Mentor)',
+      email: 'michael.chen@example.com',
+      displayName: 'Michael Chen (Mentor)',
       lastMessage: 'Let\'s schedule a call to discuss your career goals.',
       lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
       unreadCount: 2,
@@ -148,6 +156,8 @@ const MessagesPage = () => {
     {
       id: '3',
       name: 'Emily Rodriguez',
+      email: 'emily.rodriguez@example.com',
+      displayName: 'Emily Rodriguez',
       lastMessage: 'I can share some resources for hardware engineering.',
       lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
       unreadCount: 1,
@@ -157,6 +167,8 @@ const MessagesPage = () => {
     {
       id: '4',
       name: 'David Kim',
+      email: 'david.kim@example.com',
+      displayName: 'David Kim',
       lastMessage: 'The data science project sounds interesting!',
       lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
       unreadCount: 0,
@@ -220,6 +232,8 @@ const MessagesPage = () => {
         const mappedFromThreads: Conversation[] = threads.map(t => ({
           id: t.thread_key,
           name: t.other,
+          email: t.other,
+          displayName: t.other_name || displayNameFor(t.other),
           lastMessage: t.last_message,
           lastMessageTime: new Date(t.last_at),
           unreadCount: t.unread,
@@ -233,17 +247,19 @@ const MessagesPage = () => {
           const currUnread = Number(t.unread || 0);
           if (currUnread > prevUnread) {
             const delta = currUnread - prevUnread;
-            toast({ title: 'New message', description: `${delta} new message${delta>1?'s':''} from ${t.other}` });
+            toast({ title: 'New message', description: `${delta} new message${delta>1?'s':''} from ${displayNameFor(t.other_name || t.other)}` });
           }
         });
         // Merge in accepted connections as conversations if not in threads
         const accepted = connections.filter(c => c.status === 'accepted');
-        const present = new Set(mappedFromThreads.map(m => m.name.toLowerCase()));
+        const present = new Set(mappedFromThreads.map(m => m.email.toLowerCase()));
         const fromConnections: Conversation[] = accepted.map(c => {
           const other = c.requester_email.toLowerCase() === currentUserEmail.toLowerCase() ? c.target_email : c.requester_email;
           return {
             id: `conn|${other}`,
             name: other,
+            email: other,
+            displayName: displayNameFor(other),
             lastMessage: 'Connected • say hi!',
             lastMessageTime: new Date(),
             unreadCount: 0,
@@ -319,6 +335,7 @@ const MessagesPage = () => {
   }, [API_BASE, currentUserEmail, selectedOtherEmail]);
 
   const filteredConversations = conversations.filter(conv =>
+    conv.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -485,7 +502,7 @@ const MessagesPage = () => {
                   {filteredConversations.map(conv => (
                     <div
                       key={conv.id}
-                      onClick={() => { setSelectedConversation(conv.id); setSelectedOtherEmail(conv.name); }}
+                      onClick={() => { setSelectedConversation(conv.id); setSelectedOtherEmail(conv.email); }}
                       className={`p-5 border-b border-white/20 cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 hover:transform hover:scale-[1.02] ${
                         selectedConversation === conv.id 
                           ? 'bg-gradient-to-r from-blue-100/70 to-purple-100/70 border-blue-200 shadow-md' 
@@ -495,7 +512,7 @@ const MessagesPage = () => {
                         <div className="flex items-center gap-4">
                         <div className="relative">
                           <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {conv.name.split(' ').map(n => n[0]).join('')}
+                            {conv.displayName.split(' ').map(n => n[0]).join('')}
                           </div>
                           {conv.isOnline && (
                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-green-400 to-emerald-500 border-3 border-white rounded-full shadow-lg"></div>
@@ -503,7 +520,7 @@ const MessagesPage = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-bold text-gray-900 truncate text-lg">{conv.name}</h3>
+                            <h3 className="font-bold text-gray-900 truncate text-lg">{conv.displayName}</h3>
                             <span className="text-xs font-medium bg-gradient-to-r from-gray-500 to-gray-600 bg-clip-text text-transparent">
                               {formatTime(conv.lastMessageTime)}
                             </span>
@@ -570,11 +587,11 @@ const MessagesPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                          {conversations.find(c => c.id === selectedConversation)?.name.split(' ').map(n => n[0]).join('')}
+                          {conversations.find(c => c.id === selectedConversation)?.displayName.split(' ').map(n => n[0]).join('')}
                         </div>
                         <div>
                           <h3 className="font-bold text-xl text-gray-900">
-                            {selectedOtherEmail || conversations.find(c => c.id === selectedConversation)?.name}
+                            {conversations.find(c => c.id === selectedConversation)?.displayName || selectedOtherEmail}
                           </h3>
                           <p className="text-sm font-medium">
                             <span className={`inline-flex items-center gap-2 ${

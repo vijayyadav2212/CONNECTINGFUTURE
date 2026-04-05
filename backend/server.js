@@ -26,6 +26,8 @@ const { createMentorshipSchema } = require('./database/mentorship');
 const { createAcademicProgressSchema } = require('./database/academicProgress');
 const { createEventsSchema } = require('./database/events');
 const { createMemoriesSchema } = require('./database/memories');
+const { createExternalJobsSchema } = require('./database/externalJobs');
+const { createSiteSettingsSchema } = require('./database/siteSettings');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -169,6 +171,277 @@ function deriveRole(email) {
   return 'alumni';
 }
 
+async function isAdminRequest(req) {
+  const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
+  const sub = req.auth && req.auth.sub;
+  if (!email && !sub) return false;
+  try {
+    if (email) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') return true;
+    }
+    if (sub) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE auth0_id = ? LIMIT 1', [sub]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') return true;
+    }
+  } catch (error) {
+    console.warn('Admin verification failed:', error && error.message ? error.message : error);
+  }
+  return false;
+}
+
+function normalizeJobSearchText(value) {
+  return String(value || '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[,;]+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function buildExternalJobCacheKey({ role, location, employmentType, page }) {
+  return [normalizeJobSearchText(role), normalizeJobSearchText(location), normalizeJobSearchText(employmentType), String(page || 1)].join('|');
+}
+
+function formatExternalSalary(job) {
+  const minSalary = job.job_salary_min ?? job.salary_min ?? job.min_salary;
+  const maxSalary = job.job_salary_max ?? job.salary_max ?? job.max_salary;
+  const currency = job.job_salary_currency ?? job.salary_currency ?? job.currency;
+  if (minSalary && maxSalary) return `${currency ? `${currency} ` : ''}${minSalary} - ${maxSalary}`.trim();
+  if (minSalary) return `${currency ? `${currency} ` : ''}${minSalary}+`.trim();
+  if (job.job_salary || job.salary) return String(job.job_salary || job.salary);
+  return 'Not specified';
+}
+
+function formatExternalLocation(job, fallbackLocation) {
+  const locationParts = [job.job_city, job.job_state, job.job_country].filter(Boolean).map(String);
+  if (locationParts.length) return locationParts.join(', ');
+  if (job.job_location) return String(job.job_location);
+  return fallbackLocation || 'Remote / Flexible';
+}
+
+function mapJSearchJob(job) {
+  return {
+    job_id: String(job.job_id || job.id || crypto.randomUUID()),
+    title: job.job_title || job.title || 'Untitled role',
+    company: job.employer_name || job.company || 'Unknown company',
+    location: formatExternalLocation(job, job.location),
+    apply_link: job.job_apply_link || job.apply_link || job.job_google_link || job.job_url || '',
+    employment_type: job.job_employment_type || job.employment_type || 'Not specified',
+    salary: formatExternalSalary(job),
+    posted_date: job.job_posted_at_datetime_utc || job.job_posted_at || job.posted_date || null,
+    logo_url: job.employer_logo || job.logo_url || null,
+    job_type: job.job_employment_type || job.employment_type || null,
+    description: job.job_description || job.description || '',
+    source: 'rapidapi-jsearch'
+  };
+}
+
+const externalJobsRateLimit = new Map();
+
+function allowExternalJobsRequest(ipAddress) {
+  const windowMs = Number(process.env.JOBS_RATE_LIMIT_WINDOW_MS || 60_000);
+  const maxRequests = Number(process.env.JOBS_RATE_LIMIT_MAX || 30);
+  const key = ipAddress || 'anonymous';
+  const now = Date.now();
+  const current = externalJobsRateLimit.get(key) || { count: 0, resetAt: now + windowMs };
+  if (now > current.resetAt) {
+    current.count = 0;
+    current.resetAt = now + windowMs;
+  }
+  current.count += 1;
+  externalJobsRateLimit.set(key, current);
+  return { allowed: current.count <= maxRequests, remaining: Math.max(0, maxRequests - current.count), resetAt: current.resetAt };
+}
+
+async function readJobSearchDefaults() {
+  const { rows } = await dbQuery("SELECT setting_value FROM site_settings WHERE setting_key = 'job_search_defaults' LIMIT 1");
+  const value = rows && rows[0] ? rows[0].setting_value : null;
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return {}; }
+  }
+  return {};
+}
+
+async function writeJobSearchDefaults(payload) {
+  const normalized = {
+    role: String(payload && payload.role ? payload.role : '').trim() || 'software developer',
+    location: String(payload && payload.location ? payload.location : '').trim() || 'India',
+    employment_type: String(payload && payload.employment_type ? payload.employment_type : '').trim() || 'All Types'
+  };
+  await dbQuery(`
+    INSERT INTO site_settings (setting_key, setting_value, updated_at)
+    VALUES ('job_search_defaults', ?, NOW())
+    ON CONFLICT (setting_key)
+    DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()
+  `, [JSON.stringify(normalized)]);
+  return normalized;
+}
+
+async function getCachedExternalJobs(cacheKey) {
+  const { rows } = await dbQuery(
+    `SELECT results_json, fetched_at, expires_at
+     FROM external_job_search_cache
+     WHERE cache_key = ? AND expires_at > NOW()
+     ORDER BY fetched_at DESC
+     LIMIT 1`,
+    [cacheKey]
+  );
+  if (!rows || !rows.length) return null;
+  return rows[0];
+}
+
+async function saveExternalJobsCache(cacheKey, params, jobs) {
+  const ttlMinutes = Number(process.env.JOBS_CACHE_TTL_MINUTES || 15);
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60_000);
+  await dbQuery(
+    `INSERT INTO external_job_search_cache (cache_key, role, location, employment_type, results_json, fetched_at, expires_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, NOW(), ?, NOW())
+     ON CONFLICT (cache_key)
+     DO UPDATE SET role = EXCLUDED.role,
+                   location = EXCLUDED.location,
+                   employment_type = EXCLUDED.employment_type,
+                   results_json = EXCLUDED.results_json,
+                   fetched_at = NOW(),
+                   expires_at = EXCLUDED.expires_at,
+                   updated_at = NOW()`,
+    [cacheKey, params.role || null, params.location || null, params.employmentType || null, JSON.stringify(jobs), expiresAt]
+  );
+}
+
+async function saveExternalJobSnapshots(cacheKey, jobs) {
+  if (!jobs || !jobs.length) return;
+  for (const job of jobs) {
+    await dbQuery(
+      `INSERT INTO external_jobs_cache (
+        job_id, title, company, location, apply_link, employment_type, salary, posted_at, logo_url, raw_data, search_key, last_seen_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      ON CONFLICT (job_id)
+      DO UPDATE SET title = EXCLUDED.title,
+                    company = EXCLUDED.company,
+                    location = EXCLUDED.location,
+                    apply_link = EXCLUDED.apply_link,
+                    employment_type = EXCLUDED.employment_type,
+                    salary = EXCLUDED.salary,
+                    posted_at = EXCLUDED.posted_at,
+                    logo_url = EXCLUDED.logo_url,
+                    raw_data = EXCLUDED.raw_data,
+                    search_key = EXCLUDED.search_key,
+                    last_seen_at = NOW(),
+                    updated_at = NOW()`,
+      [
+        job.job_id,
+        job.title,
+        job.company,
+        job.location,
+        job.apply_link,
+        job.employment_type,
+        job.salary,
+        job.posted_date ? new Date(job.posted_date) : null,
+        job.logo_url || null,
+        JSON.stringify(job),
+        cacheKey
+      ]
+    );
+  }
+}
+
+async function fetchExternalJobsFromRapidApi({ role, location, employmentType, page }) {
+  const rapidApiKey = process.env.RAPIDAPI_JSEARCH_KEY || process.env.RAPIDAPI_KEY;
+  const rapidApiHost = process.env.RAPIDAPI_JSEARCH_HOST || process.env.RAPIDAPI_HOST || 'jsearch.p.rapidapi.com';
+  if (!rapidApiKey) {
+    throw new Error('RAPIDAPI_JSEARCH_KEY is not configured');
+  }
+
+  const searchParts = [role, 'jobs'];
+  if (location) searchParts.push(`in ${location}`);
+  const url = new URL(`https://${rapidApiHost}/search`);
+  url.searchParams.set('query', searchParts.join(' ').replace(/\s+/g, ' ').trim());
+  url.searchParams.set('page', String(page || 1));
+  url.searchParams.set('num_pages', '1');
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'x-rapidapi-host': rapidApiHost,
+      'x-rapidapi-key': rapidApiKey
+    }
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`RapidAPI JSearch request failed (${response.status}): ${text}`);
+  }
+
+  const payload = await response.json();
+  const items = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.jobs) ? payload.jobs : [];
+  return items.map(mapJSearchJob);
+}
+
+async function handleExternalJobsRequest(req, res) {
+  try {
+    const rate = allowExternalJobsRequest(req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'anonymous');
+    res.setHeader('X-RateLimit-Limit', String(Number(process.env.JOBS_RATE_LIMIT_MAX || 30)));
+    res.setHeader('X-RateLimit-Remaining', String(rate.remaining));
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))));
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+
+    const defaults = await readJobSearchDefaults();
+    const role = String(req.query.role || defaults.role || 'software developer').trim();
+    const location = String(req.query.location || defaults.location || 'India').trim();
+    const employmentType = String(req.query.employment_type || req.query.job_type || defaults.employment_type || '').trim();
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const refresh = String(req.query.refresh || req.query.force || '').toLowerCase() === 'true';
+
+    const cacheKey = buildExternalJobCacheKey({ role, location, employmentType, page });
+    if (!refresh) {
+      const cached = await getCachedExternalJobs(cacheKey);
+      if (cached && cached.results_json) {
+        const cachedJobs = typeof cached.results_json === 'string' ? JSON.parse(cached.results_json) : cached.results_json;
+        return res.json({
+          jobs: cachedJobs || [],
+          meta: {
+            role,
+            location,
+            employment_type: employmentType || 'All Types',
+            page,
+            from_cache: true,
+            fetched_at: cached.fetched_at
+          }
+        });
+      }
+    }
+
+    const jobs = await fetchExternalJobsFromRapidApi({ role, location, employmentType, page });
+    const filteredJobs = employmentType && employmentType !== 'All Types'
+      ? jobs.filter(job => normalizeJobSearchText(job.employment_type).includes(normalizeJobSearchText(employmentType)))
+      : jobs;
+
+    await Promise.all([
+      saveExternalJobsCache(cacheKey, { role, location, employmentType }, filteredJobs),
+      saveExternalJobSnapshots(cacheKey, filteredJobs)
+    ]);
+
+    return res.json({
+      jobs: filteredJobs,
+      meta: {
+        role,
+        location,
+        employment_type: employmentType || 'All Types',
+        page,
+        from_cache: false,
+        fetched_at: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('External jobs request failed:', error && error.message ? error.message : error);
+    return res.status(500).json({ error: error.message || 'Failed to load external jobs' });
+  }
+}
+
 // MySQL connection (pool for resilience)
 const useConnectionString = !!process.env.DATABASE_URL;
 const db = useConnectionString
@@ -300,6 +573,8 @@ async function initializeTables() {
     try {
       await createJobsSchema(dbQuery);
       await createApplicationsSchema(dbQuery);
+      await createExternalJobsSchema(dbQuery);
+      await createSiteSettingsSchema(dbQuery);
     } catch (e) {
       console.warn('Jobs/Applications schema creation note:', e.message);
     }
@@ -373,350 +648,6 @@ const checkJwt = jwt({
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ['RS256'],
 });
-
-function normalizeTextList(value) {
-  if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean);
-  if (typeof value === 'string') {
-    const text = value.trim();
-    if (!text) return [];
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) return normalizeTextList(parsed);
-    } catch { }
-    return text.split(',').map(item => item.trim()).filter(Boolean);
-  }
-  return [];
-}
-
-function stripMarkdownCodeFences(text) {
-  return String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-}
-
-function parseJsonResponse(text) {
-  const cleaned = stripMarkdownCodeFences(text);
-  if (!cleaned) return null;
-  try {
-    return JSON.parse(cleaned);
-  } catch { }
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try {
-      return JSON.parse(cleaned.slice(start, end + 1));
-    } catch { }
-  }
-  const arrayStart = cleaned.indexOf('[');
-  const arrayEnd = cleaned.lastIndexOf(']');
-  if (arrayStart >= 0 && arrayEnd > arrayStart) {
-    try {
-      return JSON.parse(cleaned.slice(arrayStart, arrayEnd + 1));
-    } catch { }
-  }
-  return null;
-}
-
-function dedupeByUrl(items) {
-  const seen = new Set();
-  return (Array.isArray(items) ? items : []).filter(item => {
-    const key = String(item && item.url ? item.url : '').trim().toLowerCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function normalizeResourceCollection(value, fallbackLabel) {
-  let items = value;
-  if (typeof items === 'string') {
-    try {
-      items = JSON.parse(items);
-    } catch {
-      items = items.split(',').map((item, index) => ({ label: `${fallbackLabel || 'Resource'} ${index + 1}`, url: item.trim() })).filter(item => item.url);
-    }
-  }
-
-  if (!Array.isArray(items)) return [];
-
-  return dedupeByUrl(items.map((item, index) => {
-    if (typeof item === 'string') {
-      return { label: `${fallbackLabel || 'Resource'} ${index + 1}`, url: item };
-    }
-    return {
-      label: item.label || item.title || item.name || `${fallbackLabel || 'Resource'} ${index + 1}`,
-      url: item.url || item.link || item.href || '',
-    };
-  }).filter(item => item.url));
-}
-
-function fallbackRoadmapBlueprint(domain, specialization) {
-  const title = `${specialization || 'Custom'} Roadmap`;
-  const normalizedSpecialization = String(specialization || '').toLowerCase();
-
-  if (normalizedSpecialization.includes('mern')) {
-    return {
-      title: 'MERN Stack Roadmap',
-      description: 'A practical roadmap for building full-stack web applications with MongoDB, Express.js, React.js, and Node.js.',
-      category: domain || 'Software Engineering',
-      level: 'Beginner to Advanced',
-      duration: '12 weeks',
-      phases: 5,
-      tags: ['MongoDB', 'Express.js', 'React.js', 'Node.js', 'Full Stack'],
-      milestones: [
-        { title: 'MongoDB Fundamentals', focus: 'Data modeling and CRUD basics' },
-        { title: 'Express.js APIs', focus: 'REST endpoints and middleware' },
-        { title: 'React.js Frontend', focus: 'Component-driven UI and state management' },
-        { title: 'Node.js Backend', focus: 'Server logic, validation, and auth' },
-        { title: 'Final Full Stack Project', focus: 'Integrate frontend, backend, and database into a deployable app' },
-      ],
-    };
-  }
-
-  if (normalizedSpecialization.includes('software')) {
-    return {
-      title: `${domain || 'Software Engineering'} Roadmap`,
-      description: 'A structured path covering foundations, applied development, and a portfolio-ready capstone.',
-      category: domain || 'Software Engineering',
-      level: 'Beginner to Advanced',
-      duration: '10 weeks',
-      phases: 5,
-      tags: ['Foundations', 'Projects', 'System Design', 'Deployment'],
-      milestones: [
-        { title: 'Core Programming Foundations', focus: 'Problem solving, data structures, and version control' },
-        { title: 'Frontend Development', focus: 'HTML, CSS, JavaScript, and UI components' },
-        { title: 'Backend Development', focus: 'APIs, databases, and business logic' },
-        { title: 'Deployment and Collaboration', focus: 'Testing, deployment, and teamwork practices' },
-        { title: 'Capstone Project', focus: 'Ship a polished real-world project' },
-      ],
-    };
-  }
-
-  return {
-    title,
-    description: `A guided roadmap for ${specialization || 'the selected specialization'} within ${domain || 'the selected domain'}.`,
-    category: domain || 'General',
-    level: 'Beginner to Advanced',
-    duration: '8 weeks',
-    phases: 4,
-    tags: normalizeTextList(specialization).length ? normalizeTextList(specialization) : [specialization || domain || 'Learning'],
-    milestones: [
-      { title: 'Foundations', focus: 'Understand the core concepts and terminology' },
-      { title: 'Applied Practice', focus: 'Build guided exercises and small exercises' },
-      { title: 'Intermediate Projects', focus: 'Apply concepts in practical scenarios' },
-      { title: 'Capstone', focus: 'Deliver a real-world portfolio project' },
-    ],
-  };
-}
-
-function fallbackMilestoneDetail(blueprint, index, total, domain, specialization) {
-  const title = blueprint.title;
-  const lowercaseTitle = String(title || '').toLowerCase();
-  const isMern = String(specialization || '').toLowerCase().includes('mern');
-  const resources = (() => {
-    if (lowercaseTitle.includes('mongodb')) {
-      return {
-        youtube: [
-          { label: 'MongoDB Crash Course', url: 'https://www.youtube.com/results?search_query=MongoDB+crash+course' },
-          { label: 'MongoDB CRUD Tutorial', url: 'https://www.youtube.com/results?search_query=MongoDB+CRUD+tutorial' },
-        ],
-        github: [{ label: 'Mongoose', url: 'https://github.com/Automattic/mongoose' }],
-        reading: [{ label: 'MongoDB Docs', url: 'https://www.mongodb.com/docs/' }],
-      };
-    }
-    if (lowercaseTitle.includes('express')) {
-      return {
-        youtube: [
-          { label: 'Express.js Tutorial', url: 'https://www.youtube.com/results?search_query=Express.js+tutorial' },
-          { label: 'REST API with Express', url: 'https://www.youtube.com/results?search_query=REST+API+Express+tutorial' },
-        ],
-        github: [{ label: 'Express', url: 'https://github.com/expressjs/express' }],
-        reading: [{ label: 'Express Docs', url: 'https://expressjs.com/' }],
-      };
-    }
-    if (lowercaseTitle.includes('react')) {
-      return {
-        youtube: [
-          { label: 'React Fundamentals', url: 'https://www.youtube.com/results?search_query=React+fundamentals+tutorial' },
-          { label: 'React Hooks Tutorial', url: 'https://www.youtube.com/results?search_query=React+hooks+tutorial' },
-        ],
-        github: [{ label: 'React', url: 'https://github.com/facebook/react' }],
-        reading: [{ label: 'React Docs', url: 'https://react.dev/' }],
-      };
-    }
-    if (lowercaseTitle.includes('node')) {
-      return {
-        youtube: [
-          { label: 'Node.js Crash Course', url: 'https://www.youtube.com/results?search_query=Node.js+crash+course' },
-          { label: 'Node.js API Building', url: 'https://www.youtube.com/results?search_query=Node.js+API+building+tutorial' },
-        ],
-        github: [{ label: 'Node.js', url: 'https://github.com/nodejs/node' }],
-        reading: [{ label: 'Node.js Docs', url: 'https://nodejs.org/en/docs' }],
-      };
-    }
-    return {
-      youtube: [
-        { label: `${title} overview`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} tutorial`)}` },
-        { label: `${title} project walkthrough`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} project tutorial`)}` },
-      ],
-      github: [{ label: `${title} repositories`, url: `https://github.com/search?q=${encodeURIComponent(title || specialization || domain || 'learning')}` }],
-      reading: [{ label: `${title} reading`, url: `https://www.google.com/search?q=${encodeURIComponent(`${title || specialization || domain || 'learning'} documentation`)}` }],
-    };
-  })();
-
-  return {
-    title,
-    description: blueprint.focus || `Master ${title} with practical implementation, exercises, and a small project.`,
-    subtopics: [
-      { title: 'Basics', description: `Learn the core concepts of ${title.toLowerCase()}.` },
-      { title: 'Advanced', description: `Explore deeper patterns and production usage for ${title.toLowerCase()}.` },
-      { title: 'Real-world use', description: `Apply ${title.toLowerCase()} in a real project or workflow.` },
-    ],
-    learning_steps: [
-      `Understand the role of ${title} inside a ${specialization || domain || 'roadmap'}.`,
-      `Build a small guided exercise focused on ${title}.`,
-      `Extend the exercise into a reusable implementation.`,
-      `Validate the milestone with a real-world mini project.`,
-    ],
-    resources,
-    order: index + 1,
-    total,
-    is_capstone: index === total - 1,
-    stage: isMern ? title : `${index + 1}/${total}`,
-  };
-}
-
-async function callRoadmapAiJson(messages, fallbackFactory) {
-  const apiKey = process.env.ROADMAP_AI_API_KEY || process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
-  const baseUrl = String(process.env.ROADMAP_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const model = process.env.ROADMAP_AI_MODEL || 'gpt-4o-mini';
-
-  if (!apiKey) {
-    return fallbackFactory();
-  }
-
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.35,
-        messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(`AI request failed (${response.status}): ${text}`);
-    }
-
-    const payload = await response.json();
-    const content = payload?.choices?.[0]?.message?.content || '';
-    const parsed = parseJsonResponse(content);
-    if (parsed) return parsed;
-    throw new Error('AI response did not contain valid JSON');
-  } catch (error) {
-    console.warn('Roadmap AI generation failed, falling back to templates:', error && error.message ? error.message : error);
-    return fallbackFactory();
-  }
-}
-
-async function buildRoadmapDraft(domain, specialization) {
-  const blueprint = await callRoadmapAiJson([
-    {
-      role: 'system',
-      content: 'You generate concise roadmap outlines as JSON only. Return an array of milestone objects with title and focus fields.',
-    },
-    {
-      role: 'user',
-      content: `Create a milestone blueprint for a learning roadmap in the domain "${domain}" with the specialization "${specialization}". Return JSON only.`,
-    },
-  ], () => fallbackRoadmapBlueprint(domain, specialization).milestones);
-
-  const milestones = Array.isArray(blueprint) && blueprint.length > 0 ? blueprint : fallbackRoadmapBlueprint(domain, specialization).milestones;
-  const expandedMilestones = [];
-
-  for (const [index, milestone] of milestones.entries()) {
-    const detail = await callRoadmapAiJson([
-      {
-        role: 'system',
-        content: 'You expand one roadmap milestone into JSON with title, description, subtopics, learning_steps, and resources fields only.',
-      },
-      {
-        role: 'user',
-        content: `Expand milestone ${index + 1} of ${milestones.length} for the domain "${domain}" and specialization "${specialization}". Milestone title: ${milestone.title}. Milestone focus: ${milestone.focus || milestone.description || ''}. Include 3 subtopics from basics to advanced to real-world use, 4 learning steps, and resources with YouTube, GitHub, and reading links. Return JSON only.`,
-      },
-    ], () => fallbackMilestoneDetail(milestone, index, milestones.length, domain, specialization));
-
-    expandedMilestones.push({
-      order: index + 1,
-      title: detail.title || milestone.title,
-      description: detail.description || milestone.focus || milestone.description || '',
-      subtopics: Array.isArray(detail.subtopics) ? detail.subtopics : [],
-      learning_steps: Array.isArray(detail.learning_steps) ? detail.learning_steps : [],
-      resources: {
-        youtube: normalizeResourceCollection(detail.resources && detail.resources.youtube, 'YouTube resource'),
-        github: normalizeResourceCollection(detail.resources && detail.resources.github, 'GitHub resource'),
-        reading: normalizeResourceCollection(detail.resources && detail.resources.reading, 'Reading resource'),
-      },
-    });
-  }
-
-  const blueprintTemplate = fallbackRoadmapBlueprint(domain, specialization);
-  const rootResources = {
-    youtube: dedupeByUrl(expandedMilestones.flatMap(milestone => milestone.resources.youtube || [])),
-    github: dedupeByUrl(expandedMilestones.flatMap(milestone => milestone.resources.github || [])),
-    reading: dedupeByUrl(expandedMilestones.flatMap(milestone => milestone.resources.reading || [])),
-  };
-
-  return {
-    domain,
-    specialization,
-    title: blueprintTemplate.title,
-    description: blueprintTemplate.description,
-    category: blueprintTemplate.category,
-    level: blueprintTemplate.level,
-    duration: blueprintTemplate.duration,
-    phases: expandedMilestones.length,
-    tags: blueprintTemplate.tags,
-    milestones: expandedMilestones,
-    resources: rootResources,
-    generation_meta: {
-      stage: 'sequential',
-      generated_at: new Date().toISOString(),
-      provider: process.env.ROADMAP_AI_PROVIDER || (process.env.ROADMAP_AI_API_KEY || process.env.OPENAI_API_KEY || process.env.AI_API_KEY ? 'openai-compatible' : 'template'),
-      model: process.env.ROADMAP_AI_MODEL || 'gpt-4o-mini',
-    },
-  };
-}
-
-async function ensureAdminRequest(req, res) {
-  const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
-  const sub = req.auth && req.auth.sub;
-  let isAdmin = false;
-
-  try {
-    if (email) {
-      const { rows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
-      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
-    }
-    if (!isAdmin && sub) {
-      const { rows } = await dbQuery('SELECT user_type FROM users WHERE auth0_id = ? LIMIT 1', [sub]);
-      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
-    }
-  } catch (error) {
-    console.warn('Admin verification failed:', error && error.message ? error.message : error);
-  }
-
-  if (!isAdmin) {
-    res.status(403).json({ error: 'Forbidden' });
-    return null;
-  }
-
-  return { email, sub };
-}
 
 // 3. API Routes
 
@@ -1310,126 +1241,6 @@ app.get('/api/donations/analytics/summary', (req, res) => {
  * Roadmaps CRUD
  */
 
-async function saveRoadmapRecord(payload) {
-  const values = [
-    payload.owner_email,
-    payload.title,
-    payload.description,
-    payload.category,
-    payload.level,
-    payload.duration,
-    parseInt(payload.phases, 10),
-    payload.modules_link || null,
-    payload.tags || null,
-    payload.domain || null,
-    payload.specialization || null,
-    payload.milestones_json ? JSON.stringify(payload.milestones_json) : JSON.stringify([]),
-    payload.resources_json ? JSON.stringify(payload.resources_json) : JSON.stringify({}),
-    payload.generation_meta_json ? JSON.stringify(payload.generation_meta_json) : JSON.stringify({}),
-    !!payload.is_published,
-  ];
-
-  const { rows } = await dbQuery(`
-    INSERT INTO roadmaps (
-      owner_email,
-      title,
-      description,
-      category,
-      level,
-      duration,
-      phases,
-      modules_link,
-      tags,
-      domain,
-      specialization,
-      milestones_json,
-      resources_json,
-      generation_meta_json,
-      is_published
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    RETURNING *
-  `, values);
-
-  return rows && rows[0];
-}
-
-// Admin: generate a structured roadmap using AI or a deterministic fallback
-app.post('/api/admin/roadmaps/generate', checkJwt, async (req, res) => {
-  try {
-    const admin = await ensureAdminRequest(req, res);
-    if (!admin) return;
-
-    const domain = String(req.body && req.body.domain ? req.body.domain : '').trim();
-    const specialization = String(req.body && req.body.specialization ? req.body.specialization : '').trim();
-
-    if (!domain || !specialization) {
-      return res.status(400).json({ error: 'Domain and specialization are required' });
-    }
-
-    const draft = await buildRoadmapDraft(domain, specialization);
-    return res.json({
-      ...draft,
-      owner_email: admin.email || admin.sub || null,
-      is_published: false,
-    });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Admin: save a generated roadmap draft
-app.post('/api/admin/roadmaps/save', checkJwt, async (req, res) => {
-  try {
-    const admin = await ensureAdminRequest(req, res);
-    if (!admin) return;
-
-    const {
-      owner_email,
-      title,
-      description,
-      category,
-      level,
-      duration,
-      phases,
-      tags,
-      modules_link,
-      domain,
-      specialization,
-      milestones,
-      resources,
-      generation_meta,
-      is_published = false,
-    } = req.body || {};
-
-    if (!title || !description || !category || !level || !duration || !phases) {
-      return res.status(400).json({ error: 'Missing required roadmap fields' });
-    }
-
-    const saved = await saveRoadmapRecord({
-      owner_email: owner_email || admin.email || admin.sub,
-      title,
-      description,
-      category,
-      level,
-      duration,
-      phases,
-      tags: Array.isArray(tags) ? tags.join(', ') : tags,
-      modules_link,
-      domain,
-      specialization,
-      milestones_json: milestones || [],
-      resources_json: resources || {},
-      generation_meta_json: generation_meta || {},
-      is_published,
-    });
-
-    return res.status(201).json(saved);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
 // Create a roadmap
 app.post('/api/roadmaps', async (req, res) => {
   try {
@@ -1441,13 +1252,8 @@ app.post('/api/roadmaps', async (req, res) => {
       level,
       duration,
       phases,
-      tags,
       modules_link,
-      domain,
-      specialization,
-      milestones,
-      resources,
-      generation_meta,
+      tags,
       is_published = false
     } = req.body || {};
 
@@ -1455,25 +1261,13 @@ app.post('/api/roadmaps', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const created = await saveRoadmapRecord({
-      owner_email,
-      title,
-      description,
-      category,
-      level,
-      duration,
-      phases,
-      tags: Array.isArray(tags) ? tags.join(', ') : tags,
-      modules_link,
-      domain,
-      specialization,
-      milestones_json: milestones || [],
-      resources_json: resources || {},
-      generation_meta_json: generation_meta || {},
-      is_published,
-    });
+    const { rows } = await dbQuery(`
+      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, modules_link, tags, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), modules_link || null, tags || null, !!is_published]);
 
-    return res.status(201).json(created);
+    return res.status(201).json(rows && rows[0]);
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1515,15 +1309,13 @@ app.get('/api/roadmaps/:id', async (req, res) => {
 app.put('/api/roadmaps/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'modules_link', 'domain', 'specialization', 'milestones_json', 'resources_json', 'generation_meta_json', 'is_published'];
+    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'modules_link', 'tags', 'is_published'];
     const updates = [];
     const values = [];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         updates.push(`${key} = ?`);
-        if (key === 'phases') values.push(parseInt(req.body[key], 10));
-        else if (key === 'milestones_json' || key === 'resources_json' || key === 'generation_meta_json') values.push(typeof req.body[key] === 'string' ? req.body[key] : JSON.stringify(req.body[key]));
-        else values.push(req.body[key]);
+        values.push(key === 'phases' ? parseInt(req.body[key], 10) : req.body[key]);
       }
     }
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
@@ -1609,6 +1401,18 @@ app.post('/api/jobs', async (req, res) => {
 // List jobs with filters
 app.get('/api/jobs', async (req, res) => {
   try {
+    const wantsExternalJobs = req.query && (
+      req.query.source === 'external' ||
+      req.query.external === 'true' ||
+      req.query.role !== undefined ||
+      req.query.employment_type !== undefined ||
+      req.query.refresh !== undefined ||
+      req.query.force !== undefined
+    );
+    if (wantsExternalJobs) {
+      return handleExternalJobsRequest(req, res);
+    }
+
     const {
       q,
       industry,
@@ -1664,6 +1468,220 @@ app.get('/api/jobs', async (req, res) => {
   }
 });
 
+app.get('/api/jobs/external', async (req, res) => {
+  return handleExternalJobsRequest(req, res);
+});
+
+app.post('/api/jobs/external/:jobId/view', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const snapshot = req.body && req.body.job ? req.body.job : req.body || {};
+    const { rows } = await dbQuery(
+      `INSERT INTO external_jobs_cache (
+        job_id, title, company, location, apply_link, employment_type, salary, posted_at, logo_url, raw_data, view_count, apply_click_count, last_seen_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, NOW(), NOW())
+      ON CONFLICT (job_id)
+      DO UPDATE SET title = COALESCE(EXCLUDED.title, external_jobs_cache.title),
+                    company = COALESCE(EXCLUDED.company, external_jobs_cache.company),
+                    location = COALESCE(EXCLUDED.location, external_jobs_cache.location),
+                    apply_link = COALESCE(EXCLUDED.apply_link, external_jobs_cache.apply_link),
+                    employment_type = COALESCE(EXCLUDED.employment_type, external_jobs_cache.employment_type),
+                    salary = COALESCE(EXCLUDED.salary, external_jobs_cache.salary),
+                    posted_at = COALESCE(EXCLUDED.posted_at, external_jobs_cache.posted_at),
+                    logo_url = COALESCE(EXCLUDED.logo_url, external_jobs_cache.logo_url),
+                    raw_data = COALESCE(EXCLUDED.raw_data, external_jobs_cache.raw_data),
+                    view_count = COALESCE(external_jobs_cache.view_count, 0) + 1,
+                    apply_click_count = COALESCE(external_jobs_cache.apply_click_count, 0) + 1,
+                    last_seen_at = NOW(),
+                    updated_at = NOW()
+      RETURNING view_count, apply_click_count`,
+      [
+        jobId,
+        snapshot.title || null,
+        snapshot.company || null,
+        snapshot.location || null,
+        snapshot.apply_link || null,
+        snapshot.employment_type || null,
+        snapshot.salary || null,
+        snapshot.posted_date ? new Date(snapshot.posted_date) : null,
+        snapshot.logo_url || null,
+        JSON.stringify(snapshot)
+      ]
+    );
+    return res.json({
+      job_id: jobId,
+      view_count: rows && rows[0] ? rows[0].view_count : 1,
+      apply_click_count: rows && rows[0] ? rows[0].apply_click_count : 1,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/jobs/external/:jobId/application-feedback', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { applied, user_email, user_name, source_page } = req.body || {};
+    const snapshot = req.body && req.body.job ? req.body.job : req.body || {};
+
+    if (typeof applied !== 'boolean') {
+      return res.status(400).json({ error: 'applied must be a boolean' });
+    }
+    if (!user_email || !String(user_email).trim()) {
+      return res.status(400).json({ error: 'user_email is required' });
+    }
+
+    await dbQuery(
+      `INSERT INTO external_jobs_cache (
+        job_id, title, company, location, apply_link, employment_type, salary, posted_at, logo_url, raw_data, last_seen_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      ON CONFLICT (job_id)
+      DO UPDATE SET title = COALESCE(EXCLUDED.title, external_jobs_cache.title),
+                    company = COALESCE(EXCLUDED.company, external_jobs_cache.company),
+                    location = COALESCE(EXCLUDED.location, external_jobs_cache.location),
+                    apply_link = COALESCE(EXCLUDED.apply_link, external_jobs_cache.apply_link),
+                    employment_type = COALESCE(EXCLUDED.employment_type, external_jobs_cache.employment_type),
+                    salary = COALESCE(EXCLUDED.salary, external_jobs_cache.salary),
+                    posted_at = COALESCE(EXCLUDED.posted_at, external_jobs_cache.posted_at),
+                    logo_url = COALESCE(EXCLUDED.logo_url, external_jobs_cache.logo_url),
+                    raw_data = COALESCE(EXCLUDED.raw_data, external_jobs_cache.raw_data),
+                    last_seen_at = NOW(),
+                    updated_at = NOW()`,
+      [
+        jobId,
+        snapshot.title || null,
+        snapshot.company || null,
+        snapshot.location || null,
+        snapshot.apply_link || null,
+        snapshot.employment_type || null,
+        snapshot.salary || null,
+        snapshot.posted_date ? new Date(snapshot.posted_date) : null,
+        snapshot.logo_url || null,
+        JSON.stringify(snapshot),
+      ]
+    );
+
+    await dbQuery(
+      `INSERT INTO external_job_application_feedback (
+        job_id, user_email, user_name, applied, source_page, job_snapshot, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+      ON CONFLICT (job_id, user_email)
+      DO UPDATE SET applied = EXCLUDED.applied,
+                    user_name = COALESCE(EXCLUDED.user_name, external_job_application_feedback.user_name),
+                    source_page = EXCLUDED.source_page,
+                    job_snapshot = COALESCE(EXCLUDED.job_snapshot, external_job_application_feedback.job_snapshot),
+                    updated_at = NOW()`,
+      [
+        jobId,
+        String(user_email).trim().toLowerCase(),
+        user_name ? String(user_name).trim() : null,
+        applied,
+        source_page || null,
+        JSON.stringify(snapshot),
+      ]
+    );
+
+    await dbQuery(
+      `UPDATE external_jobs_cache
+       SET applied_confirm_count = (
+            SELECT COUNT(*)::INT FROM external_job_application_feedback f
+            WHERE f.job_id = ? AND f.applied = TRUE
+          ),
+          application_response_count = (
+            SELECT COUNT(*)::INT FROM external_job_application_feedback f
+            WHERE f.job_id = ?
+          ),
+          updated_at = NOW()
+       WHERE job_id = ?`,
+      [jobId, jobId, jobId]
+    );
+
+    const { rows } = await dbQuery(
+      `SELECT job_id, apply_click_count, applied_confirm_count, application_response_count
+       FROM external_jobs_cache
+       WHERE job_id = ?
+       LIMIT 1`,
+      [jobId]
+    );
+
+    const stats = rows && rows[0] ? rows[0] : null;
+    return res.json({
+      job_id: jobId,
+      applied,
+      apply_click_count: stats ? Number(stats.apply_click_count || 0) : 0,
+      applied_confirm_count: stats ? Number(stats.applied_confirm_count || 0) : 0,
+      application_response_count: stats ? Number(stats.application_response_count || 0) : 0,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/jobs/external/analytics/applications', async (req, res) => {
+  try {
+    const status = String(req.query.status || 'applied').toLowerCase();
+    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10)));
+    const where = [];
+    const params = [];
+
+    if (status === 'applied') {
+      where.push('f.applied = TRUE');
+    } else if (status === 'not-applied') {
+      where.push('f.applied = FALSE');
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const { rows } = await dbQuery(
+      `SELECT f.id,
+              f.job_id,
+              f.user_email,
+              COALESCE(NULLIF(f.user_name, ''), NULLIF(u.name, ''), f.user_email) AS user_name,
+              f.applied,
+              f.source_page,
+              f.updated_at,
+              c.title,
+              c.company,
+              c.location,
+              c.apply_link
+       FROM external_job_application_feedback f
+       LEFT JOIN external_jobs_cache c ON c.job_id = f.job_id
+       LEFT JOIN users u ON LOWER(u.email) = LOWER(f.user_email)
+       ${whereSql}
+       ORDER BY f.updated_at DESC
+       LIMIT ?`,
+      [...params, limit]
+    );
+
+    return res.json({ applications: rows || [] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/jobs/external/analytics/summary', async (req, res) => {
+  try {
+    const { rows } = await dbQuery(
+      `SELECT job_id, title, company, location, apply_link, employment_type, salary, posted_at, logo_url,
+              view_count, apply_click_count, bookmark_count, applied_confirm_count, application_response_count,
+              CASE
+                WHEN COALESCE(apply_click_count, 0) > 0
+                THEN ROUND((COALESCE(applied_confirm_count, 0)::NUMERIC / COALESCE(apply_click_count, 0)::NUMERIC) * 100, 2)
+                ELSE 0
+              END AS apply_conversion_pct
+       FROM external_jobs_cache
+       ORDER BY COALESCE(applied_confirm_count, 0) DESC,
+                COALESCE(apply_click_count, 0) DESC,
+                COALESCE(view_count, 0) DESC,
+                COALESCE(bookmark_count, 0) DESC,
+                last_seen_at DESC NULLS LAST
+       LIMIT 5`
+    );
+    return res.json({ jobs: rows || [] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // Get one job
 app.get('/api/jobs/:id', async (req, res) => {
   try {
@@ -1679,6 +1697,33 @@ app.get('/api/jobs/:id', async (req, res) => {
     return res.json(job);
   } catch (e) {
     return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin job search defaults
+app.get('/api/admin/settings/jobs', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    const defaults = await readJobSearchDefaults();
+    return res.json({
+      role: defaults.role || 'software developer',
+      location: defaults.location || 'India',
+      employment_type: defaults.employment_type || 'All Types'
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/admin/settings/jobs', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    const updated = await writeJobSearchDefaults(req.body || {});
+    return res.json(updated);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -1850,16 +1895,19 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
     const { rows: jobRows } = await dbQuery('SELECT id FROM jobs WHERE id = ? LIMIT 1', [id]);
     if (!jobRows || !jobRows.length) return res.status(404).json({ error: 'Job not found' });
 
-    // Ensure applicant is a student (alumni cannot apply)
+    // Ensure applicant is eligible to apply (students and alumni allowed)
     try {
-      const { rows: userRows } = await dbQuery('SELECT user_type FROM users WHERE email = ? LIMIT 1', [applicant_email]);
-      const type = userRows && userRows[0] ? String(userRows[0].user_type || '').toLowerCase() : '';
-      if (type !== 'student') {
-        return res.status(403).json({ error: 'forbidden', message: 'Only students can apply to jobs' });
+      const { rows: userRows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [applicant_email]);
+      const dbType = userRows && userRows[0] ? String(userRows[0].user_type || '').toLowerCase() : '';
+      const type = dbType || deriveRole(applicant_email);
+      if (!(type === 'student' || type === 'alumni')) {
+        return res.status(403).json({ error: 'forbidden', message: 'Only students and alumni can apply to jobs' });
       }
     } catch (roleErr) {
-      // If role lookup fails, deny by default to prevent alumni applying
-      return res.status(403).json({ error: 'forbidden', message: 'Only students can apply to jobs' });
+      const fallbackType = deriveRole(applicant_email);
+      if (!(fallbackType === 'student' || fallbackType === 'alumni')) {
+        return res.status(403).json({ error: 'forbidden', message: 'Only students and alumni can apply to jobs' });
+      }
     }
 
     // Upsert application (unique job_id + applicant_email)
@@ -2269,6 +2317,7 @@ app.get('/api/messages/threads', async (req, res) => {
         map.set(r.thread_key, {
           thread_key: r.thread_key,
           other,
+          other_name: other,
           last_message: content,
           last_at: r.created_at,
           unread: 0,
@@ -2281,6 +2330,19 @@ app.get('/api/messages/threads', async (req, res) => {
       if (!r.read_at && r.receiver_email.toLowerCase() === String(user).toLowerCase()) {
         const t = map.get(r.thread_key);
         if (t) t.unread += 1;
+      }
+    }
+
+    const otherEmails = Array.from(new Set(Array.from(map.values()).map(t => t.other).filter(Boolean).map(v => String(v).toLowerCase())));
+    if (otherEmails.length) {
+      const placeholders = otherEmails.map(() => '?').join(', ');
+      const { rows: profiles } = await dbQuery(
+        `SELECT LOWER(email) AS email_key, name FROM users WHERE LOWER(email) IN (${placeholders})`,
+        otherEmails
+      );
+      const profileMap = new Map((profiles || []).map(p => [String(p.email_key || '').toLowerCase(), p.name || null]));
+      for (const item of map.values()) {
+        item.other_name = profileMap.get(String(item.other || '').toLowerCase()) || item.other;
       }
     }
 
@@ -2591,14 +2653,41 @@ app.get('/api/users', async (req, res) => {
     const offset = (p - 1) * l;
     const where = [];
     const params = [];
-    if (type && ['student', 'alumni', 'admin'].includes(String(type))) {
-      where.push('user_type = ?');
-      params.push(type);
+    const normalizedType = String(type || '').trim().toLowerCase();
+    if (normalizedType && ['student', 'alumni', 'admin'].includes(normalizedType)) {
+      where.push('LOWER(COALESCE(user_type, \'\')) = ?');
+      params.push(normalizedType);
     }
     if (q) {
-      where.push('(LOWER(name) LIKE ? OR LOWER(email) LIKE ?)');
-      const like = `%${String(q).toLowerCase()}%`;
-      params.push(like, like);
+      const tokens = String(q)
+        .toLowerCase()
+        .replace(/[^a-z0-9@._\-\s]+/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 8);
+
+      const tokenClauses = [];
+      tokens.forEach((token) => {
+        const like = `%${token}%`;
+        tokenClauses.push(`(
+          LOWER(COALESCE(name, '')) LIKE ? OR
+          LOWER(COALESCE(email, '')) LIKE ? OR
+          LOWER(COALESCE(major, '')) LIKE ? OR
+          LOWER(COALESCE(department, '')) LIKE ? OR
+          LOWER(COALESCE(company, '')) LIKE ? OR
+          LOWER(COALESCE(current_job, '')) LIKE ? OR
+          LOWER(COALESCE(job_title, '')) LIKE ? OR
+          LOWER(COALESCE(location, '')) LIKE ? OR
+          LOWER(COALESCE(skills, '')) LIKE ? OR
+          CAST(COALESCE(graduation_year, 0) AS TEXT) LIKE ?
+        )`);
+        params.push(like, like, like, like, like, like, like, like, like, like);
+      });
+
+      if (tokenClauses.length > 0) {
+        where.push(`(${tokenClauses.join(' OR ')})`);
+      }
     }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const { rows: list } = await dbQuery(`SELECT id, auth0_id, email, name, picture, bio, phone, university, user_type, graduation_year, major, current_job, company, job_title, location, skills, linkedin_url, github_url, website_url, is_mentor, registration_completed, approval_status, approval_reason, created_at FROM users ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
@@ -3295,7 +3384,7 @@ app.get('/api/mentorship/daily-sessions', async (req, res) => {
   }
   try {
     if (mentor_email) {
-      let sql = 'SELECT * FROM mentor_daily_sessions WHERE mentor_email = ?';
+      let sql = 'SELECT * FROM mentor_daily_sessions WHERE LOWER(mentor_email) = LOWER(?)';
       const params = [mentor_email];
       if (active_only === '1' || active_only === 'true') {
         sql += ' AND is_active = TRUE AND end_date >= CURRENT_DATE';
@@ -3328,11 +3417,11 @@ app.get('/api/mentorship/daily-sessions', async (req, res) => {
 // Mentor delete/deactivate daily session plan
 app.delete('/api/mentorship/daily-sessions/:id', async (req, res) => {
   const { id } = req.params;
-  const { mentor_email } = req.body || {};
+  const mentor_email = (req.body && req.body.mentor_email) || (req.query && req.query.mentor_email);
   if (!id || !mentor_email) return res.status(400).json({ error: 'id and mentor_email required' });
   try {
     const { rows } = await dbQuery(
-      'UPDATE mentor_daily_sessions SET is_active = FALSE, updated_at = NOW() WHERE id = ? AND mentor_email = ? RETURNING *',
+      'UPDATE mentor_daily_sessions SET is_active = FALSE, updated_at = NOW() WHERE id = ? AND LOWER(mentor_email) = LOWER(?) RETURNING *',
       [id, mentor_email]
     );
     if (!rows || !rows.length) return res.status(404).json({ error: 'Daily session not found' });
@@ -3378,12 +3467,17 @@ app.get('/api/mentorship/sessions', async (req, res) => {
   const { mentor_email, student_email, status } = req.query || {};
   if (!mentor_email && !student_email) return res.status(400).json({ error: 'mentor_email or student_email required' });
   try {
-    let sql = 'SELECT * FROM mentorship_sessions WHERE 1=1';
+    let sql = 'SELECT ms.*';
     const params = [];
-    if (mentor_email) { sql += ' AND mentor_email = ?'; params.push(mentor_email); }
-    if (student_email) { sql += ' AND student_email = ?'; params.push(student_email); }
-    if (status) { sql += ' AND status = ?'; params.push(status); }
-    sql += ' ORDER BY COALESCE(scheduled_at, created_at) ASC LIMIT 200';
+    if (student_email) {
+      sql += ', CASE WHEN EXISTS (SELECT 1 FROM mentor_ratings mr WHERE mr.session_id = ms.id AND LOWER(mr.student_email) = LOWER(?)) THEN TRUE ELSE FALSE END AS is_rated';
+      params.push(student_email);
+    }
+    sql += ' FROM mentorship_sessions ms WHERE 1=1';
+    if (mentor_email) { sql += ' AND ms.mentor_email = ?'; params.push(mentor_email); }
+    if (student_email) { sql += ' AND ms.student_email = ?'; params.push(student_email); }
+    if (status) { sql += ' AND ms.status = ?'; params.push(status); }
+    sql += ' ORDER BY COALESCE(ms.scheduled_at, ms.created_at) ASC LIMIT 200';
     const { rows } = await dbQuery(sql, params);
     return res.json({ sessions: rows });
   } catch (e) {

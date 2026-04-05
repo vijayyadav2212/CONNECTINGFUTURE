@@ -28,7 +28,7 @@ function pairKey(a: string, b: string) {
 export default function NetworkPage() {
   const { user } = useUser();
   const myEmail = (user?.email as string) || '';
-  const [type, setType] = useState<'students' | 'alumni'>('students');
+  const [type, setType] = useState<'students' | 'alumni'>('alumni');
   const [q, setQ] = useState('');
   const [list, setList] = useState<UserLite[]>([]);
   const [connections, setConnections] = useState<ConnectionRecord[]>([]);
@@ -103,6 +103,9 @@ export default function NetworkPage() {
     const rest = others.filter(u => !sameEmails.has(u.email.toLowerCase()));
     return { sameGroup: same, othersGroup: rest };
   }, [list, myProfile, myEmail]);
+
+  const isSearching = q.trim().length > 0;
+  const visibleOthers = sameGroup.length === 0 || showOthers || isSearching;
 
   useEffect(() => {
     if (!myEmail) return;
@@ -363,7 +366,7 @@ export default function NetworkPage() {
               value={q}
               onChange={e => setQ(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && load()}
-              placeholder="Search by name or email..."
+              placeholder="Search by name, email, company, major, skills, or year (use multiple words)"
               className="w-full pl-14 pr-6 py-4.5 min-h-[56px] rounded-[20px] border border-white bg-white/70 backdrop-blur-xl text-[15px] text-slate-800 font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] placeholder:text-slate-400 transition-all focus:bg-white"
             />
           </div>
@@ -399,7 +402,7 @@ export default function NetworkPage() {
         {!loading && (
           <>
             {/* Same Batch & Branch Section */}
-            {sameGroup.length > 0 && (
+            {sameGroup.length > 0 && !isSearching && (
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-[13px] font-bold rounded-full shadow-md">
@@ -416,7 +419,7 @@ export default function NetworkPage() {
             {/* Others Section */}
             {othersGroup.length > 0 && (
               <div className="space-y-6">
-                {(sameGroup.length > 0) && (
+                {(sameGroup.length > 0 && !isSearching) && (
                   <div className="flex items-center gap-4 border-t border-slate-100 pt-8">
                     <h2 className="text-lg font-bold text-slate-800">Other {type === 'students' ? 'Students' : 'Alumni'}</h2>
                     <button
@@ -429,7 +432,7 @@ export default function NetworkPage() {
                   </div>
                 )}
 
-                {(sameGroup.length === 0 || showOthers) && (
+                {visibleOthers && (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {othersGroup.map(u => renderUserCard(u))}
                   </div>

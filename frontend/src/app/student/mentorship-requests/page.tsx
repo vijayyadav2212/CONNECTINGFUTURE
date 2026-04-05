@@ -11,7 +11,7 @@ import StarRating from "@/components/ui/star-rating";
 import RazorpayPayment from "@/components/payment/RazorpayPayment";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Users, BadgeCheck, CalendarClock, Wallet, Sparkles, Filter, Search, Star, Clock, ArrowRight, X, TrendingUp } from "lucide-react";
+import { Users, BadgeCheck, CalendarClock, Wallet } from "lucide-react";
 
 type Mentor = {
   mentor_email: string;
@@ -55,6 +55,7 @@ type Session = {
   scheduled_at?: string | null;
   duration_minutes?: number;
   meeting_link?: string | null;
+  is_rated?: boolean;
 };
 
 type DailySessionPlan = {
@@ -108,6 +109,18 @@ function statusBadge(status: string) {
     expired: 'bg-slate-100 text-slate-600 border-slate-200/80',
   };
   return `text-[11px] font-bold px-3 py-1 rounded-[8px] border ${map[status] || 'bg-slate-100 text-slate-600 border-slate-200/80'} uppercase tracking-wider`;
+}
+
+function isSessionCompletedByTime(session: Session) {
+  if (!session.scheduled_at) return false;
+  const start = new Date(session.scheduled_at).getTime();
+  const durationMs = (session.duration_minutes || 60) * 60 * 1000;
+  return Date.now() >= start + durationMs;
+}
+
+function getSessionDisplayStatus(session: Session) {
+  if (session.status === 'completed' || isSessionCompletedByTime(session)) return 'completed';
+  return session.status;
 }
 
 export default function MentorshipRequests() {
@@ -397,11 +410,14 @@ export default function MentorshipRequests() {
         const errData = await res.json().catch(() => ({}));
         if (res.status === 409 || errData.error?.includes('UNIQUE')) {
           toast({ title: 'Already Rated', description: 'You have already submitted a rating for this session.', variant: 'destructive' });
+          setSessions((prev) => prev.map((s) => (s.id === session_id ? { ...s, is_rated: true } : s)));
+          setRatingForm(null);
         } else {
           throw new Error('Rating failed');
         }
       } else {
         toast({ title: 'Thanks for your feedback', description: 'Your rating has been submitted.' });
+        setSessions((prev) => prev.map((s) => (s.id === session_id ? { ...s, is_rated: true } : s)));
         setRatingForm(null);
         await loadRequestsAndSessions();
         await loadMentors();
@@ -421,99 +437,61 @@ export default function MentorshipRequests() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-white p-6 lg:p-10">
-        <div className="max-w-7xl mx-auto">
-          {/* Header Banner */}
-          <div className="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-[40px] p-10 lg:p-12 border border-emerald-100/20 shadow-[0_20px_50px_rgba(0,0,0,0.03)] mb-10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-20 -mt-20 blur-3xl opacity-60" />
-            
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 text-emerald-600 font-black text-[11px] mb-4 uppercase tracking-[0.2em]">
-                  <Sparkles size={16} className="text-emerald-500 animate-pulse" />
-                  <span>Expert Guidance</span>
-                </div>
-                
-                <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight uppercase">
-                  Find Your Mentor
-                </h1>
-                
-                <p className="text-slate-600 text-lg font-medium max-w-[600px] leading-relaxed mb-8">
-                  Discover mentors, request guidance, schedule sessions, and achieve your career goals with alumni support.
-                </p>
-                
-                <div className="flex flex-wrap gap-3">
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[12px] font-black text-slate-500 border border-slate-50 shadow-sm flex items-center gap-2.5 uppercase tracking-widest">
-                     <Users size={16} className="text-emerald-500" />
-                     {mentors.length} Mentors
-                   </div>
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[12px] font-black text-slate-500 border border-slate-50 shadow-sm flex items-center gap-2.5 uppercase tracking-widest">
-                     <BadgeCheck size={16} className="text-blue-500" />
-                     Verified Experts
-                   </div>
-                </div>
-              </div>
-              
-              <div className="hidden lg:block">
-                <div className="w-32 h-32 rounded-[40px] bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner border border-white">
-                  <BadgeCheck size={48} strokeWidth={1.5} />
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_25%_20%,rgba(59,130,246,0.08),transparent_36%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.10),transparent_38%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)]">
 
-            {/* Filters Section */}
-            <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50 mb-10">
-              <div className="flex flex-col lg:flex-row gap-6">
-                <div className="flex-[2] relative group">
-                  <Search className="w-5 h-5 text-slate-400 absolute left-5 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
-                  <input
-                    type="text"
-                    placeholder="Search skills, topics, or names..."
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 border border-slate-200 rounded-[28px] bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/30 font-medium text-slate-900 placeholder-slate-400 transition-all shadow-inner"
-                  />
-                </div>
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <input
-                    type="number"
-                    placeholder="Min Exp"
-                    value={minExp as any}
-                    onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")}
-                    className="px-6 py-4 border border-slate-200 rounded-[28px] bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 transition-all shadow-inner text-center"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max Price"
-                    value={maxPrice as any}
-                    onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")}
-                    className="px-6 py-4 border border-slate-200 rounded-[28px] bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 transition-all shadow-inner text-center"
-                  />
-                  <div className="col-span-2 md:col-span-1 flex gap-2">
-                    <Button onClick={loadMentors} disabled={loading} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[28px] font-black text-[12px] uppercase tracking-widest h-auto py-4 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                      {loading ? "..." : "Search"}
-                    </Button>
-                    <Button variant="outline" onClick={clearFilters} className="p-4 border border-slate-200 rounded-[28px] hover:bg-slate-50 transition-all h-auto">
-                      <X size={20} className="text-slate-400" />
-                    </Button>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Hero Header */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
+              transition={{ duration: 0.6 }}
+              className="mb-8"
+            >
+              <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center space-x-3 mb-3">
+                      <h1 className="text-[30px] md:text-[36px] font-black text-slate-900 tracking-tight">Find Your Mentor</h1>
+                    </div>
+                    <p className="text-slate-600 text-sm md:text-base font-medium">Discover mentors, request guidance, purchase sessions, and track progress</p>
                   </div>
                 </div>
               </div>
-              {appliedFilters.length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {appliedFilters.map((f) => (
-                    <Badge key={f.key} className="bg-emerald-50 text-emerald-700 border-emerald-100/50 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                      {f.label}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
+            </motion.div>
 
-            {purchaseFor && (
-              <div className="bg-white rounded-[40px] p-8 shadow-xl border border-emerald-100/20 mb-10 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+            {/* Filters */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mb-8"
+            >
+              <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 border-slate-200 bg-slate-50" />
+                  <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} className="h-11 border-slate-200 bg-slate-50" />
+                  <Input placeholder="Max price (INR)" type="number" value={maxPrice as any} onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")} className="h-11 border-slate-200 bg-slate-50" />
+                  <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} className="h-11 border-slate-200 bg-slate-50" />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={clearFilters} disabled={loading} className="h-11 border-slate-200 text-slate-700">Clear</Button>
+                    <Button onClick={loadMentors} disabled={loading} className="h-11 bg-blue-600 hover:bg-blue-700 text-white px-6">{loading ? "Searching..." : "Search"}</Button>
+                  </div>
+                </div>
+                {appliedFilters.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {appliedFilters.map((f) => (
+                      <Badge key={f.key} className="bg-orange-50 text-orange-700 border border-orange-200">{f.label}</Badge>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </motion.div>
+
+            {purchaseFor ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8">
                 <RazorpayPayment
                   paymentDetails={{ amount: purchaseFor.amount, currency: "INR", description: `${purchaseFor.type === 'subscription' ? 'Mentorship subscription' : 'Mentorship session'} with ${purchaseFor.mentor_email}`, email: user?.email || undefined, paymentType: 'mentorship' }}
                   onSuccess={(paymentId, orderId) => {
@@ -530,321 +508,502 @@ export default function MentorshipRequests() {
                   }}
                 />
               </div>
-            )}
+            ) : null}
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-              <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-                <div className="flex items-center justify-between">
+            {/* Summary Cards */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+            >
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Connected</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{connectedMentorsCount}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Connected Mentors</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{connectedMentorsCount}</p>
+                    <p className="text-[12px] font-semibold text-emerald-600 mt-2">Accepted connections</p>
                   </div>
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 transition-transform group-hover:scale-110">
-                    <Users size={20} />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Users size={18} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-                <div className="flex items-center justify-between">
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Pending</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{pendingRequestsCount}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Pending Requests</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{pendingRequestsCount}</p>
+                    <p className="text-[12px] font-semibold text-amber-600 mt-2">Waiting for mentor action</p>
                   </div>
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 transition-transform group-hover:scale-110">
-                    <BadgeCheck size={20} />
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <BadgeCheck size={18} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-                <div className="flex items-center justify-between">
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Sessions</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{upcomingSessionsCount}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Upcoming Sessions</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{upcomingSessionsCount}</p>
+                    <p className="text-[12px] font-semibold text-indigo-600 mt-2">Scheduled mentorship calls</p>
                   </div>
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 transition-transform group-hover:scale-110">
-                    <CalendarClock size={20} />
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <CalendarClock size={18} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-                <div className="flex items-center justify-between">
+              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Active Subs</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{activeSubscriptionsCount}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Active Subscriptions</p>
+                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{activeSubscriptionsCount}</p>
+                    <p className="text-[12px] font-semibold text-blue-600 mt-2">Recurring mentor access</p>
                   </div>
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 transition-transform group-hover:scale-110">
-                    <Wallet size={20} />
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Wallet size={18} />
                   </div>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* My Mentors */}
+        <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentors</h2>
+            <div className="text-[13px] font-semibold text-slate-500">
+              {requests.filter((r) => r.status === 'accepted').length} connected
             </div>
-
-        {/* Connections Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12 items-start">
-          {/* My Mentors */}
-          <div className="lg:col-span-2 bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-black">
-                   <Users size={20} />
-                 </div>
-                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-widest">My Mentors</h2>
-              </div>
-              <span className="bg-slate-50 px-4 py-2 rounded-xl text-[11px] font-black text-slate-400 uppercase tracking-widest border border-slate-100">{requests.filter((r) => r.status === 'accepted').length} Connected</span>
-            </div>
-
+          </div>
+          <div>
             {requests.filter((r) => r.status === 'accepted').length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {requests.filter((r) => r.status === 'accepted').map((r) => {
                   const prof = profiles[r.mentor_email];
                   const name = prof?.name || r.mentor_email;
                   return (
-                    <div key={`conn-${r.id}`} className="bg-slate-50/50 rounded-[32px] p-6 border border-slate-100 hover:bg-white hover:shadow-xl transition-all duration-300 group">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-black shadow-inner">
+                    <div key={`conn-${r.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                           {String(name).charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-black text-slate-900 text-sm truncate uppercase tracking-tight">{name}</p>
-                          <span className={statusBadge(r.status)}>{r.status}</span>
+                        <div>
+                          <p className="font-bold text-slate-900 text-[15px] truncate">{name}</p>
+                          <div className="mt-1.5 flex">
+                            <span className={statusBadge(r.status)}>{r.status}</span>
+                          </div>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => removeConnectionWithMentor(r.mentor_email)}
-                        className="w-full py-2.5 rounded-2xl border border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100 transition-all"
-                      >
-                        Remove Connection
-                      </button>
+                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="mt-3 sm:mt-0 px-4 py-2.5 text-[13px] font-bold rounded-xl bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80 transition-colors">Remove Mentor</Button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-12 bg-slate-50/50 rounded-[32px] border border-dashed border-slate-200">
-                <p className="text-slate-400 font-medium text-sm">No connected mentors yet</p>
-              </div>
+              <div className="text-slate-600">No connected mentors yet.</div>
             )}
           </div>
+        </div>
 
-          {/* Daily Sessions Side Card */}
-          <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50">
-             <div className="flex items-center gap-4 mb-8">
-                 <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 font-black">
-                   <CalendarClock size={20} />
-                 </div>
-                 <h2 className="text-xl font-black text-slate-900 uppercase tracking-widest">Daily Plans</h2>
+        {/* Available Mentors */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mb-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[24px] font-black text-slate-900 tracking-tight">Available Mentors</h2>
+            <div className="text-sm font-bold text-slate-600 bg-white px-4 py-2 rounded-full border border-slate-200">{mentors.length} found</div>
+          </div>
+        </motion.div>
+
+        {/* Mentors Grid */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10"
+        >
+          {mentors.length === 0 ? (
+            <div className="md:col-span-2 lg:col-span-3">
+              <div className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-8 text-center">
+                <div className="text-4xl mb-2">🧭</div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">No mentors found</h3>
+                <p className="text-slate-500">Try adjusting filters or searching different skills/topics.</p>
               </div>
-              
-              <div className="space-y-4">
-                {dailySessions.length > 0 ? (
-                  dailySessions.slice(0, 3).map((plan) => (
-                    <div key={plan.id} className="p-5 rounded-[28px] bg-slate-50/80 border border-slate-100 hover:bg-white hover:shadow-lg transition-all duration-300">
-                      <p className="font-black text-slate-900 text-xs uppercase tracking-tight mb-2 truncate">{plan.title}</p>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Clock size={12} className="text-emerald-500" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{plan.daily_time}</span>
-                      </div>
-                      {plan.meeting_link && (
-                        <a 
-                          href={normalizeExternalLink(plan.meeting_link)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="w-full inline-flex items-center justify-center py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all"
-                        >
-                          Join Now
-                        </a>
-                      )}
+            </div>
+          ) : null}
+          {mentors.map((m) => {
+            const prof = profiles[m.mentor_email];
+            const name = prof?.name || m.mentor_email;
+            const initials = String(name).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+            const available = true; // treat listed mentors as available
+            const skillChips = (m.skills || '')
+              .split(/[,\n]/)
+              .map(s => s.trim())
+              .filter(Boolean)
+              .slice(0, 6);
+            const reqForMentor = requests.find((r) => r.mentor_email === m.mentor_email);
+            const reqStatus = reqForMentor?.status;
+            const isPending = reqStatus === 'pending';
+            const isAccepted = reqStatus === 'accepted';
+            const activeSubscription = activeSubscriptionsByMentor[m.mentor_email];
+            const hasActiveSubscription = Boolean(activeSubscription);
+            const btnDisabled = !user?.email || requesting === m.mentor_email || isPending || isAccepted;
+            const btnText = requesting === m.mentor_email
+              ? 'Requesting...'
+              : isPending
+                ? 'Request Sent'
+                : isAccepted
+                  ? 'Connected'
+                  : 'Request Mentorship';
+            return (
+              <motion.div
+                key={m.mentor_email}
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden flex flex-col min-h-[430px]"
+              >
+                {available && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-200">
+                      Available
                     </div>
-                  ))
-                ) : (
-                  <p className="text-slate-400 text-xs text-center py-8">No live plans available</p>
+                  </div>
                 )}
-              </div>
-          </div>
-        </div>
-
-        {/* Mentors Explorer */}
-        <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50 mb-12">
-            <div className="flex items-center justify-between mb-10">
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black">
-                   <BadgeCheck size={20} />
-                 </div>
-                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-widest">Available Mentors</h2>
-              </div>
-              <div className="hidden sm:flex bg-slate-50 px-4 py-2 rounded-xl text-[11px] font-black text-slate-400 uppercase tracking-widest border border-slate-100">
-                Sorted by expertise
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {mentors.length === 0 ? (
-                <div className="col-span-full py-20 text-center bg-slate-50 rounded-[40px] border border-slate-100">
-                   <p className="text-slate-400 font-medium">No mentors found matching your filters</p>
-                </div>
-              ) : mentors.map((m) => {
-                  const prof = profiles[m.mentor_email];
-                  const name = prof?.name || m.mentor_email;
-                  const initials = String(name).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                  const reqForMentor = requests.find((r) => r.mentor_email === m.mentor_email);
-                  const isPending = reqForMentor?.status === 'pending';
-                  const isAccepted = reqForMentor?.status === 'accepted';
-                  
-                  return (
-                    <div key={m.mentor_email} className="bg-slate-50/50 rounded-[32px] p-8 border border-slate-100 hover:bg-white hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 group relative">
-                      {/* Badge */}
-                      <div className="absolute top-6 right-6">
-                         <div className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-500/20">
-                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                           Available
-                         </div>
+                <div className="p-7 flex flex-col h-full">
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="relative">
+                      <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                        {prof?.picture ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={prof.picture} alt={name} className="w-full h-full object-cover" />
+                        ) : initials}
                       </div>
-
-                      <div className="flex items-center gap-5 mb-8">
-                        <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-indigo-50 to-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xl shadow-inner overflow-hidden border border-white">
-                          {prof?.picture ? (
-                            <img src={prof.picture} alt={name} className="w-full h-full object-cover" />
-                          ) : initials}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-lg font-black text-slate-900 truncate uppercase tracking-tight group-hover:text-emerald-600 transition-colors">{name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Star size={12} className="text-amber-500 fill-current" />
-                            <span className="text-[11px] font-black text-slate-700">{m.rating_avg || '5.0'}</span>
-                            <span className="text-slate-300 text-[10px]">•</span>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.experience_years || '5'}+ Years Exp</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4 mb-8">
-                        <div className="bg-white/80 p-5 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between">
-                           <div>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Session Price</p>
-                              <p className="text-lg font-black text-slate-900 tracking-tight">₹{m.price || '499'}</p>
-                           </div>
-                           <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                              <Wallet size={18} />
-                           </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                           {(m.skills || '').split(',').slice(0, 3).map(skill => (
-                             <span key={skill} className="px-3 py-1.5 bg-slate-100/50 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200/50">
-                               {skill.trim()}
-                             </span>
-                           ))}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
-                        <button 
-                          onClick={() => sendRequest(m.mentor_email)}
-                          disabled={!user?.email || requesting === m.mentor_email || isPending || isAccepted}
-                          className="py-3 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none transition-all"
-                        >
-                          {requesting === m.mentor_email ? '...' : isPending ? 'Pending' : isAccepted ? 'Joined' : 'Request'}
-                        </button>
-                        <button 
-                          onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price || 499) * 1.06).toFixed(2)), type: 'session' })}
-                          className="py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
-                        >
-                          Unlock Call
-                        </button>
-                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
                     </div>
-                    );
-                })}
-            </div>
-          </div>
-
-          {/* User Engagement Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-              {/* Subscriptions */}
-              <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50 flex flex-col items-start min-h-[400px]">
-                <div className="flex items-center gap-4 mb-8">
-                   <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                     <Star size={24} className="fill-emerald-600/10" />
-                   </div>
-                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Active Plans</h2>
-                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Your Mentorship Subscriptions</p>
-                   </div>
-                </div>
-                
-                <div className="w-full space-y-4">
-                  {subscriptions.length > 0 ? subscriptions.map(sub => (
-                     <div key={sub.id} className="p-6 rounded-[32px] bg-slate-50/50 border border-slate-100 flex items-center justify-between group hover:bg-emerald-50/30 hover:border-emerald-100 transition-all duration-300">
-                        <div>
-                          <p className="font-black text-slate-900 text-[15px] uppercase tracking-tight mb-2">{sub.mentor_email}</p>
-                          <div className="flex items-center gap-2">
-                             <Clock size={12} className="text-slate-400" />
-                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Expires {sub.end_at ? new Date(sub.end_at).toLocaleDateString() : '—'}</p>
-                          </div>
-                        </div>
-                        <span className={statusBadge(sub.status)}>{sub.status}</span>
-                     </div>
-                  )) : (
-                    <div className="flex-1 flex flex-col items-center justify-center py-20 grayscale opacity-40 text-center w-full">
-                       <Wallet size={48} className="mb-4 text-slate-400" />
-                       <p className="text-slate-400 font-black text-xs uppercase tracking-widest">No active subscriptions</p>
+                    <div className="flex-1">
+                      <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-blue-600 transition-colors duration-200 mb-1">
+                        {name}
+                      </h3>
+                      {prof?.job_title || prof?.company ? (
+                        <p className="text-slate-600 text-sm font-medium">{prof?.job_title} {prof?.company ? `• ${prof.company}` : ''}</p>
+                      ) : null}
+                      {m.experience_years ? <p className="text-xs text-slate-500 font-semibold mt-1">Experience: {m.experience_years}+ years</p> : null}
+                      {m.availability ? <p className="text-xs text-slate-500 font-semibold">Availability: {m.availability}</p> : null}
+                      {prof?.location ? (
+                        <div className="mt-2"><Badge className="bg-slate-50 text-slate-700 border border-slate-200 rounded-lg">{prof.location}</Badge></div>
+                      ) : null}
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Recent Sessions */}
-              <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50 flex flex-col items-start min-h-[400px]">
-                 <div className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                     <TrendingUp size={24} />
                   </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-100">
+                    {skillChips.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {skillChips.map((s) => (
+                          <Badge key={s} className="bg-white text-slate-700 border border-slate-200 rounded-lg">#{s}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      m.skills ? <p className="text-sm"><span className="font-medium">Skills:</span> {m.skills}</p> : null
+                    )}
+                    {m.topics ? <p className="text-sm mt-2"><span className="font-medium">Topics:</span> {m.topics}</p> : null}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <StarRating value={Number(m.rating_avg || 0)} readOnly size={16} />
+                        <span className="font-black text-amber-800 text-sm">{m.rating_avg ?? '—'}</span>
+                      </div>
+                      <p className="text-xs text-amber-700 font-semibold">Avg Rating ({m.rating_count || 0})</p>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-2xl border border-blue-200">
+                      <div className="mb-1">
+                        <span className="font-black text-blue-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
+                      </div>
+                      <p className="text-xs text-blue-700 font-semibold">Session Price</p>
+                    </div>
+                  </div>
+                  {hasActiveSubscription ? (
+                    <div className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Subscription Active</p>
+                      <p className="text-[12px] text-emerald-700 mt-1">
+                        Valid till {activeSubscription?.end_at ? new Date(activeSubscription.end_at).toLocaleDateString() : '—'}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="grid grid-cols-1 gap-2 mt-auto pt-4 border-t border-slate-100">
+                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                      {btnText}
+                    </Button>
+                    {(m.price || m.subscription_price) ? (
+                      <div className="w-full text-center space-y-1.5">
+                        {m.price ? (
+                          <Button variant="outline" className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl border-slate-200 hover:border-blue-300 font-semibold whitespace-normal break-words text-center leading-tight" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price) * 1.06).toFixed(2)), type: 'session' })}>
+                            Purchase Session (₹{Number((Number(m.price) * 1.06).toFixed(2))})
+                          </Button>
+                        ) : null}
+                        {m.subscription_price ? (
+                          <Button
+                            variant="outline"
+                            className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl border-slate-200 hover:border-emerald-300 disabled:opacity-70 font-semibold whitespace-normal break-words text-center leading-tight"
+                            disabled={hasActiveSubscription}
+                            onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.subscription_price) * 1.06).toFixed(2)), type: 'subscription', duration_days: Number(m.subscription_duration_days || 30) })}
+                          >
+                            {hasActiveSubscription
+                              ? `Subscribed till ${activeSubscription?.end_at ? new Date(activeSubscription.end_at).toLocaleDateString() : ''}`
+                              : `Subscribe ${m.subscription_duration_days || 30}d (₹${Number((Number(m.subscription_price) * 1.06).toFixed(2))})`}
+                          </Button>
+                        ) : null}
+                        <p className="text-[10px] text-gray-500">Includes 6% platform fee</p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* Daily Mentor Sessions */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">Daily Mentor Sessions</h2>
+            <div className="text-[12px] font-semibold text-slate-500">From accepted mentors</div>
+          </div>
+          {dailySessions.length === 0 ? (
+            <div className="text-slate-600">No daily mentor plans available yet.</div>
+          ) : (
+            <div className="space-y-3">
+              {dailySessions.map((plan) => (
+                <div key={plan.id} className="p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Recent Sessions</h2>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Track your progress</p>
+                    <p className="font-bold text-slate-900 text-[15px]">{plan.title}</p>
+                    <p className="text-xs text-slate-500 mt-1">Mentor: {plan.mentor_email}</p>
+                    <p className="text-xs text-slate-500">{plan.daily_time} • {plan.start_date} to {plan.end_date} • {plan.duration_minutes || 60} mins</p>
+                    {plan.description ? <p className="text-xs text-slate-600 mt-1">{plan.description}</p> : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={statusBadge('active')}>live plan</span>
+                    {plan.meeting_link ? (
+                      <a
+                        href={normalizeExternalLink(plan.meeting_link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold"
+                      >
+                        Join Daily Session
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">Meeting link will be shared by mentor</span>
+                    )}
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
 
-                 <div className="w-full space-y-4">
-                   {sessions.length > 0 ? sessions.slice(0, 5).map(s => (
-                      <div key={s.id} className="p-6 rounded-[32px] bg-slate-50/50 border border-slate-100 group hover:bg-blue-50/30 hover:border-blue-100 transition-all duration-300">
-                         <div className="flex items-center justify-between mb-4">
-                           <div>
-                              <p className="font-black text-slate-900 text-[15px] uppercase tracking-tight mb-2">{s.mentor_email}</p>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <CalendarClock size={12} />
-                                {s.scheduled_at ? new Date(s.scheduled_at).toLocaleDateString() : 'Pending Schedule'}
-                              </p>
-                           </div>
-                           <span className={statusBadge(s.status)}>{s.status}</span>
-                         </div>
-                         
-                         {s.status === 'scheduled' && s.meeting_link && (
-                            <a 
-                              href={normalizeExternalLink(s.meeting_link)} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center gap-2 w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 transition-all active:scale-95"
-                            >
-                              Launch Session <ArrowRight size={14} />
-                            </a>
-                         )}
-                      </div>
-                   )) : (
-                     <div className="flex-1 flex flex-col items-center justify-center py-20 grayscale opacity-40 text-center w-full">
-                        <CalendarClock size={48} className="mb-4 text-slate-400" />
-                        <p className="text-slate-400 font-black text-xs uppercase tracking-widest">No recent sessions found</p>
-                     </div>
-                   )}
-                 </div>
-              </div>
+        {/* My Subscriptions */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Subscriptions</h2>
+            <div className="text-[13px] font-semibold text-slate-500">
+              {Object.keys(activeSubscriptionsByMentor).length} active
+            </div>
           </div>
-        </div>
+          {subscriptions.length === 0 ? (
+            <div className="text-slate-600">No subscriptions yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {subscriptions.map((sub) => {
+                const prof = profiles[sub.mentor_email];
+                const mentorName = prof?.name || sub.mentor_email;
+                const isActive = sub.status === 'active' && (!!sub.end_at ? new Date(sub.end_at).getTime() >= Date.now() : false);
+                return (
+                  <div key={sub.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300">
+                    <div>
+                      <p className="font-bold text-slate-900 text-[15px]">{mentorName}</p>
+                      <p className="text-[12px] text-slate-500 mt-1">
+                        {sub.start_at ? new Date(sub.start_at).toLocaleDateString() : '—'} to {sub.end_at ? new Date(sub.end_at).toLocaleDateString() : '—'}
+                      </p>
+                      <p className="text-[12px] text-slate-600 mt-1">
+                        {sub.amount ? `₹${sub.amount}` : '—'} {sub.currency || 'INR'} • {sub.duration_days || 30} days
+                      </p>
+                    </div>
+                    <span className={statusBadge(isActive ? 'active' : 'expired')}>{isActive ? 'active' : 'expired'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+
+
+        {/* My Mentorship Requests */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentorship Requests</h2>
+          </div>
+          <div>
+            {requests.length > 0 ? (
+              <div className="space-y-4">
+                {requests.map((r) => {
+                  const prof = profiles[r.mentor_email];
+                  const name = prof?.name || r.mentor_email;
+                  return (
+                    <motion.div
+                      key={r.id}
+                      whileHover={{ scale: 1.01 }}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                          {String(name).charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-[15px] truncate">{name}</p>
+                          <div className="mt-1.5 flex">
+                            <span className={statusBadge(r.status)}>{r.status}</span>
+                          </div>
+                          <div className="text-[12px] text-slate-500 mt-1">Updated: {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</div>
+                          {r.message ? <div className="mt-2 text-[13px] text-slate-700">{r.message}</div> : null}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-slate-600">No requests yet.</div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* My Sessions */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Sessions</h2>
+          </div>
+          <div>
+            {sessions.length > 0 ? (
+              <div className="space-y-4">
+                {sessions.map((s) => {
+                  const prof = profiles[s.mentor_email];
+                  const name = prof?.name || s.mentor_email;
+                  const displayStatus = getSessionDisplayStatus(s);
+                  const canRateSession = getSessionDisplayStatus(s) === 'completed' && !s.is_rated;
+                  return (
+                    <motion.div
+                      key={s.id}
+                      whileHover={{ scale: 1.01 }}
+                      className="p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                            {String(name).charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-[15px]">Mentor: {name}</p>
+                            <p className="text-[12px] text-slate-500 mt-1">Amount: {s.amount ? `₹${s.amount}` : '—'} {s.currency || ''}</p>
+                          </div>
+                        </div>
+                        <span className={statusBadge(displayStatus)}>{displayStatus}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="text-[13px] text-slate-700">Scheduled: {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : '—'} ({s.duration_minutes || 60} mins)</div>
+                        {(() => {
+                          if (!s.meeting_link || !s.scheduled_at || isSessionCompletedByTime(s)) return null;
+                          const href = normalizeExternalLink(s.meeting_link || undefined);
+                          return (
+                            <div>
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Join</a>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      {canRateSession ? (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <StarRating
+                              value={ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}
+                              onChange={(val) => setRatingForm({ session_id: s.id, rating: val, feedback: ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : '' })}
+                              size={18}
+                            />
+                            <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
+                          </div>
+                          <Input
+                            className="h-12 bg-white border-slate-200 focus:border-blue-400"
+                            placeholder="Optional feedback"
+                            value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
+                            onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
+                          />
+                          <Button
+                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg disabled:opacity-60"
+                            onClick={() => {
+                              if (!ratingForm || ratingForm.session_id !== s.id) return;
+                              const r = ratingForm.rating;
+                              if (r < 1 || r > 5) { toast({ title: 'Invalid rating', description: 'Pick 1-5 stars.', variant: 'destructive' }); return; }
+                              submitRating(s.id, s.mentor_email, r, ratingForm.feedback);
+                            }}
+                            disabled={!ratingForm || ratingForm.session_id !== s.id || (ratingForm.rating < 1 || ratingForm.rating > 5) || submittingSession === s.id}
+                          >
+                            {submittingSession === s.id ? 'Submitting...' : 'Submit Rating'}
+                          </Button>
+                        </div>
+                      ) : getSessionDisplayStatus(s) === 'completed' && s.is_rated ? (
+                        <div className="mt-4 p-3 rounded-[12px] bg-emerald-50 border border-emerald-200 text-emerald-700 text-[13px] font-semibold">
+                          Rating already submitted for this session.
+                        </div>
+                      ) : null}
+                      {s.status === 'paid' ? (
+                        <div className="mt-4 p-4 rounded-[14px] bg-yellow-50 border border-yellow-100 text-slate-700">
+                          <p className="font-medium">Session unlocked — waiting for mentor to schedule.</p>
+                          <p className="text-sm mt-2">The mentor will provide a Google Meet link and schedule time. You will see the session details here and be able to join once scheduled.</p>
+                        </div>
+                      ) : null}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-gray-600">No sessions yet.</div>
+            )}
+          </div>
+        </motion.div>
       </div>
-    </StudentNavigation>
+  </StudentNavigation>
   );
 }
