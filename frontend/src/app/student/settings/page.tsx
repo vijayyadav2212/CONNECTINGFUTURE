@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Lock,
   Edit2,
-  Calendar
+  Calendar,
+  GraduationCap
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
@@ -209,18 +210,38 @@ export default function Settings() {
     { id: 'appearance', label: 'Appearance', icon: Moon },
   ];
 
+  const profileFieldClass =
+    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition-all [color-scheme:light]';
+  const profileFieldWithIconClass =
+    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition-all [color-scheme:light]';
+  const profileFieldDisabledClass =
+    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 shadow-sm focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition-all cursor-not-allowed [color-scheme:light]';
+
   return (
     <StudentNavigation>
-      <div className="bg-slate-50 min-h-screen pb-12">
-        {/* Header Background */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 h-48 w-full relative">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          <div className="container mx-auto px-6 h-full flex items-center">
-            <h1 className="text-4xl font-bold text-white tracking-tight">Settings</h1>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <div className="relative bg-gradient-to-br from-green-100/60 via-emerald-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <GraduationCap className="w-5 h-5 text-green-600" />
+                    <span className="text-green-700 font-semibold text-sm">Account Center</span>
+                  </div>
+                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                    Settings
+                  </h1>
+                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                    Manage your profile, notifications, privacy, and security preferences.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-10">
+        <div className="relative z-10">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row">
 
             {/* Sidebar */}
@@ -235,7 +256,7 @@ export default function Settings() {
                         key={item.id}
                         onClick={() => setActiveTab(item.id as any)}
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                          ? 'bg-green-600 text-white shadow-md shadow-green-200'
                           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                           }`}
                       >
@@ -257,7 +278,7 @@ export default function Settings() {
                           key={item.id}
                           onClick={() => setActiveTab(item.id as any)}
                           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                            ? 'bg-green-600 text-white shadow-md shadow-green-200'
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                             }`}
                         >
@@ -291,7 +312,7 @@ export default function Settings() {
                     <button
                       onClick={handleProfileSave}
                       disabled={saving}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg shadow-green-200 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {saving ? 'Saving...' : 'Save Changes'}
@@ -316,7 +337,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => setIsAvatarModalOpen(true)}
-                        className="text-blue-600 text-sm font-semibold hover:underline"
+                        className="text-green-600 text-sm font-semibold hover:underline"
                       >
                         Change Avatar
                       </button>
@@ -329,7 +350,8 @@ export default function Settings() {
                           type="text"
                           value={profile.name}
                           onChange={(e) => handleProfileChange('name', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
+                          placeholder="Enter your full name"
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -338,7 +360,7 @@ export default function Settings() {
                           type="email"
                           value={profile.email}
                           onChange={(e) => handleProfileChange('email', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 text-slate-500 cursor-not-allowed"
+                          className={profileFieldDisabledClass}
                           disabled
                         />
                       </div>
@@ -348,7 +370,8 @@ export default function Settings() {
                           type="tel"
                           value={profile.phone}
                           onChange={(e) => handleProfileChange('phone', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
+                          placeholder="Enter your phone number"
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -357,7 +380,8 @@ export default function Settings() {
                           type="text"
                           value={profile.university}
                           onChange={(e) => handleProfileChange('university', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
+                          placeholder="Enter your university"
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -366,7 +390,8 @@ export default function Settings() {
                           type="text"
                           value={profile.major}
                           onChange={(e) => handleProfileChange('major', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
+                          placeholder="Enter your major or course"
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -375,7 +400,8 @@ export default function Settings() {
                           type="text"
                           value={profile.graduationYear}
                           onChange={(e) => handleProfileChange('graduationYear', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
+                          placeholder="Enter graduation year"
                         />
                       </div>
 
@@ -385,10 +411,10 @@ export default function Settings() {
                           rows={3}
                           value={profile.bio}
                           onChange={(e) => handleProfileChange('bio', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                          className={`${profileFieldClass} resize-none`}
                           placeholder="Tell us about yourself..."
                         />
-                        <p className="text-xs text-slate-500 mt-2 text-right">{profile.bio.length}/500 characters</p>
+                        <p className="text-xs text-slate-400 mt-2 text-right">{profile.bio.length}/500 characters</p>
                       </div>
 
                       <div className="col-span-2">
@@ -399,7 +425,7 @@ export default function Settings() {
                             type="url"
                             value={profile.linkedin}
                             onChange={(e) => handleProfileChange('linkedin', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="https://linkedin.com/in/username"
                           />
                         </div>
@@ -413,7 +439,7 @@ export default function Settings() {
                             type="url"
                             value={profile.github}
                             onChange={(e) => handleProfileChange('github', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="https://github.com/username"
                           />
                         </div>
@@ -427,7 +453,7 @@ export default function Settings() {
                             type="url"
                             value={profile.portfolio}
                             onChange={(e) => handleProfileChange('portfolio', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="https://yourportfolio.com"
                           />
                         </div>
@@ -455,7 +481,7 @@ export default function Settings() {
                       return (
                         <div key={key} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
                           <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                               {icon}
                             </div>
                             <div>
@@ -470,7 +496,7 @@ export default function Settings() {
                               onChange={() => handleNotificationChange(key as keyof NotificationSettings)}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                           </label>
                         </div>
                       );
@@ -501,11 +527,11 @@ export default function Settings() {
                             key={option}
                             onClick={() => handlePrivacyChange('profileVisibility', option)}
                             className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col items-center text-center transition-all ${privacy.profileVisibility === option
-                              ? 'border-blue-600 bg-blue-50/50'
+                              ? 'border-green-600 bg-green-50/50'
                               : 'border-slate-200 hover:border-slate-300'
                               }`}
                           >
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${privacy.profileVisibility === option ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${privacy.profileVisibility === option ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'
                               }`}>
                               {option === 'public' && <Globe className="w-6 h-6" />}
                               {option === 'alumni-only' && <User className="w-6 h-6" />}
@@ -534,7 +560,7 @@ export default function Settings() {
                               onChange={() => handlePrivacyChange('showEmail', !privacy.showEmail)}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                           </label>
                         </div>
                         <div className="flex items-center justify-between">
@@ -546,7 +572,7 @@ export default function Settings() {
                               onChange={() => handlePrivacyChange('showPhone', !privacy.showPhone)}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                           </label>
                         </div>
                       </div>
@@ -562,13 +588,13 @@ export default function Settings() {
                   <div className="space-y-6">
                     <div className="p-6 border border-slate-200 rounded-xl bg-slate-50 hover:shadow-md transition-all">
                       <div className="flex items-start gap-4">
-                        <div className="p-3 bg-blue-100 rounded-xl text-blue-600">
+                        <div className="p-3 bg-green-100 rounded-xl text-green-600">
                           <Key className="w-6 h-6" />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-slate-900 mb-2 text-lg">Change Password</h3>
                           <p className="text-slate-600 text-sm mb-4">Update your password to keep your account secure</p>
-                          <button className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium shadow-sm">
+                          <button className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium shadow-sm">
                             Change Password
                           </button>
                         </div>
@@ -591,6 +617,7 @@ export default function Settings() {
             </div>
           </div>
         </div>
+      </div>
       </div>
       <AvatarSelectionModal
         isOpen={isAvatarModalOpen}

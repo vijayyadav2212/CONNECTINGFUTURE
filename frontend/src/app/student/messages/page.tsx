@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import StudentNavigation from '../StudentNavigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import { Search, Send, Paperclip, Smile, Phone, Video, MoreHorizontal, User, Clock, Check, CheckCheck, FileText, Pencil, Trash2, X } from 'lucide-react';
+import { Search, Send, Paperclip, Smile, Phone, Video, MoreHorizontal, User, Clock, Check, CheckCheck, FileText, Pencil, Trash2, X, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Message {
@@ -467,16 +467,27 @@ const MessagesPage = () => {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="p-6 max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-              💬 Messages
-            </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Connect with alumni, mentors, and fellow students to build your professional network
-            </p>
+          <div className="mb-8">
+            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-700 font-semibold text-sm">Student Network</span>
+                  </div>
+                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                    Messages
+                  </h1>
+                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                    Connect with alumni, mentors, and peers to build your professional network.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[700px] min-h-0">

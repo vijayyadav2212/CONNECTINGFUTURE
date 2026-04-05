@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import StudentNavigation from '../StudentNavigation';
-import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase, AlertTriangle, Bookmark, BookmarkCheck, CheckCircle, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
+import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase, GraduationCap, AlertTriangle, Bookmark, BookmarkCheck, CheckCircle, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -592,29 +592,24 @@ const JobOpportunitiesPage = () => {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8 text-center lg:text-left">
-            <div className="bg-white rounded-2xl shadow-lg p-6 lg:p-8 border border-gray-100">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
-                Job Opportunities
-              </h1>
-              <p className="text-base lg:text-lg text-gray-700 font-medium max-w-2xl mx-auto lg:mx-0">
-                Discover amazing internships and career opportunities from top companies worldwide
-              </p>
-              <div className="mt-4 flex flex-wrap justify-center lg:justify-start gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="font-medium">{jobs.length} Active Jobs</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="font-medium">Updated Daily</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span className="font-medium">Direct Applications</span>
+          <div className="mb-8">
+            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-700 font-semibold text-sm">Career Journey</span>
+                  </div>
+                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                    Job Opportunities
+                  </h1>
+                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                    Discover internships and career opportunities matched to your goals.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1056,49 +1051,55 @@ const JobOpportunitiesPage = () => {
       </div>
       {/* Apply Form Modal */}
       <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:w-[92vw] md:w-[86vw] lg:w-[760px] max-w-[760px] max-h-[88vh] overflow-y-auto rounded-3xl bg-white p-0 text-slate-900 shadow-2xl [color-scheme:light]">
+          <DialogHeader className="px-6 sm:px-8 pt-6 sm:pt-7 pb-3 border-b border-slate-100">
             <DialogTitle className="text-lg font-bold">Apply to {applyJob?.title}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Resume</label>
-              <div className="flex items-center gap-3">
+          <div className="px-6 sm:px-8 py-5 sm:py-6 space-y-6">
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-gray-700">Resume</label>
+              <div className="flex flex-wrap items-center gap-3">
                 <input
                   type="file"
                   accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   onChange={handleResumeFileChange}
                   disabled={uploading}
-                  className="block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="block w-full text-sm text-slate-700 [color-scheme:light] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border file:border-slate-200 file:text-sm file:font-semibold file:bg-slate-50 file:text-blue-700 hover:file:bg-slate-100"
                 />
               </div>
-              <div className="text-xs text-gray-500">PDF, DOC, DOCX up to 10MB. Or paste a URL below.</div>
+              <div className="text-xs text-gray-500 leading-5">PDF, DOC, DOCX up to 10MB. Or paste a URL below.</div>
               <input
                 type="url"
                 placeholder="Or paste a public resume URL (Google Drive, etc.)"
                 value={resumeUrl}
                 onChange={(e) => setResumeUrl(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all [color-scheme:light]"
               />
               {uploadedFileName && (
                 <div className="text-sm text-green-700">Selected: {uploadedFileName}</div>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cover Letter</label>
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-gray-700">Cover Letter</label>
               <textarea
                 placeholder="Optional: brief cover letter or message"
                 value={coverLetter}
                 onChange={(e) => setCoverLetter(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={6}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all resize-none [color-scheme:light]"
               />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2 sm:pt-3 pb-1">
               <Button onClick={submitApplication} disabled={applySubmitting} className="bg-blue-600 hover:bg-blue-700 text-white">
                 {applySubmitting ? 'Submitting...' : 'Submit Application'}
               </Button>
-              <Button variant="outline" onClick={() => setApplyOpen(false)}>Cancel</Button>
+              <Button
+                variant="outline"
+                onClick={() => setApplyOpen(false)}
+                className="border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+              >
+                Cancel
+              </Button>
             </div>
           </div>
         </DialogContent>

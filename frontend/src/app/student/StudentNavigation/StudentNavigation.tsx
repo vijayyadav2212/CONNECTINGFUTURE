@@ -94,7 +94,6 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
     { id: "jobs", label: "Job Opportunities", icon: <Briefcase className="w-5 h-5" />, route: "/student/job-opportunities" },
     { id: "events", label: "Events", icon: <Calendar className="w-5 h-5" />, route: "/student/events" },
     { id: "messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, route: "/student/messages" },
-    { id: "profile", label: "Profile", icon: <User className="w-5 h-5" />, route: "/student/profile" },
     { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, route: "/student/settings" },
   ];
 
@@ -212,10 +211,10 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
                 </h3>
                 {profileLoaded && studentData.name === 'Student' && (
                   <button
-                    onClick={() => router.push('/student/profile')}
+                    onClick={() => router.push('/student/settings')}
                     className="text-xs text-amber-600 hover:text-amber-700 underline"
                   >
-                    ⚠ Set your name in Profile
+                    ⚠ Set your name in Settings
                   </button>
                 )}
                 {studentData.name !== 'Student' && (
@@ -301,7 +300,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
               studentData.name === 'Student' ||
               !studentData.department ||
               !studentData.year;
-            if (!profileLoaded || !profileIncomplete || pathname === '/student/profile') return null;
+            if (!profileLoaded || !profileIncomplete || pathname === '/student/settings') return null;
             const missing = [
               studentData.name === 'Student' && 'Full name',
               !studentData.department && 'Department',
@@ -316,7 +315,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
                     Missing: <span className="font-medium">{missing}</span>
                   </p>
                   <button
-                    onClick={() => router.push('/student/profile')}
+                    onClick={() => router.push('/student/settings')}
                     className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors"
                   >
                     Complete your profile →

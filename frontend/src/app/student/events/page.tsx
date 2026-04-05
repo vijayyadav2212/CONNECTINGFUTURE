@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { toast } from 'sonner';
 import StudentNavigation from '../StudentNavigation';
-import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus, Sparkles, GraduationCap } from 'lucide-react';
 import Image from 'next/image';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
@@ -272,33 +272,24 @@ function EventsContent() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-white p-6 lg:p-8">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
-          <div className="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-[40px] p-10 border border-emerald-100/20 shadow-[0_20px_50px_rgba(0,0,0,0.03)] mb-10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-20 -mt-20 blur-3xl" />
-            
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="flex-1">
-                <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight uppercase">
-                  Discover Events
-                </h1>
-                <p className="text-slate-600 text-lg font-medium max-w-[600px] leading-relaxed mb-8">
-                  Join workshops, seminars, and networking opportunities to enhance your skills and expand your professional network.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[13px] font-bold text-slate-600 border border-slate-50 shadow-sm flex items-center gap-2.5">
-                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                     {events.length} Total Events
-                   </div>
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[13px] font-bold text-slate-600 border border-slate-50 shadow-sm flex items-center gap-2.5">
-                     <div className="w-2 h-2 rounded-full bg-blue-500" />
-                     {events.filter(e => e.isRegistered).length} Registered
-                   </div>
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[13px] font-bold text-slate-600 border border-slate-50 shadow-sm flex items-center gap-2.5">
-                     <div className="w-2 h-2 rounded-full bg-orange-500" />
-                     Live Updates
-                   </div>
+          <div className="mb-10">
+            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-700 font-semibold text-sm">Campus Events</span>
+                  </div>
+                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                    Events
+                  </h1>
+                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                    Join workshops, seminars, and networking opportunities to grow your skills.
+                  </p>
                 </div>
               </div>
             </div>
