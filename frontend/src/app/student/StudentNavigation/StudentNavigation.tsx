@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { GraduationCap, User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award, AlertTriangle } from 'lucide-react';
+import { User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award, AlertTriangle } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Interfaces
@@ -166,100 +166,122 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 w-64 h-screen bg-white shadow-lg border-r border-gray-200">
-        {/* Scrollable Container for entire sidebar */}
-        <div className="h-full overflow-y-auto">
+      <aside className="fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef]">
+        <div className="h-full flex flex-col">
           {/* Logo & Branding */}
-          <div className="p-6 border-b border-gray-200">
+          <div className="px-6 py-5 bg-white border-b border-[#eaecf0]">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+                <img
+                  src="/NEWCNLOGO.png"
+                  className="w-8 h-8 object-contain"
+                  alt="Connecting Future Logo"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff';
+                  }}
+                />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Student Portal</h1>
-                <p className="text-sm text-gray-500">VPPCOE & VA, Mumbai</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Connecting Future</h1>
+                <p className="text-sm text-gray-500 font-medium mt-0.5">VPPCOE & VA</p>
               </div>
             </div>
           </div>
 
           {/* Student Profile Summary */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="relative">
-                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center overflow-hidden">
-                  {studentData.avatar && !imgError ? (
-                    <img
-                      src={studentData.avatar}
-                      alt={studentData.name}
-                      className="w-full h-full object-cover"
-                      onError={() => setImgError(true)}
-                    />
-                  ) : (
-                    <span className="text-white font-semibold text-lg">
-                      {studentData.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'S'}
-                    </span>
+          <div className="px-4 py-5 bg-white border-b border-[#eaecf0]">
+            <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
+              <div className="flex items-start gap-3.5">
+                <div className="relative">
+                  <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                    {studentData.avatar && !imgError ? (
+                      <img
+                        src={studentData.avatar}
+                        alt={studentData.name}
+                        className="w-full h-full object-cover"
+                        onError={() => setImgError(true)}
+                      />
+                    ) : (
+                      <span className="text-white font-semibold text-lg">
+                        {studentData.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'S'}
+                      </span>
+                    )}
+                  </div>
+                  {studentData.verified && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                      <span className="text-white text-[10px]">✓</span>
+                    </div>
                   )}
                 </div>
-                {studentData.verified && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate">
-                  {studentData.name}
-                </h3>
-                {profileLoaded && studentData.name === 'Student' && (
-                  <button
-                    onClick={() => router.push('/student/settings')}
-                    className="text-xs text-amber-600 hover:text-amber-700 underline"
-                  >
-                    ⚠ Set your name in Settings
-                  </button>
-                )}
-                {studentData.name !== 'Student' && (
-                  <>
-                    <p className="text-sm text-gray-600">{studentData.year}</p>
-                    <p className="text-xs text-gray-500">{studentData.department}</p>
-                  </>
-                )}
-              </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-2">
-              <button className="flex items-center justify-center p-2 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                <BookOpen className="w-4 h-4 text-green-600 mr-1" />
-                <span className="text-xs font-medium text-green-700">Study</span>
-              </button>
-              <button className="flex items-center justify-center p-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-                <Users className="w-4 h-4 text-blue-600 mr-1" />
-                <span className="text-xs font-medium text-blue-700">Connect</span>
-              </button>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[16px] text-gray-900 truncate">
+                    {studentData.name}
+                  </h3>
+
+                  {profileLoaded && studentData.name === 'Student' && (
+                    <button
+                      onClick={() => router.push('/student/settings')}
+                      className="text-xs text-amber-600 hover:text-amber-700 underline mt-0.5"
+                    >
+                      ⚠ Set your name in Settings
+                    </button>
+                  )}
+
+                  {studentData.name !== 'Student' && (
+                    <>
+                      <p className="text-sm text-gray-600 mt-0.5 truncate">{studentData.department || 'Department not set'}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">
+                        {studentData.year || 'Year not set'}
+                        {studentData.rollNumber ? ` • ${studentData.rollNumber}` : ''}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-3.5 flex justify-center">
+                <span className="text-[12px] bg-[#e9efff] text-[#2563eb] px-3.5 py-1.5 rounded-full font-semibold inline-block">
+                  Verified Student
+                </span>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 rounded-[10px] border border-green-100 hover:bg-green-100 transition-colors">
+                  <BookOpen className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-semibold text-green-700">Study</span>
+                </button>
+                <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-50 rounded-[10px] border border-blue-100 hover:bg-blue-100 transition-colors">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-700">Connect</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Navigation Menu */}
-          <nav className="p-4">
-            <ul className="space-y-2">
+          <nav className="flex-1 overflow-y-auto px-4 py-5">
+            <ul className="space-y-2.5">
               {navigationItems.map((item) => (
                 <li key={item.id}>
                   <Link
                     href={item.route}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${isActiveRoute(item.route)
-                      ? 'bg-green-100 text-green-900 border-l-4 border-green-500'
-                      : 'text-gray-700 hover:bg-gray-100'
+                    className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 ${isActiveRoute(item.route)
+                      ? 'bg-[#e8f5ee] text-[#14532d] border-[#b7e4c7] shadow-[0_1px_3px_rgba(22,101,52,0.12)]'
+                      : 'text-gray-700 border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
                       }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <span className={`${isActiveRoute(item.route) ? 'text-green-600' : 'text-gray-500'}`}>
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <span className={`h-6 w-1.5 rounded-full ${isActiveRoute(item.route) ? 'bg-green-500' : 'bg-transparent'}`} />
+                      <span className={`${isActiveRoute(item.route) ? 'text-green-700' : 'text-gray-500'}`}>
                         {item.icon}
                       </span>
-                      <span className="font-medium">{item.label}</span>
+                      <span className="font-medium text-[15px] truncate">{item.label}</span>
                     </div>
                     {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                      <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-1 rounded-full min-w-[22px] text-center">
                         {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
                       </span>
                     )}
@@ -270,22 +292,14 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
           </nav>
 
           {/* Bottom Actions */}
-          <div className="p-4 border-t border-gray-200 mt-auto">
-            <div className="space-y-2">
-              {/* <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="flex items-center space-x-3 w-full p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Bell className="w-5 h-5 text-gray-500" />
-                <span className="font-medium">Notifications</span>
-              </button> */}
-
+          <div className="px-4 py-4 border-t border-[#e6e9ef] bg-white">
+            <div className="pt-1">
               <Link
                 href="/api/auth/logout"
-                className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
+                className="flex items-center gap-3.5 px-4 py-3.5 text-gray-700 border border-transparent hover:bg-red-50 hover:text-red-700 hover:border-red-100 rounded-xl transition-all duration-200"
               >
                 <span className="text-gray-500">🚪</span>
-                <span className="font-medium">Logout</span>
+                <span className="font-medium text-[15px]">Logout</span>
               </Link>
             </div>
           </div>
@@ -293,7 +307,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
       </aside>
 
       {/* Main Content Area */}
-      <main className="ml-64 min-h-screen">
+      <main className="ml-[300px] min-h-screen">
         {/* Incomplete Profile Alert — hidden on the profile page itself */}
         {
           (() => {

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Users, Building2, MessageSquare,
   Trophy, Settings, Heart, Calendar, Map, Camera,
-  Zap, Clock, XCircle, LayoutDashboard, TrendingUp, FileText
+  Zap, Clock, XCircle, LayoutDashboard, LogOut, FileText, TrendingUp
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
@@ -138,34 +138,31 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      <aside className="fixed left-0 top-0 z-40 w-[280px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#eaecf0] flex flex-col">
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* Logo & Branding */}
-          <div className="px-6 py-5 bg-white">
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                <img
-                  src="/NEWCNLOGO.png"
-                  className="w-10 h-10 object-contain"
-                  alt="CF Logo"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff";
-                  }}
-                />
-              </div>
-              <div className="flex-1">
-                <h1 className="text-[17px] font-bold text-[#1a202c] leading-tight">Connecting Future</h1>
-                <p className="text-[13px] text-gray-500 font-medium mt-0.5">VPPCOE & VA</p>
-              </div>
+      <aside className="fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef] flex flex-col">
+        {/* Logo & Branding */}
+        <div className="px-6 py-5 bg-white border-b border-[#eaecf0] shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+              <img
+                src="/NEWCNLOGO.png"
+                className="w-8 h-8 object-contain"
+                alt="CF Logo"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff";
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Connecting Future</h1>
+              <p className="text-sm text-gray-500 font-medium mt-0.5">VPPCOE & VA</p>
             </div>
           </div>
+        </div>
 
-          <div className="h-px bg-[#eaecf0]" />
-
-          {/* Alumni Profile Summary */}
-          <div className="px-4 py-5 bg-white border-b border-[#eaecf0]">
-            <div className="rounded-[12px] border border-[#d2d9e4] bg-[#f5f7fb] p-5 shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+        {/* Alumni Profile Summary */}
+        <div className="px-4 py-5 bg-white border-b border-[#eaecf0] shrink-0">
+          <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
               <div className="flex items-start space-x-3.5">
               <div className="relative mt-0.5">
                 {alumniData.avatar ? (
@@ -203,60 +200,71 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
             <div className="mt-4 flex gap-2.5">
               <Link
                 href="/alumni/network"
-                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-[#e6eef6] text-[#0284c7] border border-[#d2dfec] text-[12px] font-semibold hover:bg-[#dde8f3] transition-colors"
+                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-green-50 text-green-700 border border-green-100 text-[12px] font-semibold hover:bg-green-100 transition-colors"
               >
                 <Users size={13} />
                 <span>Network</span>
               </Link>
               <Link
                 href="/alumni/mentorship"
-                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-[#ececfc] text-[#4f46e5] border border-[#dfe2fd] text-[12px] font-semibold hover:bg-[#e3e6fc] transition-colors"
+                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-blue-50 text-blue-700 border border-blue-100 text-[12px] font-semibold hover:bg-blue-100 transition-colors"
               >
                 <Zap size={13} />
                 <span>Mentor</span>
               </Link>
             </div>
-            </div>
           </div>
+        </div>
 
-          {/* Navigation Menu */}
-          <nav className="px-4 py-4">
-            <ul className="space-y-2">
-              {navigationItems.map((item) => {
-                const isActive = isActiveRoute(item.route);
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={item.route}
-                      className={`flex items-center justify-between px-4 py-3 rounded-[8px] transition-all duration-200 group ${
-                        isActive
-                          ? 'bg-[#dce5f3] text-[#0f4f75] border border-[#b9d3ef]'
-                          : 'text-[#344054] hover:bg-white hover:text-gray-900 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <span className={`shrink-0 ${isActive ? 'text-[#0284c7]' : 'text-[#667085] group-hover:text-gray-700'}`}>
-                          {item.icon}
-                        </span>
-                        <span className={`text-[15px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
-                          {item.label}
-                        </span>
-                      </div>
-                      {item.badge ? (
-                        <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold bg-[#ef4444] text-white shadow-sm">
-                          {item.badge}
+        {/* Navigation Menu */}
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5">
+              <ul className="space-y-2.5">
+                {navigationItems.map((item) => {
+                  const isActive = isActiveRoute(item.route);
+                  return (
+                    <li key={item.id}>
+                      <Link
+                        href={item.route}
+                        className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 group ${
+                          isActive
+                            ? 'bg-[#e8f5ee] text-[#14532d] border-[#b7e4c7] shadow-[0_1px_3px_rgba(22,101,52,0.12)]'
+                            : 'text-[#344054] border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-transparent'}`} />
+                          <span className={`shrink-0 ${isActive ? 'text-green-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
+                            {item.icon}
+                          </span>
+                          <span className={`text-[15px] truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                            {item.label}
+                          </span>
                         </div>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+                        {item.badge ? (
+                          <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold bg-[#ef4444] text-white shadow-sm">
+                            {item.badge}
+                          </div>
+                        ) : null}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+        </nav>
+
+        {/* Fixed Bottom Logout */}
+        <div className="px-4 py-4 border-t border-[#e6e9ef] bg-white shrink-0">
+          <Link
+            href="/api/auth/logout"
+            className="flex items-center gap-3.5 px-4 py-3.5 text-gray-700 border border-transparent hover:bg-red-50 hover:text-red-700 hover:border-red-100 rounded-xl transition-all duration-200"
+          >
+            <LogOut size={18} className="text-gray-500" />
+            <span className="text-[15px] font-medium">Logout</span>
+          </Link>
         </div>
       </aside>
 
-      <main className="ml-[280px] min-h-screen">
+      <main className="ml-[300px] min-h-screen">
         <div className="p-8">
           {children}
         </div>
