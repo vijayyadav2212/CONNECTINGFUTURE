@@ -4,10 +4,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  GraduationCap, Users, Building, MessageSquare,
+  Users, Building2, MessageSquare,
   Trophy, Settings, Heart, Calendar, Map, Camera,
-  Zap, ShieldCheck, Clock, XCircle, ChevronRight, LogOut,
-  User, LayoutIcon
+  Zap, Clock, XCircle, LayoutDashboard
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
@@ -99,10 +98,10 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   };
 
   const navigationItems: NavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: <User size={20} />, route: "/alumni/dashboard" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, route: "/alumni/dashboard" },
     { id: "network", label: "Network", icon: <Users size={20} />, route: "/alumni/network" },
-    { id: "mentorship", label: "Mentorship", icon: <User size={20} />, route: "/alumni/mentorship", badge: "3" },
-    { id: "jobs", label: "Jobs & Internships", icon: <Building size={20} />, route: "/alumni/job-posting", badge: jobNewBadge > 0 ? jobNewBadge : undefined },
+    { id: "mentorship", label: "Mentorship", icon: <Zap size={20} />, route: "/alumni/mentorship" },
+    { id: "jobs", label: "Jobs & Internship", icon: <Building2 size={20} />, route: "/alumni/job-posting", badge: jobNewBadge > 0 ? jobNewBadge : undefined },
     { id: "events", label: "Events", icon: <Calendar size={20} />, route: "/alumni/events" },
     { id: "roadmaps", label: "Roadmaps", icon: <Map size={20} />, route: "/alumni/roadmap" },
     { id: "memories", label: "Memories", icon: <Camera size={20} />, route: "/alumni/memories" },
@@ -137,15 +136,15 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      <aside className="fixed left-0 top-0 z-40 w-[280px] h-screen bg-white shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#eaecf0] flex flex-col">
+      <aside className="fixed left-0 top-0 z-40 w-[280px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#eaecf0] flex flex-col">
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* Logo & Branding */}
-          <div className="px-6 py-5">
+          <div className="px-6 py-5 bg-white">
             <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <img
                   src="/NEWCNLOGO.png"
-                  className="w-12 h-12 object-contain"
+                  className="w-10 h-10 object-contain"
                   alt="CF Logo"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -160,11 +159,12 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
             </div>
           </div>
 
-          <div className="h-px bg-[#eaecf0] mx-6 mb-5" />
+          <div className="h-px bg-[#eaecf0]" />
 
           {/* Alumni Profile Summary */}
-          <div className="px-6 mb-4">
-            <div className="flex items-start space-x-4">
+          <div className="px-4 py-5 bg-white border-b border-[#eaecf0]">
+            <div className="rounded-[12px] border border-[#d2d9e4] bg-[#f5f7fb] p-5 shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+              <div className="flex items-start space-x-3.5">
               <div className="relative mt-0.5">
                 {alumniData.avatar ? (
                   <img
@@ -191,34 +191,49 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                 ) : (
                   <p className="text-[14px] text-gray-500 mt-0.5">Not specified</p>
                 )}
-                <div className="mt-2.5">
-                  <span className="text-[12px] bg-[#eff6ff] text-[#3b82f6] px-3.5 py-1.5 rounded-full font-medium inline-block">
-                    Verified Alumni
-                  </span>
-                </div>
               </div>
+            </div>
+            <div className="mt-3 flex justify-center">
+              <span className="text-[12px] bg-[#e9efff] text-[#2563eb] px-3.5 py-1.5 rounded-full font-semibold inline-block">
+                Verified Alumni
+              </span>
+            </div>
+            <div className="mt-4 flex gap-2.5">
+              <Link
+                href="/alumni/network"
+                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-[#e6eef6] text-[#0284c7] border border-[#d2dfec] text-[12px] font-semibold hover:bg-[#dde8f3] transition-colors"
+              >
+                <Users size={13} />
+                <span>Network</span>
+              </Link>
+              <Link
+                href="/alumni/mentorship"
+                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-[#ececfc] text-[#4f46e5] border border-[#dfe2fd] text-[12px] font-semibold hover:bg-[#e3e6fc] transition-colors"
+              >
+                <Zap size={13} />
+                <span>Mentor</span>
+              </Link>
+            </div>
             </div>
           </div>
 
-          <div className="h-px bg-[#eaecf0] mx-6 mt-6 mb-3" />
-
           {/* Navigation Menu */}
-          <nav className="px-5 pb-6">
-            <ul className="space-y-1.5">
+          <nav className="px-4 py-4">
+            <ul className="space-y-2">
               {navigationItems.map((item) => {
                 const isActive = isActiveRoute(item.route);
                 return (
                   <li key={item.id}>
                     <Link
                       href={item.route}
-                      className={`flex items-center justify-between px-4 py-3 rounded-[12px] transition-all duration-200 group ${
+                      className={`flex items-center justify-between px-4 py-3 rounded-[8px] transition-all duration-200 group ${
                         isActive
-                          ? 'bg-[#eff6ff] text-[#3b82f6] border border-[#dbeafe]'
-                          : 'text-[#475467] hover:bg-gray-50 hover:text-gray-900 border border-transparent'
+                          ? 'bg-[#dce5f3] text-[#0f4f75] border border-[#b9d3ef]'
+                          : 'text-[#344054] hover:bg-white hover:text-gray-900 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center space-x-3.5">
-                        <span className={`${isActive ? 'text-[#3b82f6]' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                        <span className={`shrink-0 ${isActive ? 'text-[#0284c7]' : 'text-[#667085] group-hover:text-gray-700'}`}>
                           {item.icon}
                         </span>
                         <span className={`text-[15px] ${isActive ? 'font-semibold' : 'font-medium'}`}>

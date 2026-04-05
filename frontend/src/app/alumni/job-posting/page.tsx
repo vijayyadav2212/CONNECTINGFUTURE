@@ -621,7 +621,21 @@ export default function AlumniJobBoard() {
     }
   }
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">Loading Portal...</div>
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gradient-to-b from-blue-50 to-purple-50">
+        <div className="flex flex-col items-center gap-6 text-center">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" strokeWidth={2} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">Loading Portal...</h2>
+            <p className="text-base text-gray-600 font-medium">Getting your job board ready</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const availableIndustries = Array.from(
     new Set(jobs.map((job) => String(job.industry || "").trim()).filter(Boolean))
@@ -662,40 +676,44 @@ export default function AlumniJobBoard() {
 
   return (
     <AlumniNavigation>
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50 via-white to-purple-50 pb-12">
+      <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col font-sans mb-8">
 
-        {/* Navbar */}
-        <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-white/70 border-b border-slate-200/60">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-            <div className="flex bg-slate-100/80 p-1 rounded-2xl border border-slate-200">
-              {["Browse Jobs", "Post Job", "My Posts"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                >
-                  {tab}
-                </button>
-              ))}
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#e7eaff] to-[#eaddff] rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
+          <div className="relative z-10 max-w-2xl">
+            <div className="flex items-center gap-2 text-indigo-600 font-semibold text-[15px] mb-3">
+              <Briefcase size={18} className="text-indigo-500" />
+              <span>Explore Opportunities</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-black text-slate-800">{user?.name}</p>
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Alumni Member</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-lg">
-                {user?.name?.charAt(0)}
-              </div>
-            </div>
+            <h1 className="text-4xl md:text-[44px] font-extrabold text-[#1e293b] mb-4 tracking-tight leading-tight">
+              Jobs & Internship
+            </h1>
+            <p className="text-slate-600 text-[17px] font-medium opacity-90">
+              Browse opportunities, publish openings, and manage your postings in one place.
+            </p>
           </div>
-        </header>
 
-        <main className="max-w-7xl mx-auto px-6 py-10">
+          {/* Tab Container */}
+          <div className="relative z-10 flex gap-2 bg-white/40 p-2 rounded-2xl shadow-sm border border-white/60 backdrop-blur-md shrink-0">
+            {["Browse Jobs", "Post Job", "My Posts"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 rounded-xl text-[15px] font-bold transition-all duration-300 ${
+                  activeTab === tab 
+                    ? "bg-white text-[#4F46E5] shadow-sm border border-white" 
+                    : "text-indigo-900/60 hover:text-indigo-900 hover:bg-white/40 border border-transparent"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* TAB: BROWSE JOBS */}
-          {activeTab === "Browse Jobs" && (
-            <div className="space-y-8 animate-in fade-in duration-500">
+        {/* TAB: BROWSE JOBS */}
+        {activeTab === "Browse Jobs" && (
+          <div className="space-y-6 animate-in fade-in duration-500">
               <div className="bg-white/50 backdrop-blur-sm p-4 rounded-[2rem] border border-white shadow-xl shadow-blue-500/5">
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <div className="relative flex-1 group">
@@ -1239,7 +1257,6 @@ export default function AlumniJobBoard() {
               </div>
             </div>
           )}
-        </main>
       </div>
 
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
