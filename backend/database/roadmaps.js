@@ -15,6 +15,11 @@ async function createRoadmapsSchema(dbQuery) {
       phases INT NOT NULL,
       modules_link VARCHAR(500),
       tags TEXT,
+      domain VARCHAR(150),
+      specialization VARCHAR(255),
+      milestones_json JSONB DEFAULT '[]'::jsonb,
+      resources_json JSONB DEFAULT '{}'::jsonb,
+      generation_meta_json JSONB DEFAULT '{}'::jsonb,
       followers INT DEFAULT 0,
       is_published BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -28,6 +33,16 @@ async function createRoadmapsSchema(dbQuery) {
   } catch (e) {
     // Ignore error if column already exists (though IF NOT EXISTS should handle it in newer PG versions, safe fallback)
     console.log('Migration note: modules_link column might already exist');
+  }
+
+  try {
+    await dbQuery('ALTER TABLE roadmaps ADD COLUMN IF NOT EXISTS domain VARCHAR(150)');
+    await dbQuery('ALTER TABLE roadmaps ADD COLUMN IF NOT EXISTS specialization VARCHAR(255)');
+    await dbQuery("ALTER TABLE roadmaps ADD COLUMN IF NOT EXISTS milestones_json JSONB DEFAULT '[]'::jsonb");
+    await dbQuery("ALTER TABLE roadmaps ADD COLUMN IF NOT EXISTS resources_json JSONB DEFAULT '{}'::jsonb");
+    await dbQuery("ALTER TABLE roadmaps ADD COLUMN IF NOT EXISTS generation_meta_json JSONB DEFAULT '{}'::jsonb");
+  } catch (e) {
+    console.log('Migration note: structured roadmap columns might already exist');
   }
 
   // Indexes

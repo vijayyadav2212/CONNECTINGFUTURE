@@ -374,6 +374,350 @@ const checkJwt = jwt({
   algorithms: ['RS256'],
 });
 
+function normalizeTextList(value) {
+  if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean);
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return [];
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return normalizeTextList(parsed);
+    } catch { }
+    return text.split(',').map(item => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function stripMarkdownCodeFences(text) {
+  return String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+}
+
+function parseJsonResponse(text) {
+  const cleaned = stripMarkdownCodeFences(text);
+  if (!cleaned) return null;
+  try {
+    return JSON.parse(cleaned);
+  } catch { }
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch { }
+  }
+  const arrayStart = cleaned.indexOf('[');
+  const arrayEnd = cleaned.lastIndexOf(']');
+  if (arrayStart >= 0 && arrayEnd > arrayStart) {
+    try {
+      return JSON.parse(cleaned.slice(arrayStart, arrayEnd + 1));
+    } catch { }
+  }
+  return null;
+}
+
+function dedupeByUrl(items) {
+  const seen = new Set();
+  return (Array.isArray(items) ? items : []).filter(item => {
+    const key = String(item && item.url ? item.url : '').trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeResourceCollection(value, fallbackLabel) {
+  let items = value;
+  if (typeof items === 'string') {
+    try {
+      items = JSON.parse(items);
+    } catch {
+      items = items.split(',').map((item, index) => ({ label: `${fallbackLabel || 'Resource'} ${index + 1}`, url: item.trim() })).filter(item => item.url);
+    }
+  }
+
+  if (!Array.isArray(items)) return [];
+
+  return dedupeByUrl(items.map((item, index) => {
+    if (typeof item === 'string') {
+      return { label: `${fallbackLabel || 'Resource'} ${index + 1}`, url: item };
+    }
+    return {
+      label: item.label || item.title || item.name || `${fallbackLabel || 'Resource'} ${index + 1}`,
+      url: item.url || item.link || item.href || '',
+    };
+  }).filter(item => item.url));
+}
+
+function fallbackRoadmapBlueprint(domain, specialization) {
+  const title = `${specialization || 'Custom'} Roadmap`;
+  const normalizedSpecialization = String(specialization || '').toLowerCase();
+
+  if (normalizedSpecialization.includes('mern')) {
+    return {
+      title: 'MERN Stack Roadmap',
+      description: 'A practical roadmap for building full-stack web applications with MongoDB, Express.js, React.js, and Node.js.',
+      category: domain || 'Software Engineering',
+      level: 'Beginner to Advanced',
+      duration: '12 weeks',
+      phases: 5,
+      tags: ['MongoDB', 'Express.js', 'React.js', 'Node.js', 'Full Stack'],
+      milestones: [
+        { title: 'MongoDB Fundamentals', focus: 'Data modeling and CRUD basics' },
+        { title: 'Express.js APIs', focus: 'REST endpoints and middleware' },
+        { title: 'React.js Frontend', focus: 'Component-driven UI and state management' },
+        { title: 'Node.js Backend', focus: 'Server logic, validation, and auth' },
+        { title: 'Final Full Stack Project', focus: 'Integrate frontend, backend, and database into a deployable app' },
+      ],
+    };
+  }
+
+  if (normalizedSpecialization.includes('software')) {
+    return {
+      title: `${domain || 'Software Engineering'} Roadmap`,
+      description: 'A structured path covering foundations, applied development, and a portfolio-ready capstone.',
+      category: domain || 'Software Engineering',
+      level: 'Beginner to Advanced',
+      duration: '10 weeks',
+      phases: 5,
+      tags: ['Foundations', 'Projects', 'System Design', 'Deployment'],
+      milestones: [
+        { title: 'Core Programming Foundations', focus: 'Problem solving, data structures, and version control' },
+        { title: 'Frontend Development', focus: 'HTML, CSS, JavaScript, and UI components' },
+        { title: 'Backend Development', focus: 'APIs, databases, and business logic' },
+        { title: 'Deployment and Collaboration', focus: 'Testing, deployment, and teamwork practices' },
+        { title: 'Capstone Project', focus: 'Ship a polished real-world project' },
+      ],
+    };
+  }
+
+  return {
+    title,
+    description: `A guided roadmap for ${specialization || 'the selected specialization'} within ${domain || 'the selected domain'}.`,
+    category: domain || 'General',
+    level: 'Beginner to Advanced',
+    duration: '8 weeks',
+    phases: 4,
+    tags: normalizeTextList(specialization).length ? normalizeTextList(specialization) : [specialization || domain || 'Learning'],
+    milestones: [
+      { title: 'Foundations', focus: 'Understand the core concepts and terminology' },
+      { title: 'Applied Practice', focus: 'Build guided exercises and small exercises' },
+      { title: 'Intermediate Projects', focus: 'Apply concepts in practical scenarios' },
+      { title: 'Capstone', focus: 'Deliver a real-world portfolio project' },
+    ],
+  };
+}
+
+function fallbackMilestoneDetail(blueprint, index, total, domain, specialization) {
+  const title = blueprint.title;
+  const lowercaseTitle = String(title || '').toLowerCase();
+  const isMern = String(specialization || '').toLowerCase().includes('mern');
+  const resources = (() => {
+    if (lowercaseTitle.includes('mongodb')) {
+      return {
+        youtube: [
+          { label: 'MongoDB Crash Course', url: 'https://www.youtube.com/results?search_query=MongoDB+crash+course' },
+          { label: 'MongoDB CRUD Tutorial', url: 'https://www.youtube.com/results?search_query=MongoDB+CRUD+tutorial' },
+        ],
+        github: [{ label: 'Mongoose', url: 'https://github.com/Automattic/mongoose' }],
+        reading: [{ label: 'MongoDB Docs', url: 'https://www.mongodb.com/docs/' }],
+      };
+    }
+    if (lowercaseTitle.includes('express')) {
+      return {
+        youtube: [
+          { label: 'Express.js Tutorial', url: 'https://www.youtube.com/results?search_query=Express.js+tutorial' },
+          { label: 'REST API with Express', url: 'https://www.youtube.com/results?search_query=REST+API+Express+tutorial' },
+        ],
+        github: [{ label: 'Express', url: 'https://github.com/expressjs/express' }],
+        reading: [{ label: 'Express Docs', url: 'https://expressjs.com/' }],
+      };
+    }
+    if (lowercaseTitle.includes('react')) {
+      return {
+        youtube: [
+          { label: 'React Fundamentals', url: 'https://www.youtube.com/results?search_query=React+fundamentals+tutorial' },
+          { label: 'React Hooks Tutorial', url: 'https://www.youtube.com/results?search_query=React+hooks+tutorial' },
+        ],
+        github: [{ label: 'React', url: 'https://github.com/facebook/react' }],
+        reading: [{ label: 'React Docs', url: 'https://react.dev/' }],
+      };
+    }
+    if (lowercaseTitle.includes('node')) {
+      return {
+        youtube: [
+          { label: 'Node.js Crash Course', url: 'https://www.youtube.com/results?search_query=Node.js+crash+course' },
+          { label: 'Node.js API Building', url: 'https://www.youtube.com/results?search_query=Node.js+API+building+tutorial' },
+        ],
+        github: [{ label: 'Node.js', url: 'https://github.com/nodejs/node' }],
+        reading: [{ label: 'Node.js Docs', url: 'https://nodejs.org/en/docs' }],
+      };
+    }
+    return {
+      youtube: [
+        { label: `${title} overview`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} tutorial`)}` },
+        { label: `${title} project walkthrough`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} project tutorial`)}` },
+      ],
+      github: [{ label: `${title} repositories`, url: `https://github.com/search?q=${encodeURIComponent(title || specialization || domain || 'learning')}` }],
+      reading: [{ label: `${title} reading`, url: `https://www.google.com/search?q=${encodeURIComponent(`${title || specialization || domain || 'learning'} documentation`)}` }],
+    };
+  })();
+
+  return {
+    title,
+    description: blueprint.focus || `Master ${title} with practical implementation, exercises, and a small project.`,
+    subtopics: [
+      { title: 'Basics', description: `Learn the core concepts of ${title.toLowerCase()}.` },
+      { title: 'Advanced', description: `Explore deeper patterns and production usage for ${title.toLowerCase()}.` },
+      { title: 'Real-world use', description: `Apply ${title.toLowerCase()} in a real project or workflow.` },
+    ],
+    learning_steps: [
+      `Understand the role of ${title} inside a ${specialization || domain || 'roadmap'}.`,
+      `Build a small guided exercise focused on ${title}.`,
+      `Extend the exercise into a reusable implementation.`,
+      `Validate the milestone with a real-world mini project.`,
+    ],
+    resources,
+    order: index + 1,
+    total,
+    is_capstone: index === total - 1,
+    stage: isMern ? title : `${index + 1}/${total}`,
+  };
+}
+
+async function callRoadmapAiJson(messages, fallbackFactory) {
+  const apiKey = process.env.ROADMAP_AI_API_KEY || process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
+  const baseUrl = String(process.env.ROADMAP_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+  const model = process.env.ROADMAP_AI_MODEL || 'gpt-4o-mini';
+
+  if (!apiKey) {
+    return fallbackFactory();
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.35,
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`AI request failed (${response.status}): ${text}`);
+    }
+
+    const payload = await response.json();
+    const content = payload?.choices?.[0]?.message?.content || '';
+    const parsed = parseJsonResponse(content);
+    if (parsed) return parsed;
+    throw new Error('AI response did not contain valid JSON');
+  } catch (error) {
+    console.warn('Roadmap AI generation failed, falling back to templates:', error && error.message ? error.message : error);
+    return fallbackFactory();
+  }
+}
+
+async function buildRoadmapDraft(domain, specialization) {
+  const blueprint = await callRoadmapAiJson([
+    {
+      role: 'system',
+      content: 'You generate concise roadmap outlines as JSON only. Return an array of milestone objects with title and focus fields.',
+    },
+    {
+      role: 'user',
+      content: `Create a milestone blueprint for a learning roadmap in the domain "${domain}" with the specialization "${specialization}". Return JSON only.`,
+    },
+  ], () => fallbackRoadmapBlueprint(domain, specialization).milestones);
+
+  const milestones = Array.isArray(blueprint) && blueprint.length > 0 ? blueprint : fallbackRoadmapBlueprint(domain, specialization).milestones;
+  const expandedMilestones = [];
+
+  for (const [index, milestone] of milestones.entries()) {
+    const detail = await callRoadmapAiJson([
+      {
+        role: 'system',
+        content: 'You expand one roadmap milestone into JSON with title, description, subtopics, learning_steps, and resources fields only.',
+      },
+      {
+        role: 'user',
+        content: `Expand milestone ${index + 1} of ${milestones.length} for the domain "${domain}" and specialization "${specialization}". Milestone title: ${milestone.title}. Milestone focus: ${milestone.focus || milestone.description || ''}. Include 3 subtopics from basics to advanced to real-world use, 4 learning steps, and resources with YouTube, GitHub, and reading links. Return JSON only.`,
+      },
+    ], () => fallbackMilestoneDetail(milestone, index, milestones.length, domain, specialization));
+
+    expandedMilestones.push({
+      order: index + 1,
+      title: detail.title || milestone.title,
+      description: detail.description || milestone.focus || milestone.description || '',
+      subtopics: Array.isArray(detail.subtopics) ? detail.subtopics : [],
+      learning_steps: Array.isArray(detail.learning_steps) ? detail.learning_steps : [],
+      resources: {
+        youtube: normalizeResourceCollection(detail.resources && detail.resources.youtube, 'YouTube resource'),
+        github: normalizeResourceCollection(detail.resources && detail.resources.github, 'GitHub resource'),
+        reading: normalizeResourceCollection(detail.resources && detail.resources.reading, 'Reading resource'),
+      },
+    });
+  }
+
+  const blueprintTemplate = fallbackRoadmapBlueprint(domain, specialization);
+  const rootResources = {
+    youtube: dedupeByUrl(expandedMilestones.flatMap(milestone => milestone.resources.youtube || [])),
+    github: dedupeByUrl(expandedMilestones.flatMap(milestone => milestone.resources.github || [])),
+    reading: dedupeByUrl(expandedMilestones.flatMap(milestone => milestone.resources.reading || [])),
+  };
+
+  return {
+    domain,
+    specialization,
+    title: blueprintTemplate.title,
+    description: blueprintTemplate.description,
+    category: blueprintTemplate.category,
+    level: blueprintTemplate.level,
+    duration: blueprintTemplate.duration,
+    phases: expandedMilestones.length,
+    tags: blueprintTemplate.tags,
+    milestones: expandedMilestones,
+    resources: rootResources,
+    generation_meta: {
+      stage: 'sequential',
+      generated_at: new Date().toISOString(),
+      provider: process.env.ROADMAP_AI_PROVIDER || (process.env.ROADMAP_AI_API_KEY || process.env.OPENAI_API_KEY || process.env.AI_API_KEY ? 'openai-compatible' : 'template'),
+      model: process.env.ROADMAP_AI_MODEL || 'gpt-4o-mini',
+    },
+  };
+}
+
+async function ensureAdminRequest(req, res) {
+  const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
+  const sub = req.auth && req.auth.sub;
+  let isAdmin = false;
+
+  try {
+    if (email) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+    if (!isAdmin && sub) {
+      const { rows } = await dbQuery('SELECT user_type FROM users WHERE auth0_id = ? LIMIT 1', [sub]);
+      if (rows && rows[0] && String(rows[0].user_type || '').toLowerCase() === 'admin') isAdmin = true;
+    }
+  } catch (error) {
+    console.warn('Admin verification failed:', error && error.message ? error.message : error);
+  }
+
+  if (!isAdmin) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+
+  return { email, sub };
+}
+
 // 3. API Routes
 
 app.get('/api/health', (req, res) => {
@@ -966,6 +1310,126 @@ app.get('/api/donations/analytics/summary', (req, res) => {
  * Roadmaps CRUD
  */
 
+async function saveRoadmapRecord(payload) {
+  const values = [
+    payload.owner_email,
+    payload.title,
+    payload.description,
+    payload.category,
+    payload.level,
+    payload.duration,
+    parseInt(payload.phases, 10),
+    payload.modules_link || null,
+    payload.tags || null,
+    payload.domain || null,
+    payload.specialization || null,
+    payload.milestones_json ? JSON.stringify(payload.milestones_json) : JSON.stringify([]),
+    payload.resources_json ? JSON.stringify(payload.resources_json) : JSON.stringify({}),
+    payload.generation_meta_json ? JSON.stringify(payload.generation_meta_json) : JSON.stringify({}),
+    !!payload.is_published,
+  ];
+
+  const { rows } = await dbQuery(`
+    INSERT INTO roadmaps (
+      owner_email,
+      title,
+      description,
+      category,
+      level,
+      duration,
+      phases,
+      modules_link,
+      tags,
+      domain,
+      specialization,
+      milestones_json,
+      resources_json,
+      generation_meta_json,
+      is_published
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    RETURNING *
+  `, values);
+
+  return rows && rows[0];
+}
+
+// Admin: generate a structured roadmap using AI or a deterministic fallback
+app.post('/api/admin/roadmaps/generate', checkJwt, async (req, res) => {
+  try {
+    const admin = await ensureAdminRequest(req, res);
+    if (!admin) return;
+
+    const domain = String(req.body && req.body.domain ? req.body.domain : '').trim();
+    const specialization = String(req.body && req.body.specialization ? req.body.specialization : '').trim();
+
+    if (!domain || !specialization) {
+      return res.status(400).json({ error: 'Domain and specialization are required' });
+    }
+
+    const draft = await buildRoadmapDraft(domain, specialization);
+    return res.json({
+      ...draft,
+      owner_email: admin.email || admin.sub || null,
+      is_published: false,
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin: save a generated roadmap draft
+app.post('/api/admin/roadmaps/save', checkJwt, async (req, res) => {
+  try {
+    const admin = await ensureAdminRequest(req, res);
+    if (!admin) return;
+
+    const {
+      owner_email,
+      title,
+      description,
+      category,
+      level,
+      duration,
+      phases,
+      tags,
+      modules_link,
+      domain,
+      specialization,
+      milestones,
+      resources,
+      generation_meta,
+      is_published = false,
+    } = req.body || {};
+
+    if (!title || !description || !category || !level || !duration || !phases) {
+      return res.status(400).json({ error: 'Missing required roadmap fields' });
+    }
+
+    const saved = await saveRoadmapRecord({
+      owner_email: owner_email || admin.email || admin.sub,
+      title,
+      description,
+      category,
+      level,
+      duration,
+      phases,
+      tags: Array.isArray(tags) ? tags.join(', ') : tags,
+      modules_link,
+      domain,
+      specialization,
+      milestones_json: milestones || [],
+      resources_json: resources || {},
+      generation_meta_json: generation_meta || {},
+      is_published,
+    });
+
+    return res.status(201).json(saved);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // Create a roadmap
 app.post('/api/roadmaps', async (req, res) => {
   try {
@@ -978,6 +1442,12 @@ app.post('/api/roadmaps', async (req, res) => {
       duration,
       phases,
       tags,
+      modules_link,
+      domain,
+      specialization,
+      milestones,
+      resources,
+      generation_meta,
       is_published = false
     } = req.body || {};
 
@@ -985,13 +1455,25 @@ app.post('/api/roadmaps', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const { rows } = await dbQuery(`
-      INSERT INTO roadmaps (owner_email, title, description, category, level, duration, phases, tags, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING *
-    `, [owner_email, title, description, category, level, duration, parseInt(phases, 10), tags || null, !!is_published]);
+    const created = await saveRoadmapRecord({
+      owner_email,
+      title,
+      description,
+      category,
+      level,
+      duration,
+      phases,
+      tags: Array.isArray(tags) ? tags.join(', ') : tags,
+      modules_link,
+      domain,
+      specialization,
+      milestones_json: milestones || [],
+      resources_json: resources || {},
+      generation_meta_json: generation_meta || {},
+      is_published,
+    });
 
-    return res.status(201).json(rows && rows[0]);
+    return res.status(201).json(created);
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -1033,13 +1515,15 @@ app.get('/api/roadmaps/:id', async (req, res) => {
 app.put('/api/roadmaps/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'is_published'];
+    const allowed = ['title', 'description', 'category', 'level', 'duration', 'phases', 'tags', 'modules_link', 'domain', 'specialization', 'milestones_json', 'resources_json', 'generation_meta_json', 'is_published'];
     const updates = [];
     const values = [];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         updates.push(`${key} = ?`);
-        values.push(key === 'phases' ? parseInt(req.body[key], 10) : req.body[key]);
+        if (key === 'phases') values.push(parseInt(req.body[key], 10));
+        else if (key === 'milestones_json' || key === 'resources_json' || key === 'generation_meta_json') values.push(typeof req.body[key] === 'string' ? req.body[key] : JSON.stringify(req.body[key]));
+        else values.push(req.body[key]);
       }
     }
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });

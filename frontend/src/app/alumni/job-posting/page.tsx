@@ -2043,11 +2043,11 @@ import type React from "react"
 import {
   Briefcase, Users, Building2, Calendar, MapPin, Eye, Search, Filter,
   DollarSign, FileText, Link2, Clock, ChevronRight, CheckCircle2,
-  X, Edit3, Globe, Plus
+  X, Edit3, Globe, Plus, Sparkles
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@auth0/nextjs-auth0/client"
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation"
@@ -2058,8 +2058,34 @@ type JobItem = {
   id: number; title: string; company: string; location: string;
   postedDate: string; description: string; salary: string;
   tags: string[]; views: number; applied: number; status: string;
-  featured: boolean; jobType: string; isRemote: boolean; postedBy?: string; industry?: string;
+  featured: boolean; jobType: string; industry: string; isRemote: boolean; postedBy?: string;
 }
+
+const industries = [
+  "Technology",
+  "Finance",
+  "Healthcare",
+  "Marketing",
+  "Consulting",
+  "Manufacturing",
+  "Education",
+  "Non-profit",
+  "Government",
+  "Retail",
+  "Media",
+  "Real Estate",
+]
+
+const jobTypes = [
+  "All Types",
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Temporary",
+  "Internship (Paid)",
+  "Internship (Unpaid)",
+  "Volunteer",
+]
 
 export default function AlumniJobBoard() {
   const { user, isLoading } = useUser()
@@ -2071,19 +2097,16 @@ export default function AlumniJobBoard() {
 
   // Data States
   const [searchQuery, setSearchQuery] = useState("")
-  const [showBrowseFilters, setShowBrowseFilters] = useState(false)
-  const [browseIndustry, setBrowseIndustry] = useState("all")
-  const [browseJobType, setBrowseJobType] = useState("all")
-  const [browseRemoteOnly, setBrowseRemoteOnly] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [selectedIndustry, setSelectedIndustry] = useState("All Industries")
+  const [selectedJobType, setSelectedJobType] = useState("All Types")
+  const [locationQuery, setLocationQuery] = useState("")
+  const [remoteOnly, setRemoteOnly] = useState(false)
   const [jobs, setJobs] = useState<JobItem[]>([])
   const [myJobs, setMyJobs] = useState<JobItem[]>([])
   const [selectedJob, setSelectedJob] = useState<JobItem | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isApplicantModalOpen, setIsApplicantModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isEditSuccessOpen, setIsEditSuccessOpen] = useState(false)
-  const [editingJobId, setEditingJobId] = useState<number | null>(null)
-  const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [applicants, setApplicants] = useState<any[]>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -2094,13 +2117,6 @@ export default function AlumniJobBoard() {
     jobType: "", industry: "", jobDescription: "", responsibilities: "",
     requirements: "", salaryMin: "", salaryMax: "", currency: "USD",
     applicationUrl: "", applicationDeadline: "", contactPerson: "", tags: "", applicationMethod: ""
-  })
-
-  const [editFormData, setEditFormData] = useState({
-    jobTitle: "", companyName: "", location: "", remoteAvailable: false,
-    jobType: "", industry: "", jobDescription: "", responsibilities: "",
-    requirements: "", salaryMin: "", salaryMax: "", currency: "USD",
-    applicationUrl: "", applicationDeadline: "", contactPerson: "", tags: "", applicationMethod: "", benefits: ""
   })
 
   // Safe Mapping Helper
@@ -2158,139 +2174,57 @@ export default function AlumniJobBoard() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleEditInputChange = (field: string, value: any) => {
-    setEditFormData(prev => ({ ...prev, [field]: value }))
-  }
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const matchesBrowseFilters = (job: JobItem) => {
+    if (selectedIndustry !== "All Industries" && job.industry !== selectedIndustry) return false
+    if (selectedJobType !== "All Types" && job.jobType !== selectedJobType) return false
+    if (locationQuery.trim() && !job.location.toLowerCase().includes(locationQuery.trim().toLowerCase())) return false
+    if (remoteOnly && !job.isRemote) return false
 
-  const openEditModal = (job: any) => {
-    setEditingJobId(Number(job.id))
-    setEditFormData({
-      jobTitle: String(job.title || ""),
-      companyName: String(job.company || ""),
-      location: String(job.location || ""),
-      remoteAvailable: !!(job.is_remote ?? job.isRemote),
-      jobType: String(job.job_type || job.jobType || ""),
-      industry: String(job.industry || ""),
-      jobDescription: String(job.description || ""),
-      responsibilities: String(job.responsibilities || ""),
-      requirements: String(job.requirements || ""),
-      salaryMin: String(job.salary_min ?? ""),
-      salaryMax: String(job.salary_max ?? ""),
-      currency: String(job.currency || "USD"),
-      applicationUrl: String(job.application_url || ""),
-      applicationDeadline: String(job.application_deadline || "").slice(0, 10),
-      contactPerson: String(job.contact_person || ""),
-      tags: Array.isArray(job.tags) ? job.tags.join(", ") : String(job.tags || ""),
-      applicationMethod: String(job.application_method || ""),
-      benefits: String(job.benefits || "")
-    })
-    setIsEditModalOpen(true)
-  }
-
-  const saveEditedJob = async () => {
-    if (!editingJobId) return
-    if (!editFormData.jobTitle.trim() || !editFormData.companyName.trim() || !editFormData.location.trim()) {
-      toast({ title: "Missing fields", description: "Please fill title, company, and location.", variant: "destructive" })
-      return
-    }
-
-    setIsSavingEdit(true)
-    try {
-      const payload = {
-        title: editFormData.jobTitle.trim(),
-        company: editFormData.companyName.trim(),
-        location: editFormData.location.trim(),
-        description: editFormData.jobDescription,
-        responsibilities: editFormData.responsibilities,
-        requirements: editFormData.requirements,
-        benefits: editFormData.benefits,
-        salary_min: editFormData.salaryMin || null,
-        salary_max: editFormData.salaryMax || null,
-        currency: editFormData.currency || null,
-        tags: editFormData.tags ? editFormData.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
-        industry: editFormData.industry,
-        job_type: editFormData.jobType,
-        is_remote: !!editFormData.remoteAvailable,
-        application_deadline: editFormData.applicationDeadline || null,
-        contact_person: editFormData.contactPerson || null,
-        application_method: editFormData.applicationMethod || null,
-        application_url: editFormData.applicationUrl || null
-      }
-
-      const res = await fetch(`${API_BASE}/jobs/${editingJobId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || "Failed to update job")
-
-      toast({ title: "Job updated", description: "Your changes were saved successfully." })
-      setIsEditModalOpen(false)
-      setIsEditSuccessOpen(true)
-      setEditingJobId(null)
-      await fetchMyJobs()
-      if (activeTab === "Browse Jobs") await fetchJobs()
-    } catch (e: any) {
-      toast({ title: "Update failed", description: e?.message || "Could not update this job.", variant: "destructive" })
-    } finally {
-      setIsSavingEdit(false)
-    }
-  }
-
-  const postJobSteps = [
-    { s: 1, label: "Basic Info", title: "Basic Information", hint: "Role, company, location, type, and industry" },
-    { s: 2, label: "Details", title: "Job Details", hint: "Description, responsibilities, and requirements" },
-    { s: 3, label: "Compensation", title: "Compensation", hint: "Salary range and currency" },
-    { s: 4, label: "Application", title: "Application", hint: "How candidates can apply" }
-  ]
-
-  const requiredFieldsByStep: Record<number, Array<{ key: string; label: string }>> = {
-    1: [
-      { key: "jobTitle", label: "Job/Internship Title" },
-      { key: "companyName", label: "Company Name" },
-      { key: "location", label: "Location" },
-      { key: "jobType", label: "Job Type" },
-      { key: "industry", label: "Industry" }
-    ],
-    2: [
-      { key: "jobDescription", label: "Job Description" },
-      { key: "responsibilities", label: "Key Responsibilities" },
-      { key: "requirements", label: "Requirements/Qualifications" }
-    ],
-    3: [],
-    4: [
-      { key: "applicationMethod", label: "Application Method" },
-      { key: "applicationUrl", label: "Application URL / Email" }
+    const searchableText = [
+      job.title,
+      job.company,
+      job.location,
+      job.description,
+      job.salary,
+      job.jobType,
+      ...(job.tags || []),
     ]
+      .join(" ")
+      .toLowerCase()
+
+    return !normalizedSearchQuery || searchableText.includes(normalizedSearchQuery)
   }
 
-  const getMissingFieldsForStep = (step: number) => {
-    const rules = requiredFieldsByStep[step] || []
-    return rules.filter(({ key }) => {
-      const value = (formData as any)[key]
-      return typeof value === "string" ? !value.trim() : !value
-    })
-  }
+  const filteredJobs = jobs.filter(matchesBrowseFilters)
+  const filteredMyJobs = myJobs.filter((job) => {
+    if (!normalizedSearchQuery) return true
+    const searchableText = [
+      job.title,
+      job.company,
+      job.location,
+      job.description,
+      job.salary,
+      job.jobType,
+      ...(job.tags || []),
+    ]
+      .join(" ")
+      .toLowerCase()
 
-  const goToNextStep = () => {
-    const missing = getMissingFieldsForStep(activeStep)
-    if (missing.length > 0) {
-      toast({
-        title: "Complete this step",
-        description: `Please fill: ${missing.map(f => f.label).join(", ")}`,
-        variant: "destructive"
-      })
-      return
-    }
-    setActiveStep(prev => Math.min(prev + 1, 4))
+    return searchableText.includes(normalizedSearchQuery)
+  })
+
+  const clearBrowseFilters = () => {
+    setSearchQuery("")
+    setSelectedIndustry("All Industries")
+    setSelectedJobType("All Types")
+    setLocationQuery("")
+    setRemoteOnly(false)
   }
 
   const handleSubmit = async () => {
-    const allMissing = [1, 2, 4].flatMap(step => getMissingFieldsForStep(step).map(f => f.label))
-    if (allMissing.length > 0) {
-      toast({ title: "Missing Fields", description: `Please complete: ${allMissing.join(", ")}`, variant: "destructive" })
+    if (!formData.jobTitle || !formData.companyName) {
+      toast({ title: "Missing Fields", description: "Please fill in all required fields (*)", variant: "destructive" })
       return
     }
 
@@ -2341,196 +2275,161 @@ export default function AlumniJobBoard() {
 
   if (isLoading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">Loading Portal...</div>
 
-  const availableIndustries = Array.from(
-    new Set(jobs.map((job) => String(job.industry || "").trim()).filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b))
-
-  const availableJobTypes = Array.from(
-    new Set(jobs.map((job) => String(job.jobType || "").trim()).filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b))
-
-  const filteredJobs = jobs.filter((job) => {
-    const q = searchQuery.trim().toLowerCase()
-    const matchesSearch = !q || (
-      String(job.title || "").toLowerCase().includes(q) ||
-      String(job.company || "").toLowerCase().includes(q) ||
-      String(job.location || "").toLowerCase().includes(q) ||
-      String(job.description || "").toLowerCase().includes(q) ||
-      (job.tags || []).some((tag) => String(tag).toLowerCase().includes(q))
-    )
-
-    const matchesIndustry = browseIndustry === "all" || String(job.industry || "").toLowerCase() === browseIndustry.toLowerCase()
-    const matchesJobType = browseJobType === "all" || String(job.jobType || "").toLowerCase() === browseJobType.toLowerCase()
-    const matchesRemote = !browseRemoteOnly || !!job.isRemote
-
-    return matchesSearch && matchesIndustry && matchesJobType && matchesRemote
-  })
-
-  const formatPostedDate = (value?: string) => {
-    const d = value ? new Date(value) : null
-    if (!d || Number.isNaN(d.getTime())) return value || "-"
-    return d.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })
-  }
-
-  const formatPostedTime = (value?: string) => {
-    const d = value ? new Date(value) : null
-    if (!d || Number.isNaN(d.getTime())) return ""
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
-
   return (
     <AlumniNavigation>
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50 via-white to-purple-50 pb-12">
 
-        {/* Navbar */}
-        <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-white/70 border-b border-slate-200/60">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-            <div className="flex bg-slate-100/80 p-1 rounded-2xl border border-slate-200">
-              {["Browse Jobs", "Post Job", "My Posts"].map((tab) => (
+        <main className="max-w-7xl mx-auto px-6 py-10">
+
+          {/* Hero Header */}
+          <section className="bg-gradient-to-r from-[#e7eaff] to-[#eaddff] rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-8 mb-8">
+            <div className="relative z-10 max-w-2xl">
+              <div className="flex items-center gap-2 text-indigo-600 font-semibold text-[15px] mb-3">
+                <Sparkles size={18} className="text-indigo-500" />
+                <span>Jobs &amp; Internship Hub</span>
+              </div>
+              <h1 className="text-4xl md:text-[44px] font-extrabold text-[#1e293b] mb-4 tracking-tight leading-tight">
+                Jobs &amp; Internship
+              </h1>
+              <p className="text-slate-600 text-[17px] font-medium opacity-90">
+                Browse opportunities, publish openings, and manage your postings in one place.
+              </p>
+            </div>
+
+            {/* Tab Toggle */}
+            <div className="relative z-10 flex gap-2 bg-white/40 p-2 rounded-2xl shadow-sm border border-white/60 backdrop-blur-md shrink-0 w-full md:w-auto justify-between md:justify-start">
+              {[
+                { label: "Browse Jobs", value: "Browse Jobs" },
+                { label: "Post Job", value: "Post Job" },
+                { label: "My Posts", value: "My Posts" },
+              ].map((tab) => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`flex-1 md:flex-none px-6 md:px-8 py-3.5 rounded-xl text-[15px] font-bold transition-all duration-300 ${activeTab === tab.value ? 'bg-white text-[#4F46E5] shadow-sm border border-white' : 'text-indigo-900/60 hover:text-indigo-900 hover:bg-white/40 border border-transparent'
                     }`}
                 >
-                  {tab}
+                  {tab.label}
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-black text-slate-800">{user?.name}</p>
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Alumni Member</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-lg">
-                {user?.name?.charAt(0)}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-6 py-10">
+          </section>
 
           {/* TAB: BROWSE JOBS */}
           {activeTab === "Browse Jobs" && (
             <div className="space-y-8 animate-in fade-in duration-500">
-              <div className="bg-white/50 backdrop-blur-sm p-4 rounded-[2rem] border border-white shadow-xl shadow-blue-500/5">
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <div className="relative flex-1 group">
+              <div className="flex flex-col sm:flex-row gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-[2rem] border border-white shadow-xl shadow-blue-500/5">
+                <div className="relative flex-1 group min-w-0">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-all" />
-                    <input
-                      className="w-full bg-white border border-slate-100 rounded-2xl pl-12 pr-12 py-4 outline-none focus:ring-4 focus:ring-blue-500/10 text-slate-900 font-medium"
-                      placeholder="Search roles, companies, location, or tags..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery.trim().length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                        title="Clear search"
-                        aria-label="Clear search"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowBrowseFilters((prev) => !prev)}
-                    className="sm:w-auto w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"
-                  >
-                    <Filter className="w-4 h-4" /> Filters
-                  </button>
+                  <input
+                    className="w-full bg-white border border-slate-100 rounded-2xl pl-12 pr-12 py-4 outline-none focus:ring-4 focus:ring-blue-500/10 text-slate-900 font-medium placeholder:text-slate-400"
+                    placeholder="Search roles, companies, or keywords..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    aria-label="Search jobs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                {showBrowseFilters ? (
-                  <div className="mt-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Industry</label>
-                        <Select value={browseIndustry} onValueChange={setBrowseIndustry}>
-                          <SelectTrigger className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium">
-                            <SelectValue placeholder="All industries" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 rounded-xl text-slate-900 shadow-xl">
-                            <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" value="all">All industries</SelectItem>
-                            {availableIndustries.map((industry) => (
-                              <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" key={industry} value={industry}>{industry}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFilters((prev) => !prev)}
+                  className={`w-full sm:w-auto px-8 py-4 bg-white border rounded-2xl font-bold flex items-center justify-center gap-2 shrink-0 transition-colors ${showFilters ? "border-[#4F46E5] text-[#4F46E5]" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}
+                >
+                  <Filter className="w-4 h-4" /> Filters
+                </button>
+              </div>
 
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Job Type</label>
-                        <Select value={browseJobType} onValueChange={setBrowseJobType}>
-                          <SelectTrigger className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium">
-                            <SelectValue placeholder="All job types" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 rounded-xl text-slate-900 shadow-xl">
-                            <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" value="all">All job types</SelectItem>
-                            {availableJobTypes.map((jobType) => (
-                              <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" key={jobType} value={jobType}>{jobType}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+              {showFilters && (
+                <div className="bg-white/70 backdrop-blur-sm p-4 sm:p-6 rounded-[2rem] border border-white shadow-xl shadow-blue-500/5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Industry</label>
+                      <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
+                        <SelectTrigger className="w-full rounded-2xl border-slate-200 bg-white h-12 text-slate-900 font-semibold data-[placeholder]:text-slate-400 [&>svg]:text-slate-500">
+                          <SelectValue placeholder="All Industries" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200 text-slate-900">
+                          <SelectItem value="All Industries">All Industries</SelectItem>
+                          {industries.map((industry) => (
+                            <SelectItem key={industry} value={industry} className="text-slate-900 focus:bg-slate-100 focus:text-slate-900">{industry}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      <div className="flex items-end">
-                        <label className="w-full h-[42px] px-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 cursor-pointer">
-                          <Checkbox checked={browseRemoteOnly} onCheckedChange={(checked) => setBrowseRemoteOnly(checked === true)} />
-                          <span className="text-sm font-semibold text-slate-700">Remote only</span>
-                        </label>
-                      </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Job Type</label>
+                      <Select value={selectedJobType} onValueChange={setSelectedJobType}>
+                        <SelectTrigger className="w-full rounded-2xl border-slate-200 bg-white h-12 text-slate-900 font-semibold data-[placeholder]:text-slate-400 [&>svg]:text-slate-500">
+                          <SelectValue placeholder="All Types" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200 text-slate-900">
+                          <SelectItem value="All Types">All Types</SelectItem>
+                          {jobTypes.slice(1).map((type) => (
+                            <SelectItem key={type} value={type} className="text-slate-900 focus:bg-slate-100 focus:text-slate-900">{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBrowseIndustry("all")
-                            setBrowseJobType("all")
-                            setBrowseRemoteOnly(false)
-                          }}
-                          className="w-full h-[42px] px-4 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors"
-                        >
-                          Clear Filters
-                        </button>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Location</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <input
+                          type="text"
+                          value={locationQuery}
+                          onChange={(e) => setLocationQuery(e.target.value)}
+                          placeholder="Enter city or state"
+                          className="w-full h-12 pl-11 pr-4 rounded-2xl border border-slate-200 bg-white text-slate-900 font-semibold outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                        />
                       </div>
                     </div>
+
+                    <div className="flex items-end">
+                      <label className="flex items-center gap-3 w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white cursor-pointer select-none">
+                        <Checkbox checked={remoteOnly} onCheckedChange={(checked) => setRemoteOnly(checked === true)} />
+                        <span className="text-sm font-bold text-slate-700">Remote only</span>
+                      </label>
+                    </div>
                   </div>
-                ) : null}
-                <div className="mt-3 px-1 flex items-center justify-between gap-3">
-                  <p className="text-xs sm:text-sm font-semibold text-slate-500">
-                    Showing {filteredJobs.length} of {jobs.length} jobs
-                  </p>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {searchQuery.trim() ? (
-                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
-                        Search: {searchQuery.trim()}
-                      </span>
-                    ) : null}
-                    {browseIndustry !== "all" ? <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Industry: {browseIndustry}</span> : null}
-                    {browseJobType !== "all" ? <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Type: {browseJobType}</span> : null}
-                    {browseRemoteOnly ? <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">Remote only</span> : null}
+
+                  <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-slate-500">Showing filtered results for Browse Jobs.</p>
+                    <button
+                      type="button"
+                      onClick={clearBrowseFilters}
+                      className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors"
+                    >
+                      Clear all filters
+                    </button>
                   </div>
                 </div>
+              )}
+
+              <div className="flex items-center justify-between gap-3 text-sm font-medium text-slate-500">
+                <p>{filteredJobs.length} result{filteredJobs.length === 1 ? "" : "s"} found</p>
+                {(searchQuery || showFilters) && <button type="button" onClick={clearBrowseFilters} className="text-[#4F46E5] hover:text-indigo-700 font-bold">Clear search and filters</button>}
               </div>
 
               <div className="grid grid-cols-1 gap-8">
-                {filteredJobs.map((job) => (
+                {filteredJobs.length > 0 ? filteredJobs.map((job) => (
                   <div key={job.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden p-8 hover:shadow-xl transition-all border-white/40">
                     <div className="flex justify-between items-start mb-6">
-                      <div className="flex gap-3 md:gap-4 items-center flex-wrap">
-                        <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-tight">{job.title}</h3>
+                      <div className="flex gap-4 items-center">
+                        <h3 className="text-2xl font-black text-slate-800">{job.title}</h3>
                         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-purple-50 text-purple-600 rounded-full border border-purple-100">
                           {job.jobType}
                         </span>
-                        {job.isRemote ? (
-                          <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
-                            Remote
-                          </span>
-                        ) : null}
                       </div>
                     </div>
 
@@ -2549,7 +2448,7 @@ export default function AlumniJobBoard() {
                       </div>
                     </div>
 
-                    <p className="text-slate-600 mb-6 font-medium leading-relaxed text-sm md:text-[15px] line-clamp-3">{job.description}</p>
+                    <p className="text-slate-600 mb-6 font-medium leading-relaxed">{job.description}</p>
 
                     <div className="flex flex-wrap gap-2 mb-8">
                       {(job.tags || []).map((tag, i) => (
@@ -2558,88 +2457,61 @@ export default function AlumniJobBoard() {
                     </div>
 
                     <div className="flex justify-between items-center pt-6 border-t border-slate-100">
-                      <div className="flex flex-wrap gap-4 md:gap-6 text-slate-400 font-bold text-xs">
+                      <div className="flex gap-6 text-slate-400 font-bold text-xs">
                         <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> Posted {job.postedDate}</span>
                         <span className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> {job.views} Views</span>
                         <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {job.applied} Applied</span>
                       </div>
-                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="px-6 md:px-8 py-3 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-500/20 hover:scale-105 transition-all whitespace-nowrap">View Details</button>
+                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-500/20 hover:scale-105 transition-all">View Details</button>
                     </div>
                   </div>
-                ))}
-
-                {filteredJobs.length === 0 ? (
+                )) : (
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-10 text-center">
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 mx-auto flex items-center justify-center mb-4">
-                      <Briefcase className="w-7 h-7 text-slate-300" />
-                    </div>
-                    <p className="text-lg font-bold text-slate-800">No jobs found</p>
-                    <p className="text-sm text-slate-500 mt-1">Try a different keyword, company name, location, or clear your search.</p>
-                    {searchQuery.trim() ? (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors"
-                      >
-                        <X className="w-4 h-4" /> Clear Search
-                      </button>
-                    ) : null}
+                    <h3 className="text-2xl font-black text-slate-800 mb-2">No jobs found</h3>
+                    <p className="text-slate-500 font-medium mb-6">Try a different keyword, company, or location.</p>
+                    <button type="button" onClick={() => setSearchQuery("")} className="px-6 py-3 rounded-2xl bg-[#4F46E5] text-white font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-600 transition-colors">
+                      Clear search
+                    </button>
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
           )}
 
           {/* TAB: POST JOB */}
           {activeTab === "Post Job" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="lg:col-span-1 bg-white rounded-[32px] p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col">
-                <div className="mb-6">
-                  <h1 className="text-[22px] font-bold text-slate-900 tracking-tight">Post a New Opportunity</h1>
-                  <p className="text-[13px] font-medium text-slate-500 mt-1">Complete each section in sequence, like mentorship profile setup.</p>
+            <div className="max-w-4xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl border border-white/40">
+                <div className="mb-10 text-center">
+                  <h1 className="text-3xl font-black text-slate-900 mb-2">Post a New Opportunity</h1>
+                  <p className="text-slate-500 font-bold">Fill out the details below to create a compelling posting.</p>
                 </div>
 
-                <div className="space-y-4">
-                  {postJobSteps.map((step, idx) => (
-                    <div key={step.s} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all ${activeStep >= step.s ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
-                          {step.s}
-                        </div>
-                        {idx < postJobSteps.length - 1 ? <div className="w-px h-7 bg-slate-200 mt-2" /> : null}
+                <div className="flex justify-between items-center mb-12 relative px-4">
+                  <div className="absolute top-6 left-0 w-full h-[2px] bg-slate-100 -z-10" />
+                  {[
+                    { s: 1, label: "Basic Info", icon: <Briefcase className="w-4 h-4" /> },
+                    { s: 2, label: "Details", icon: <FileText className="w-4 h-4" /> },
+                    { s: 3, label: "Compensation", icon: <DollarSign className="w-4 h-4" /> },
+                    { s: 4, label: "Application", icon: <Link2 className="w-4 h-4" /> }
+                  ].map((step) => (
+                    <div key={step.s} className="flex flex-col items-center gap-2">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-4 border-white shadow-md transition-all ${activeStep >= step.s ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"
+                        }`}>
+                        {step.icon}
                       </div>
-                      <div className="pt-1.5">
-                        <p className={`text-[12px] font-bold uppercase tracking-wide ${activeStep >= step.s ? "text-slate-800" : "text-slate-400"}`}>{step.label}</p>
-                        <p className="text-[12px] text-slate-500 mt-0.5">{step.hint}</p>
-                      </div>
+                      <p className={`text-[10px] font-black uppercase ${activeStep >= step.s ? "text-slate-800" : "text-slate-400"}`}>{step.label}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-6 p-4 rounded-[16px] border border-slate-200 bg-slate-50">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Required In This Step</p>
-                  {getMissingFieldsForStep(activeStep).length === 0 ? (
-                    <p className="text-[13px] font-semibold text-emerald-600">All required fields completed.</p>
-                  ) : (
-                    <ul className="space-y-1">
-                      {getMissingFieldsForStep(activeStep).map((f) => (
-                        <li key={f.key} className="text-[12px] text-slate-700">• {f.label}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              <div className="lg:col-span-2 bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-                <div className="mb-5">
-                  <p className="text-[12px] font-bold text-indigo-600 uppercase tracking-widest">Step {activeStep} of 4</p>
-                  <h2 className="text-[24px] font-bold text-slate-900 tracking-tight mt-1">{postJobSteps.find(s => s.s === activeStep)?.title}</h2>
-                  <p className="text-[13px] text-slate-500 mt-1">{postJobSteps.find(s => s.s === activeStep)?.hint}</p>
-                </div>
-
-                <div className="rounded-[20px] border border-slate-100 bg-slate-50/50 p-6 mb-6">
+                <div className="bg-white p-8 rounded-[2rem] border border-slate-100 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                   {activeStep === 1 && (
                     <div className="space-y-8 animate-in fade-in">
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Basic Information</h2>
+                        <p className="text-sm font-medium text-slate-400">Enter the core job details</p>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2.5">
                           <label className="text-[14px] font-bold text-slate-700">Job/Internship Title <span className="text-red-500">*</span></label>
@@ -2697,6 +2569,10 @@ export default function AlumniJobBoard() {
 
                   {activeStep === 2 && (
                     <div className="space-y-8 animate-in fade-in">
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Job Details</h2>
+                        <p className="text-sm font-medium text-slate-400">Describe the role and requirements</p>
+                      </div>
                       <div className="space-y-2.5">
                         <label className="text-[14px] font-bold text-slate-700">Job Description <span className="text-red-500">*</span></label>
                         <textarea rows={5} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="Provide a detailed description of the role..." value={formData.jobDescription} onChange={e => handleInputChange('jobDescription', e.target.value)} />
@@ -2714,6 +2590,10 @@ export default function AlumniJobBoard() {
 
                   {activeStep === 3 && (
                     <div className="space-y-8 animate-in fade-in">
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Compensation</h2>
+                        <p className="text-sm font-medium text-slate-400">Set salary range and currency (optional)</p>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2.5">
                           <label className="text-[14px] font-bold text-slate-700">Min Salary</label>
@@ -2740,6 +2620,10 @@ export default function AlumniJobBoard() {
 
                   {activeStep === 4 && (
                     <div className="space-y-8 animate-in fade-in">
+                      <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Application</h2>
+                        <p className="text-sm font-medium text-slate-400">How should applicants apply?</p>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2.5">
                           <label className="text-[14px] font-bold text-slate-700">Application Deadline</label>
@@ -2785,11 +2669,11 @@ export default function AlumniJobBoard() {
                     <button onClick={() => setActiveStep(activeStep - 1)} className="px-8 py-3.5 bg-slate-100 text-slate-600 rounded-[14px] font-bold hover:bg-slate-200 transition-all">Back</button>
                   ) : <div />}
                   <button
-                    onClick={() => activeStep < 4 ? goToNextStep() : handleSubmit()}
+                    onClick={() => activeStep < 4 ? setActiveStep(activeStep + 1) : handleSubmit()}
                     disabled={isSubmitting}
                     className="px-10 py-3.5 bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white rounded-[14px] font-bold shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50"
                   >
-                    {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : activeStep === 1 ? "Next: Job Details" : activeStep === 2 ? "Next: Compensation" : "Next: Application"}
+                    {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : "Next: Details"}
                   </button>
                 </div>
               </div>
@@ -2818,26 +2702,22 @@ export default function AlumniJobBoard() {
 
               <div className="space-y-6">
                 <h3 className="text-xl font-black text-slate-800 ml-2">Your Job Postings</h3>
-                {myJobs.map(job => (
-                  <div key={job.id} className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-[2.5rem] border border-white flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-xl transition-all">
-                    <div className="w-full flex items-start gap-4 sm:gap-6">
+                {filteredMyJobs.map(job => (
+                  <div key={job.id} className="bg-white/70 backdrop-blur-md p-8 rounded-[2.5rem] border border-white flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-xl transition-all">
+                    <div className="flex items-center gap-6">
                       <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center font-bold text-slate-400">{job.company.charAt(0)}</div>
-                      <div className="min-w-0">
-                        <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-1">
-                          <h4 className="text-xl font-black text-slate-800 truncate">{job.title}</h4>
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="text-xl font-black text-slate-800">{job.title}</h4>
                           <span className="text-[10px] font-black px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md border border-amber-100 capitalize">{job.status}</span>
                         </div>
-                        <div className="text-sm font-bold text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4" /> {job.company}</span>
-                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatPostedDate(job.postedDate)}</span>
-                          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {formatPostedTime(job.postedDate)}</span>
-                        </div>
+                        <p className="text-sm font-bold text-slate-500 flex items-center gap-2"><Building2 className="w-4 h-4" /> {job.company} • <Calendar className="w-4 h-4" /> Posted {job.postedDate}</p>
                       </div>
                     </div>
-                    <div className="w-full md:w-auto flex flex-wrap md:flex-nowrap gap-3 md:justify-end">
-                      <button onClick={() => openEditModal(job as any)} className="flex-1 md:flex-none px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-black hover:bg-slate-200 transition-colors">Edit</button>
-                      <button onClick={() => handleViewApplicants(job)} className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black hover:bg-slate-50 transition-colors">Applicants</button>
-                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="flex-1 md:flex-none px-6 py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-colors">View Details</button>
+                    <div className="flex gap-3">
+                      <button className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-black">Edit</button>
+                      <button onClick={() => handleViewApplicants(job)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black">Applicants</button>
+                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-500/20">View Details</button>
                     </div>
                   </div>
                 ))}
@@ -2847,109 +2727,12 @@ export default function AlumniJobBoard() {
         </main>
       </div>
 
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-3xl max-h-[90vh] rounded-[2rem] p-0 border-none bg-white overflow-hidden flex flex-col">
-          <DialogHeader className="px-6 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-slate-100 bg-white">
-            <DialogTitle className="text-xl font-black text-slate-900">Edit Job Posting</DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 min-h-0 px-6 sm:px-8 py-5 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Title</label>
-              <input value={editFormData.jobTitle} onChange={(e) => handleEditInputChange("jobTitle", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Company</label>
-              <input value={editFormData.companyName} onChange={(e) => handleEditInputChange("companyName", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Location</label>
-              <input value={editFormData.location} onChange={(e) => handleEditInputChange("location", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Job Type</label>
-              <Select value={editFormData.jobType} onValueChange={(v) => handleEditInputChange("jobType", v)}>
-                <SelectTrigger className="w-full px-4 py-6 bg-slate-50 border border-slate-200 rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 rounded-xl">
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
-                  <SelectItem value="Internship (Paid)">Internship (Paid)</SelectItem>
-                  <SelectItem value="Internship (Unpaid)">Internship (Unpaid)</SelectItem>
-                  <SelectItem value="Contract">Contract</SelectItem>
-                  <SelectItem value="Temporary">Temporary</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Industry</label>
-              <input value={editFormData.industry} onChange={(e) => handleEditInputChange("industry", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-                <Checkbox checked={editFormData.remoteAvailable} onCheckedChange={(checked) => handleEditInputChange("remoteAvailable", checked === true)} />
-                Remote Available
-              </label>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700">Description</label>
-              <textarea rows={4} value={editFormData.jobDescription} onChange={(e) => handleEditInputChange("jobDescription", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700">Requirements</label>
-              <textarea rows={3} value={editFormData.requirements} onChange={(e) => handleEditInputChange("requirements", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Salary Min</label>
-              <input value={editFormData.salaryMin} onChange={(e) => handleEditInputChange("salaryMin", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Salary Max</label>
-              <input value={editFormData.salaryMax} onChange={(e) => handleEditInputChange("salaryMax", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700">Application URL / Email</label>
-              <input value={editFormData.applicationUrl} onChange={(e) => handleEditInputChange("applicationUrl", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-          </div>
-          </div>
-
-          <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-white flex justify-end gap-3">
-            <button onClick={() => setIsEditModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">Cancel</button>
-            <button onClick={saveEditedJob} disabled={isSavingEdit} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-60">
-              {isSavingEdit ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditSuccessOpen} onOpenChange={setIsEditSuccessOpen}>
-        <DialogContent className="max-w-md rounded-2xl p-6 bg-white border-none">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black text-slate-900">Successfully Edited</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-slate-600 mt-1">Your job post was edited and saved successfully.</p>
-          <div className="mt-5 flex justify-end">
-            <button
-              onClick={() => setIsEditSuccessOpen(false)}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700"
-            >
-              OK
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-2xl rounded-[2.5rem] p-10 border-none">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{selectedJob ? `${selectedJob.title} details` : "Job details"}</DialogTitle>
-          </DialogHeader>
           {selectedJob && (
             <div className="space-y-6 animate-in fade-in">
-              <div className="flex items-start">
-                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center border border-slate-100"><Building2 className="w-10 h-10 text-slate-300" /></div>
-              </div>
+              <DialogTitle className="sr-only">Job details</DialogTitle>
+              <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center border border-slate-100"><Building2 className="w-10 h-10 text-slate-300" /></div>
               <div>
                 <h2 className="text-3xl font-black text-slate-900">{selectedJob.title}</h2>
                 <p className="text-lg text-slate-500 font-bold">{selectedJob.company} • {selectedJob.location}</p>
@@ -2976,16 +2759,12 @@ export default function AlumniJobBoard() {
       
       <Dialog open={isApplicantModalOpen} onOpenChange={setIsApplicantModalOpen}>
         <DialogContent className="max-w-3xl rounded-[2.5rem] p-10 border-none bg-white">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{selectedJob ? `Applicants for ${selectedJob.title}` : "Applicants"}</DialogTitle>
-          </DialogHeader>
           {selectedJob && (
             <div className="space-y-6 animate-in fade-in">
-              <div className="flex items-start">
-                <div>
-                  <h2 className="text-3xl font-black text-slate-900">Applicants</h2>
-                  <p className="text-lg text-slate-500 font-bold">{selectedJob.title} @{selectedJob.company}</p>
-                </div>
+              <DialogTitle className="sr-only">Applicants list</DialogTitle>
+              <div>
+                <h2 className="text-3xl font-black text-slate-900">Applicants</h2>
+                <p className="text-lg text-slate-500 font-bold">{selectedJob.title} @{selectedJob.company}</p>
               </div>
               
               {loadingApplicants ? (

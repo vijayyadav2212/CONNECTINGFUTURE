@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Shield, LayoutDashboard, UserCheck, Briefcase, 
-  Calendar, Users, Bell, Settings, FileText, 
-  ChevronRight 
+import {
+  Shield, LayoutDashboard, UserCheck, Briefcase,
+  Calendar, Bell, Settings, FileText,
+  ChevronRight, Sparkles
 } from 'lucide-react';
 
 // Interfaces
@@ -52,6 +52,12 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
       icon: <Calendar className="w-5 h-5" />,
       badge: 1,
       route: "/admin/events"
+    },
+    {
+      id: "ai-roadmaps",
+      label: "AI Roadmaps",
+      icon: <Sparkles className="w-5 h-5" />,
+      route: "/admin/roadmaps"
     },
     {
       id: "mentorship-payments",
@@ -180,3 +186,4 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
     </div>
   );
 }
+
