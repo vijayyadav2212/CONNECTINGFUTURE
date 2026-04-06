@@ -378,13 +378,8 @@ export default function Settings() {
                           type="text"
                           value={profile.name}
                           onChange={(e) => handleProfileChange('name', e.target.value)}
-<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your full name"
-=======
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                          placeholder="e.g. John Doe"
->>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -403,13 +398,8 @@ export default function Settings() {
                           type="tel"
                           value={profile.phone}
                           onChange={(e) => handleProfileChange('phone', e.target.value)}
-<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your phone number"
-=======
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                          placeholder="+91 9876543210"
->>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -499,13 +489,8 @@ export default function Settings() {
                           type="text"
                           value={profile.university}
                           onChange={(e) => handleProfileChange('university', e.target.value)}
-<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your university"
-=======
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                          placeholder="e.g. Savitribai Phule Pune University"
->>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
 
@@ -515,13 +500,8 @@ export default function Settings() {
                           type="text"
                           value={profile.major}
                           onChange={(e) => handleProfileChange('major', e.target.value)}
-<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your major or course"
-=======
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                          placeholder="e.g. Computer Science"
->>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
 
@@ -531,13 +511,8 @@ export default function Settings() {
                           type="text"
                           value={profile.graduationYear}
                           onChange={(e) => handleProfileChange('graduationYear', e.target.value)}
-<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter graduation year"
-=======
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                          placeholder="e.g. 2026"
->>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
 
@@ -547,13 +522,8 @@ export default function Settings() {
                           rows={3}
                           value={profile.bio}
                           onChange={(e) => handleProfileChange('bio', e.target.value)}
-<<<<<<< HEAD
                           className={`${profileFieldClass} resize-none`}
                           placeholder="Tell us about yourself..."
-=======
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
-                          placeholder="Tell us about yourself — your interests, goals, and projects..."
->>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                         <p className="text-xs text-slate-400 mt-2 text-right">{profile.bio.length}/500 characters</p>
                       </div>
