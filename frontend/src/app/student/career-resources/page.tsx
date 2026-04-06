@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import StudentNavigation from '../StudentNavigation';
-import { Search, Filter, BookOpen, Video, FileText, ExternalLink, Star, Clock, Users, TrendingUp, Briefcase, GraduationCap, Code, X, Sparkles } from 'lucide-react';
+import { Search, Filter, BookOpen, Video, FileText, ExternalLink, Star, Clock, Users, TrendingUp, Briefcase, GraduationCap, Code, X, Sparkles, ListChecks, Layers3, Github } from 'lucide-react';
 
 interface Resource {
   id: string;
   title: string;
   description: string;
-  type: 'course' | 'article' | 'video' | 'tool' | 'book';
+  type: 'course' | 'article' | 'video' | 'tool' | 'book' | 'roadmap';
   category: string;
   rating: number;
   duration?: string;
@@ -16,6 +16,12 @@ interface Resource {
   url: string;
   provider: string;
   featured?: boolean;
+  milestones?: any[];
+  resources?: {
+    youtube: any[];
+    github: any[];
+    reading: any[];
+  };
 }
 
 export default function CareerResources() {
@@ -27,26 +33,33 @@ export default function CareerResources() {
 
   React.useEffect(() => {
     fetch(`${backendUrl}/api/roadmaps?is_published=true`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (data.roadmaps && Array.isArray(data.roadmaps)) {
           const mapped: Resource[] = data.roadmaps.map((r: any) => ({
             id: `rm-${r.id}`,
             title: r.title,
             description: r.description,
-            type: 'course', // Mapping roadmaps to 'course' type for now
-            category: r.category || 'career-guidance',
-            rating: 5.0, // Default rating for maps until dynamic
+            type: 'roadmap',
+            category: r.category || 'AI Learning Path',
+            rating: 5.0,
             duration: r.duration,
             level: (r.level || 'beginner').toLowerCase(),
             url: r.modules_link?.startsWith('http') ? r.modules_link : `https://${r.modules_link || '#'}`,
-            provider: 'Alumni Community',
-            featured: false
+            provider: 'AI Studio',
+            featured: true,
+            milestones: r.milestones || [],
+            resources: r.resources || { youtube: [], github: [], reading: [] }
           }));
           setRoadmaps(mapped);
         }
       })
-      .catch(err => console.error('Failed to fetch roadmaps:', err));
+      .catch(err => {
+        console.error('Failed to fetch roadmaps:', err);
+      });
   }, []);
 
   const categories = [
@@ -93,6 +106,7 @@ export default function CareerResources() {
       case 'article': return 'bg-green-100 text-green-600';
       case 'book': return 'bg-purple-100 text-purple-600';
       case 'tool': return 'bg-orange-100 text-orange-600';
+      case 'roadmap': return 'bg-indigo-100 text-indigo-600';
       default: return 'bg-gray-100 text-gray-600';
     }
   };
@@ -149,8 +163,201 @@ export default function CareerResources() {
             </div>
           </div>
 
-          {/* Details Modal */}
-          {selectedRoadmap && (
+          {/* Full Screen Immersive Roadmap Viewer */}
+          {selectedRoadmap && selectedRoadmap.type === 'roadmap' && (
+            <div className="fixed inset-0 bg-white z-[100] overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
+              <div className="min-h-screen flex flex-col">
+                {/* Immersive Header */}
+                <div className="bg-slate-900 text-white p-8 lg:p-12 relative overflow-hidden">
+                  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.5),_transparent_40%)]" />
+                  <div className="max-w-7xl mx-auto relative z-10">
+                    <button 
+                      onClick={() => setSelectedRoadmap(null)}
+                      className="mb-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-black text-xs uppercase tracking-widest"
+                    >
+                      <X className="w-5 h-5" /> Back to Resources
+                    </button>
+                    
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+                      <div className="space-y-4">
+                        <div className="flex gap-2">
+                          <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <Sparkles className="w-3 h-3" /> AI Generated Path
+                          </span>
+                          <span className={`px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase tracking-widest`}>
+                            {selectedRoadmap.level}
+                          </span>
+                        </div>
+                        <h1 className="text-4xl lg:text-5xl font-black tracking-tight uppercase">{selectedRoadmap.title}</h1>
+                        <p className="text-slate-400 text-lg max-w-2xl font-medium leading-relaxed">{selectedRoadmap.description}</p>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-4">
+                        <div className="bg-white/5 border border-white/10 p-4 rounded-3xl backdrop-blur-sm min-w-[120px]">
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Milestones</p>
+                          <p className="text-xl font-black">{selectedRoadmap.milestones?.length || 0}</p>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-4 rounded-3xl backdrop-blur-sm min-w-[120px]">
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Duration</p>
+                          <p className="text-xl font-black truncate">{selectedRoadmap.duration || 'Flexible'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="flex-1 bg-slate-50/50">
+                  <div className="max-w-7xl mx-auto py-12 px-6 lg:px-12">
+                    <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-12">
+                      {/* Left: Milestone Timeline */}
+                      <div className="space-y-8">
+                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-indigo-600 text-white">
+                            <ListChecks className="w-6 h-6" />
+                          </div>
+                          Your Learning Journey
+                        </h2>
+
+                        <div className="space-y-6 relative ml-4 border-l-2 border-slate-200 pl-8 pb-8">
+                          {selectedRoadmap.milestones?.map((m: any, idx: number) => (
+                            <div key={idx} className="relative group">
+                              <div className="absolute -left-[45px] top-4 w-8 h-8 rounded-full bg-white border-2 border-indigo-600 flex items-center justify-center text-indigo-600 font-black text-xs shadow-sm group-hover:scale-110 transition-transform">
+                                {idx + 1}
+                              </div>
+                              <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all duration-300">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                  <h3 className="text-xl font-black text-slate-900 uppercase group-hover:text-indigo-600 transition-colors">{m.title}</h3>
+                                  <span className="flex items-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                                    <Clock className="w-3 h-3" /> Step {idx + 1}
+                                  </span>
+                                </div>
+                                <p className="text-slate-600 font-medium leading-relaxed mb-8">{m.description}</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 underline decoration-indigo-200 underline-offset-4">Core Concepts</h4>
+                                    <ul className="space-y-2">
+                                      {(m.subtopics || []).map((st: any, sIdx: number) => (
+                                        <li key={sIdx} className="flex items-start gap-2 text-[13px] text-slate-700 font-bold">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+                                          {st.title}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 underline decoration-emerald-200 underline-offset-4">Action Steps</h4>
+                                    <div className="space-y-3">
+                                      {(m.learning_steps || []).map((step: string, lIdx: number) => (
+                                        <div key={lIdx} className="flex gap-3 text-[12px] text-slate-600 leading-relaxed p-3 rounded-2xl bg-slate-50/50 border border-slate-100">
+                                          <span className="font-black text-indigo-400 shrink-0">{lIdx + 1}.</span>
+                                          {step}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right: Integrated Resource Hub */}
+                      <div className="space-y-8">
+                        <div className="sticky top-12 space-y-8">
+                          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-amber-500 text-white">
+                              <Layers3 className="w-6 h-6" />
+                            </div>
+                            Resource Hub
+                          </h2>
+
+                          <div className="space-y-6">
+                            {/* YouTube Hub */}
+                            <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
+                              <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                                  <Video className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Video Tutorials</h3>
+                              </div>
+                              <div className="space-y-3">
+                                {selectedRoadmap.resources?.youtube?.map((r: any, idx: number) => (
+                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-rose-50 border border-slate-100 hover:border-rose-100 transition-all">
+                                    <div className="min-w-0">
+                                      <p className="text-[13px] font-black text-slate-900 group-hover:text-rose-700 truncate">{r.label}</p>
+                                      <p className="text-[10px] text-slate-400 font-bold tracking-tight">YouTube Library</p>
+                                    </div>
+                                    <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-rose-500" />
+                                  </a>
+                                ))}
+                                {(!selectedRoadmap.resources?.youtube || selectedRoadmap.resources.youtube.length === 0) && (
+                                  <p className="text-center py-4 text-xs font-bold text-slate-400 uppercase">No videos synced</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* GitHub Hub */}
+                            <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
+                              <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 rounded-xl bg-slate-900 text-white">
+                                  <Github className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Code Repos</h3>
+                              </div>
+                              <div className="space-y-3">
+                                {selectedRoadmap.resources?.github?.map((r: any, idx: number) => (
+                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-slate-900 hover:text-white border border-slate-100 hover:border-slate-800 transition-all">
+                                    <div className="min-w-0">
+                                      <p className="text-[13px] font-black group-hover:text-white truncate">{r.label}</p>
+                                      <p className="text-[10px] text-slate-400 font-bold tracking-tight group-hover:text-slate-500">GitHub Open Source</p>
+                                    </div>
+                                    <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-white" />
+                                  </a>
+                                ))}
+                                {(!selectedRoadmap.resources?.github || selectedRoadmap.resources.github.length === 0) && (
+                                  <p className="text-center py-4 text-xs font-bold text-slate-400 uppercase">No code synced</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Documentation Hub */}
+                            <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
+                              <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+                                  <FileText className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Reading List</h3>
+                              </div>
+                              <div className="space-y-3">
+                                {selectedRoadmap.resources?.reading?.map((r: any, idx: number) => (
+                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-amber-50 border border-slate-100 hover:border-amber-200 transition-all">
+                                    <div className="min-w-0">
+                                      <p className="text-[13px] font-black text-slate-900 group-hover:text-amber-700 truncate">{r.label}</p>
+                                      <p className="text-[10px] text-slate-400 font-bold tracking-tight">Official Docs / Articles</p>
+                                    </div>
+                                    <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-amber-500" />
+                                  </a>
+                                ))}
+                                {(!selectedRoadmap.resources?.reading || selectedRoadmap.resources.reading.length === 0) && (
+                                  <p className="text-center py-4 text-xs font-bold text-slate-400 uppercase">No readings synced</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Standard Resources Modal (Non-Roadmap) */}
+          {selectedRoadmap && selectedRoadmap.type !== 'roadmap' && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
               <div className="bg-white rounded-[40px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50 animate-in zoom-in-95 duration-300">
                 <div className="p-8 lg:p-10 border-b border-slate-50 flex justify-between items-start">
@@ -195,6 +402,46 @@ export default function CareerResources() {
                     </div>
                   </div>
 
+                  {selectedRoadmap.milestones && selectedRoadmap.milestones.length > 0 && (
+                    <div className="pt-8 border-t border-slate-50">
+                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <ListChecks className="w-4 h-4 text-emerald-500" />
+                        Learning Milestones
+                      </h3>
+                      <div className="space-y-4">
+                        {selectedRoadmap.milestones.map((m: any, idx: number) => (
+                           <div key={idx} className="p-5 rounded-3xl bg-slate-50/70 border border-slate-100 group hover:bg-white hover:shadow-xl transition-all duration-300">
+                             <div className="flex items-start gap-4">
+                               <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 text-xs font-black shrink-0">
+                                 {idx + 1}
+                               </span>
+                               <div className="flex-1">
+                                 <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-2 group-hover:text-emerald-600 transition-colors">
+                                   {m.title}
+                                 </h4>
+                                 <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                                   {m.description}
+                                 </p>
+                                 
+                                 {/* Display subtopics or steps if needed */}
+                                 {m.learning_steps && (
+                                   <div className="mt-4 pt-4 border-t border-slate-200/50 space-y-2">
+                                      {m.learning_steps.slice(0, 3).map((step: string, sIdx: number) => (
+                                        <div key={sIdx} className="flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                          <div className="w-1 h-1 rounded-full bg-emerald-400" />
+                                          {step}
+                                        </div>
+                                      ))}
+                                   </div>
+                                 )}
+                               </div>
+                             </div>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-3 pt-8 border-t border-slate-50">
                     <button
                       onClick={() => setSelectedRoadmap(null)}
@@ -202,14 +449,16 @@ export default function CareerResources() {
                     >
                       Close
                     </button>
-                    <a
-                      href={selectedRoadmap.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-8 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3"
-                    >
-                      Access Resource <ExternalLink className="w-4 h-4" />
-                    </a>
+                    {selectedRoadmap.url && selectedRoadmap.url !== '#' && (
+                      <a
+                        href={selectedRoadmap.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-8 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3"
+                      >
+                        Access Full Content <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

@@ -28,6 +28,7 @@ const { createEventsSchema } = require('./database/events');
 const { createMemoriesSchema } = require('./database/memories');
 const { createExternalJobsSchema } = require('./database/externalJobs');
 const { createSiteSettingsSchema } = require('./database/siteSettings');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -1273,21 +1274,235 @@ app.post('/api/roadmaps', async (req, res) => {
   }
 });
 
+/**
+ * AI Roadmap Generator (Admin Only)
+ */
+
+// Generate a roadmap using Gemini
+app.post('/api/admin/roadmaps/generate', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const { domain, specialization, prompt: customPrompt } = req.body || {};
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+    const adminPrompt = customPrompt || `Generate a detailed learning roadmap for ${specialization} in the domain of ${domain || 'career development'}.`;
+
+    const systemInstruction = `
+You are an expert roadmap generator and career mentor.
+Generate a structured, step-by-step learning roadmap.
+
+Output Format (STRICT JSON ONLY — no extra text):
+{
+  "title": "Roadmap Title",
+  "input_prompt": "${adminPrompt.replace(/"/g, '\\"')}",
+  "description": "High level description",
+  "category": "e.g. programming",
+  "level": "Beginner/Intermediate/Advanced",
+  "duration": "e.g. 6 months",
+  "phases": 5,
+  "tags": ["tag1", "tag2"],
+  "milestones": [
+    {
+      "order": 1,
+      "title": "Milestone Title",
+      "description": "Clear and practical description",
+      "subtopics": [
+        { "title": "Subtopic Title", "description": "Quick summary", "level": "Beginner" }
+      ],
+      "learning_steps": ["Step 1", "Step 2"],
+      "resources": {
+        "youtube": [{ "label": "Video Title", "url": "https://youtube.com/..." }],
+        "github": [{ "label": "Repo Name", "url": "https://github.com/..." }],
+        "reading": [{ "label": "Article Title", "url": "https://..." }]
+      }
+    }
+  ],
+  "resources": {
+    "youtube": [],
+    "github": [],
+    "reading": []
+  }
+}
+
+Instructions:
+1. Create a complete roadmap from beginner → advanced → real-world level.
+2. Divide the roadmap into 5–7 milestones.
+3. Each milestone must include title, description, subtopics (as objects with title/description/level), learning_steps (as strings), and resources (as objects with label/url).
+4. Include real-world project suggestions in later milestones.
+5. Attach useful resources: YouTube links, GitHub repositories, Articles/documentation.
+6. Ensure logical progression between milestones.
+7. Return ONLY the JSON object.
+    `;
+
+    const result = await model.generateContent(systemInstruction);
+    const text = result.response.text();
+    
+    // Clean up potential markdown formatting from Gemini response
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const roadmap = JSON.parse(jsonStr);
+
+    // Add generation metadata
+    roadmap.generation_meta = {
+      stage: 'final',
+      generated_at: new Date().toISOString(),
+      provider: 'Google Gemini',
+      model: 'gemini-1.5-flash'
+    };
+
+    return res.json(roadmap);
+  } catch (e) {
+    console.error('Gemini generation error:', e);
+    return res.status(500).json({ error: e.message || 'Failed to generate roadmap' });
+  }
+});
+
+// Helper to normalize roadmap data for client responses
+const normalizeRoadmap = (roadmap) => {
+  if (!roadmap) return null;
+  const r = { ...roadmap };
+  if (typeof r.tags === 'string') {
+    r.tags = r.tags.split(',').filter(Boolean);
+  } else if (!r.tags) {
+    r.tags = [];
+  }
+  
+  // Use consistent keys between DB and Client for nested JSON
+  if (r.milestones_json) {
+    r.milestones = r.milestones_json;
+    delete r.milestones_json;
+  }
+  if (r.resources_json) {
+    r.resources = r.resources_json;
+    delete r.resources_json;
+  }
+  if (r.generation_meta_json) {
+    r.generation_meta = r.generation_meta_json;
+    delete r.generation_meta_json;
+  }
+  
+  r.is_published = !!r.is_published;
+  return r;
+};
+
+// Admin Save Roadmap (with structured JSON columns)
+app.post('/api/admin/roadmaps/save', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const {
+      owner_email,
+      title,
+      description,
+      category,
+      level,
+      duration,
+      phases,
+      tags,
+      domain,
+      specialization,
+      milestones,
+      resources,
+      generation_meta,
+      is_published = false
+    } = req.body || {};
+
+    const { rows } = await dbQuery(`
+      INSERT INTO roadmaps (
+        owner_email, title, description, category, level, duration, phases, 
+        tags, domain, specialization, milestones_json, resources_json, 
+        generation_meta_json, is_published
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `, [
+      owner_email, title, description, category, level, duration, phases,
+      Array.isArray(tags) ? tags.join(',') : tags,
+      domain, specialization,
+      JSON.stringify(milestones),
+      JSON.stringify(resources),
+      JSON.stringify(generation_meta),
+      !!is_published
+    ]);
+
+    return res.status(201).json(normalizeRoadmap(rows && rows[0]));
+  } catch (e) {
+    console.error('Roadmap save error:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin Publish/Unpublish Roadmap
+app.put('/api/admin/roadmaps/:id/publish', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const { id } = req.params;
+    const { is_published = true } = req.body;
+
+    const { rows } = await dbQuery(`
+      UPDATE roadmaps 
+      SET is_published = ?, updated_at = NOW() 
+      WHERE id = ? 
+      RETURNING *
+    `, [!!is_published, id]);
+
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Roadmap not found' });
+    return res.json(normalizeRoadmap(rows[0]));
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // List roadmaps (optionally filter by owner)
 app.get('/api/roadmaps', async (req, res) => {
   try {
-    const { owner_email, page = 1, limit = 20 } = req.query || {};
+    const { owner_email, is_published, page = 1, limit = 20 } = req.query || {};
     const p = Math.max(1, parseInt(page, 10));
     const l = Math.min(50, Math.max(1, parseInt(limit, 10)));
     const offset = (p - 1) * l;
 
+    const statsAll = await dbQuery('SELECT COUNT(*) as count FROM roadmaps');
+    const statsPub = await dbQuery('SELECT COUNT(*) as count FROM roadmaps WHERE is_published = TRUE');
+    const totalCount = parseInt(statsAll.rows[0]?.count || 0, 10);
+    const publishedCount = parseInt(statsPub.rows[0]?.count || 0, 10);
+
+    let query = 'SELECT * FROM roadmaps';
+    const params = [];
+    const conditions = [];
+
     if (owner_email) {
-      const { rows } = await dbQuery('SELECT * FROM roadmaps WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?', [owner_email, l, offset]);
-      return res.json({ roadmaps: rows, page: p, limit: l });
+      conditions.push('owner_email = ?');
+      params.push(owner_email);
     }
 
-    const { rows } = await dbQuery('SELECT * FROM roadmaps ORDER BY updated_at DESC LIMIT ? OFFSET ?', [l, offset]);
-    return res.json({ roadmaps: rows, page: p, limit: l });
+    if (is_published === 'true') {
+      conditions.push('is_published = TRUE');
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
+    params.push(l, offset);
+
+    const { rows } = await dbQuery(query, params);
+    
+    return res.json({ 
+      roadmaps: rows.map(normalizeRoadmap), 
+      page: p, 
+      limit: l, 
+      totalCount, 
+      publishedCount 
+    });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

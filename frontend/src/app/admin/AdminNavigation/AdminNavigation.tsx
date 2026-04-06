@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import {Shield, LayoutDashboard, UserCheck, Briefcase, Calendar, Users, Bell, Settings, FileText, BarChart3, CheckCircle, XCircle, Search} from 'lucide-react';
+import {Shield, LayoutDashboard, UserCheck, Briefcase, Calendar, Users, Bell, Settings, FileText, BarChart3, CheckCircle, XCircle, Search, Sparkles} from 'lucide-react';
 
 // Interfaces
 interface NavItem {
@@ -62,6 +62,12 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
       label: "Mentorship Payments",
       icon: <FileText className="w-5 h-5" />,
       route: "/admin/mentorship-payments"
+    },
+    {
+      id: "ai-roadmaps",
+      label: "AI Roadmaps",
+      icon: <Sparkles className="w-5 h-5" />,
+      route: "/admin/roadmaps"
     },
     // { 
     //   id: "users", 

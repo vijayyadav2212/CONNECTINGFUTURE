@@ -29,9 +29,11 @@ import {
   ListChecks,
   Rocket,
   CircleCheckBig,
+  BarChart3,
+  History,
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
 type ResourceItem = { label: string; url: string };
 
@@ -58,6 +60,7 @@ type RoadmapDraft = {
   duration: string;
   phases: number;
   tags: string[];
+  id?: number;
   milestones: RoadmapMilestone[];
   resources: {
     youtube: ResourceItem[];
@@ -120,13 +123,18 @@ export default function AdminRoadmapsPage() {
   const [domain, setDomain] = useState('Software Engineering');
   const [specialization, setSpecialization] = useState('MERN Stack');
   const [customSpecialization, setCustomSpecialization] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
   const [draft, setDraft] = useState<RoadmapDraft | null>(null);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ total: 0, published: 0 });
+  const [library, setLibrary] = useState<RoadmapDraft[]>([]);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   const effectiveSpecialization = useMemo(() => {
     if (specialization === '__custom__') return customSpecialization.trim();
@@ -141,6 +149,23 @@ export default function AdminRoadmapsPage() {
     setExpandedIds([]);
     setCompletedIds([]);
   }, [draft?.title]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/roadmaps?limit=5`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+      });
+      const data = await res.json();
+      setStats({ total: data.totalCount || 0, published: data.publishedCount || 0 });
+      setLibrary(data.roadmaps || []);
+    } catch (e) {
+      console.error('Failed to fetch stats:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [accessToken, message]);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,6 +188,7 @@ export default function AdminRoadmapsPage() {
         body: JSON.stringify({
           domain,
           specialization: effectiveSpecialization,
+          prompt: customPrompt.trim() || undefined,
         }),
       });
 
@@ -222,11 +248,46 @@ export default function AdminRoadmapsPage() {
       }
 
       const saved = await response.json();
+      setDraft({ ...draft, ...saved });
       setMessage(`Saved roadmap #${saved?.id || 'new'} successfully.`);
     } catch (err: any) {
       setError(err?.message || 'Failed to save roadmap');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!draft || !accessToken || !draft.id) {
+      setError('Save the roadmap first before publishing.');
+      return;
+    }
+    setPublishing(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/roadmaps/${draft.id}/publish`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ is_published: true }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to publish roadmap');
+      }
+
+      const updated = await response.json();
+      setDraft(updated);
+      setMessage(`Roadmap #${updated.id} published successfully! It is now visible to students.`);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to publish roadmap');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -257,238 +318,313 @@ export default function AdminRoadmapsPage() {
 
   return (
     <AdminNavigation>
-      <div className="space-y-6 pb-12">
-        <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white shadow-2xl shadow-slate-900/20">
-          <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.4),_transparent_35%),radial-gradient(circle_at_bottom_left,_rgba(59,130,246,0.24),_transparent_30%)]" />
-          <div className="relative p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-              <div className="max-w-3xl space-y-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Pill><Sparkles className="w-3.5 h-3.5" />AI Roadmap Studio</Pill>
-                  <Pill><Layers3 className="w-3.5 h-3.5" />Sequential generation</Pill>
-                  <Pill><Target className="w-3.5 h-3.5" />Resource-rich learning paths</Pill>
-                </div>
-                <div>
-                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Build AI-powered learning roadmaps for any domain.</h1>
-                  <p className="mt-3 text-sm sm:text-base text-slate-300 max-w-2xl">Select a domain and specialization, generate milestones first, then expand each step into a guided roadmap with subtopics, learning steps, YouTube videos, GitHub repositories, and reading links.</p>
-                </div>
-                <div className="flex flex-wrap gap-3 text-sm text-slate-200">
-                  <Pill><Brain className="w-3.5 h-3.5" />AI milestone expansion</Pill>
-                  <Pill><Mic className="w-3.5 h-3.5" />Voice explanations</Pill>
-                  <Pill><CircleCheckBig className="w-3.5 h-3.5" />Progress tracking</Pill>
-                  <Pill><Save className="w-3.5 h-3.5" />Save roadmap</Pill>
-                </div>
+      <div className="max-w-[1600px] mx-auto space-y-6 pb-12">
+        {/* Header Section */}
+        <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-200 bg-slate-900 text-white shadow-2xl">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.5),_transparent_40%)]" />
+          <div className="relative p-8 sm:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Pill><Sparkles className="w-3.5 h-3.5" />AI Studio</Pill>
+                <Pill><Brain className="w-3.5 h-3.5" />Gemini Flash</Pill>
               </div>
-              <Link href="/admin/dashboard" className="inline-flex items-center gap-2 self-start px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-bold transition-colors">
-                <ArrowLeft className="w-4 h-4" />Back to dashboard
-              </Link>
+              <h1 className="text-4xl font-black tracking-tight">AI Roadmap Studio</h1>
+              <p className="text-slate-400 max-w-xl text-lg">Generate, review, and publish structured learning paths for your students with automated resource discovery.</p>
             </div>
+            <Link href="/admin/dashboard" className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-bold transition-all flex items-center gap-2 self-start lg:self-center">
+              <ArrowLeft className="w-4 h-4" /> Exit Studio
+            </Link>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6 items-start">
-          <form onSubmit={handleGenerate} className="space-y-5 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div>
-              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2"><GraduationCap className="w-5 h-5 text-indigo-600" />Roadmap input</h2>
-              <p className="text-sm text-slate-500 mt-1">Generate a structured roadmap from the chosen learning path.</p>
-            </div>
-
-            <div className="space-y-2">
-              <label className={labelCls}>Domain</label>
-              <select value={domain} onChange={e => {
-                setDomain(e.target.value);
-                const next = specializationPresets[e.target.value]?.[0] || '';
-                setSpecialization(next);
-                setCustomSpecialization('');
-              }} className={inputCls}>
-                {domainOptions.map(option => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className={labelCls}>Specialization</label>
-              <select value={specialization} onChange={e => {
-                setSpecialization(e.target.value);
-                setCustomSpecialization('');
-              }} className={inputCls}>
-                {(specializationPresets[domain] || []).map(option => <option key={option} value={option}>{option}</option>)}
-                <option value="__custom__">Custom specialization</option>
-              </select>
-            </div>
-
-            {specialization === '__custom__' && (
-              <div className="space-y-2">
-                <label className={labelCls}>Custom specialization</label>
-                <input
-                  value={customSpecialization}
-                  onChange={e => setCustomSpecialization(e.target.value)}
-                  placeholder="e.g. MERN Stack, DevOps, Flutter"
-                  className={inputCls}
-                />
+        <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-8 items-start">
+          {/* Left Column: Configuration & Actions */}
+          <div className="space-y-6">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Created</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900">{stats.total}</p>
               </div>
-            )}
-
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-700"><Globe className="w-4 h-4 text-indigo-600" />Current selection</div>
-              <div className="flex flex-wrap gap-2">
-                <Pill>{domain}</Pill>
-                <Pill>{effectiveSpecialization}</Pill>
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Paths</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900">{stats.published}</p>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 text-white font-black shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all disabled:opacity-60"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-              {loading ? 'Generating roadmap...' : 'Generate roadmap'}
-            </button>
+            <form onSubmit={handleGenerate} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                  <Target className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-black text-slate-900">Configuration</h2>
+              </div>
 
-            {message && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 font-medium">
-                {message}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className={labelCls}>Learning Domain</label>
+                  <select value={domain} onChange={e => {
+                    setDomain(e.target.value);
+                    const next = specializationPresets[e.target.value]?.[0] || '';
+                    setSpecialization(next);
+                    setCustomSpecialization('');
+                  }} className={inputCls}>
+                    {domainOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className={labelCls}>Focus / Specialization</label>
+                  <select value={specialization} onChange={e => {
+                    setSpecialization(e.target.value);
+                    setCustomSpecialization('');
+                  }} className={inputCls}>
+                    {(specializationPresets[domain] || []).map(option => <option key={option} value={option}>{option}</option>)}
+                    <option value="__custom__">Custom Focus...</option>
+                  </select>
+                </div>
+
+                {specialization === '__custom__' && (
+                  <div className="space-y-2">
+                    <input
+                      value={customSpecialization}
+                      onChange={e => setCustomSpecialization(e.target.value)}
+                      placeholder="e.g. MERN Stack, DevOps"
+                      className={inputCls}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className={labelCls}>Guidance Prompt</label>
+                  <textarea
+                    value={customPrompt}
+                    onChange={e => setCustomPrompt(e.target.value)}
+                    placeholder="Describe specific requirements (optional)..."
+                    className={`${inputCls} min-h-[120px] resize-none`}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Rocket className="w-5 h-5" />}
+                {loading ? 'Building Roadmap...' : 'Generate Roadmap'}
+              </button>
+            </form>
+
+            {draft && (
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className={labelCls}>Current Draft</h3>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${draft.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {draft.is_published ? 'Published' : 'Draft Mode'}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-slate-900">{draft.title}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(Array.isArray(draft.tags) ? draft.tags : ((draft.tags as any) || '').split(',')).filter(Boolean).map((tag: any) => (
+                      <span key={tag} className="text-[10px] font-bold text-slate-500">#{tag}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={handleSave} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Draft
+                  </button>
+                  <button 
+                    onClick={handlePublish} 
+                    disabled={publishing || !draft.id || draft.is_published}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-xs font-bold transition-all disabled:opacity-50 ${draft.is_published ? 'bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  >
+                    {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : (draft.is_published ? <CheckCircle2 className="w-4 h-4" /> : <Rocket className="w-4 h-4" />)}
+                    {draft.is_published ? 'Live' : 'Publish'}
+                  </button>
+                </div>
               </div>
             )}
 
             {error && (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 font-medium">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 font-medium animate-in fade-in slide-in-from-top-2">
                 {error}
               </div>
             )}
-          </form>
+            {message && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 font-medium animate-in fade-in slide-in-from-top-2">
+                {message}
+              </div>
+            )}
 
-          <div className="space-y-6">
+            {/* Library / Recent Work */}
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <button 
+                onClick={() => setShowLibrary(!showLibrary)}
+                className="w-full flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-slate-50 text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-lg font-black text-slate-900">Recent Library</h2>
+                </div>
+                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showLibrary ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showLibrary && (
+                <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
+                  {library.length > 0 ? library.map((item) => (
+                    <button 
+                      key={item.id} 
+                      onClick={() => setDraft(item)}
+                      className={`w-full text-left p-4 rounded-2xl border transition-all ${draft?.id === item.id ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-100 bg-slate-50/30 hover:bg-slate-50'}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <p className="text-[13px] font-black text-slate-900 truncate pr-2">{item.title}</p>
+                        <span className={`shrink-0 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${item.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {item.is_published ? 'Live' : 'Draft'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.specialization}</p>
+                    </button>
+                  )) : (
+                    <p className="text-center py-8 text-xs font-bold text-slate-400 uppercase tracking-widest">No Recent Roadmaps</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Roadmap Display */}
+          <div className="min-w-0">
             {draft ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Generated roadmap</p>
-                    <p className="mt-2 text-lg font-black text-slate-900">{draft.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">{draft.description}</p>
+              <div className="space-y-6">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <p className={labelCls}>Milestones</p>
+                    <p className="text-2xl font-black text-slate-900">{draft.milestones.length}</p>
                   </div>
-                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Milestones</p>
-                    <p className="mt-2 text-3xl font-black text-slate-900">{draft.milestones.length}</p>
-                    <p className="mt-1 text-sm text-slate-500">Generated in sequence</p>
+                  <div className="p-4 rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <p className={labelCls}>Level</p>
+                    <p className="text-sm font-black text-slate-900">{draft.level}</p>
                   </div>
-                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Progress</p>
-                    <p className="mt-2 text-3xl font-black text-slate-900">{completionPercent}%</p>
-                    <p className="mt-1 text-sm text-slate-500">{completedIds.length} completed</p>
+                  <div className="p-4 rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <p className={labelCls}>Duration</p>
+                    <p className="text-sm font-black text-slate-900">{draft.duration}</p>
                   </div>
-                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Resources</p>
-                    <p className="mt-2 text-3xl font-black text-slate-900">{draft.resources.youtube.length + draft.resources.github.length + draft.resources.reading.length}</p>
-                    <p className="mt-1 text-sm text-slate-500">Curated links attached</p>
+                  <div className="p-4 rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <p className={labelCls}>Progress</p>
+                    <p className="text-2xl font-black text-slate-900 text-indigo-600">{completionPercent}%</p>
                   </div>
                 </div>
 
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm space-y-5">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><ListChecks className="w-5 h-5 text-indigo-600" />Sequential roadmap flow</h2>
-                      <p className="text-sm text-slate-500 mt-1">Generate milestones first, then expand and track each one individually.</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={expandAll} className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold hover:bg-slate-200 transition-colors">Expand all</button>
-                      <button type="button" onClick={collapseAll} className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold hover:bg-slate-200 transition-colors">Collapse all</button>
-                      <button onClick={handleSave} disabled={saving} type="button" className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-black hover:shadow-lg hover:shadow-emerald-200 transition-all disabled:opacity-60 inline-flex items-center gap-2">
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        {saving ? 'Saving...' : 'Save roadmap'}
-                      </button>
-                    </div>
-                  </div>
+                {/* Progress Bar */}
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden shadow-inner">
+                  <div className="h-full bg-gradient-to-r from-indigo-500 to-sky-500 transition-all duration-700" style={{ width: `${completionPercent}%` }} />
+                </div>
 
-                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-500 transition-all" style={{ width: `${completionPercent}%` }} />
+                {/* Milestone Flow */}
+                <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 shadow-sm space-y-8">
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-200">
+                        <ListChecks className="w-5 h-5" />
+                      </div>
+                      Learning Experience
+                    </h2>
+                    <div className="flex gap-2">
+                       <button type="button" onClick={expandAll} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">Expand All</button>
+                       <button type="button" onClick={collapseAll} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">Collapse All</button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
                     {draft.milestones.map((milestone) => {
-                      const expanded = expandedIds.includes(milestone.order);
-                      const completed = completedIds.includes(milestone.order);
+                      const isExpanded = expandedIds.includes(milestone.order);
+                      const isCompleted = completedIds.includes(milestone.order);
 
                       return (
-                        <div key={milestone.order} className={`rounded-[1.75rem] border ${completed ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/70'} overflow-hidden transition-all`}>
-                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-5">
-                            <div className="flex items-start gap-4 min-w-0 flex-1">
-                              <button type="button" onClick={() => toggleCompleted(milestone.order)} className={`mt-1 w-6 h-6 rounded-full border flex items-center justify-center shrink-0 ${completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300 text-transparent'}`} aria-label={`Mark ${milestone.title} as completed`}>
+                        <div key={milestone.order} className={`rounded-3xl border transition-all duration-300 ${isCompleted ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
+                            <div className="flex items-start gap-4 min-w-0">
+                              <button 
+                                type="button" 
+                                onClick={() => toggleCompleted(milestone.order)} 
+                                className={`mt-1 w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300 text-transparent hover:border-emerald-400'}`}
+                              >
                                 <CheckCircle2 className="w-4 h-4" />
                               </button>
                               <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-black uppercase tracking-[0.14em]">Milestone {milestone.order}</span>
-                                  {completed && <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-black uppercase tracking-[0.14em]"><CircleCheckBig className="w-3 h-3" />Completed</span>}
-                                </div>
-                                <h3 className="mt-2 text-lg font-black text-slate-900">{milestone.title}</h3>
-                                <p className="mt-1 text-sm text-slate-600 max-w-3xl">{milestone.description}</p>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Milestone {milestone.order}</span>
+                                <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{milestone.title}</h3>
+                                <p className="text-sm text-slate-600 line-clamp-2 mt-1">{milestone.description}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 self-start lg:self-auto">
-                              <button type="button" onClick={() => speakMilestone(milestone)} className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition-colors">
-                                <Mic className="w-4 h-4" />Voice
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button type="button" onClick={() => speakMilestone(milestone)} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm">
+                                <Mic className="w-4 h-4" />
                               </button>
-                              <button type="button" onClick={() => toggleExpanded(milestone.order)} className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors">
-                                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                {expanded ? 'Collapse' : 'Expand'}
+                              <button type="button" onClick={() => toggleExpanded(milestone.order)} className="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                {isExpanded ? 'Collapse' : 'Details'}
                               </button>
                             </div>
                           </div>
 
-                          {expanded && (
-                            <div className="px-5 pb-5 grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-5">
-                              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 space-y-5">
-                                <div>
-                                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-600" />Subtopics</h4>
-                                  <div className="mt-3 space-y-3">
-                                    {milestone.subtopics.map((subtopic, index) => (
-                                      <div key={`${milestone.order}-${index}`} className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                                        <p className="text-sm font-bold text-slate-900">{subtopic.title}</p>
-                                        <p className="text-xs text-slate-500 mt-1">{subtopic.description || 'Core learning objective'}</p>
-                                        {subtopic.level && <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-600">{subtopic.level}</p>}
+                          {isExpanded && (
+                            <div className="px-5 pb-5 grid grid-cols-1 lg:grid-cols-2 gap-5 animate-in fade-in duration-300">
+                              <div className="space-y-4">
+                                <div className="p-5 rounded-[1.5rem] bg-white border border-slate-100 shadow-sm space-y-4">
+                                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" /> Core Subtopics</h4>
+                                  <div className="space-y-2">
+                                    {milestone.subtopics.map((st, idx) => (
+                                      <div key={idx} className="p-3 rounded-xl bg-slate-50/50 border border-slate-50">
+                                        <p className="text-sm font-bold text-slate-800">{st.title}</p>
+                                        <p className="text-[11px] text-slate-500 mt-0.5">{st.description || 'Focus on foundational concepts and practical implementation.'}</p>
                                       </div>
                                     ))}
                                   </div>
                                 </div>
-
-                                <div>
-                                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2"><ListChecks className="w-4 h-4 text-indigo-600" />Learning steps</h4>
-                                  <ol className="mt-3 space-y-3">
-                                    {milestone.learning_steps.map((step, index) => (
-                                      <li key={`${milestone.order}-step-${index}`} className="flex gap-3 rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white text-xs font-black shrink-0">{index + 1}</span>
-                                        <p className="text-sm text-slate-700">{step}</p>
-                                      </li>
+                                <div className="p-5 rounded-[1.5rem] bg-white border border-slate-100 shadow-sm space-y-4">
+                                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Target className="w-3.5 h-3.5" /> Action Steps</h4>
+                                  <div className="space-y-3">
+                                    {milestone.learning_steps.map((step, idx) => (
+                                      <div key={idx} className="flex gap-3">
+                                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black shrink-0">{idx + 1}</div>
+                                        <p className="text-[13px] text-slate-700 leading-relaxed">{step}</p>
+                                      </div>
                                     ))}
-                                  </ol>
+                                  </div>
                                 </div>
                               </div>
 
                               <div className="space-y-4">
-                                <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
-                                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2"><Youtube className="w-4 h-4 text-red-500" />YouTube videos</h4>
-                                  <div className="mt-3 space-y-3">
-                                    {milestone.resources.youtube.map(item => <ResourceLink key={item.url} item={item} icon={<PlayCircle className="w-4 h-4 text-red-500" />} />)}
-                                    {milestone.resources.youtube.length === 0 && <p className="text-sm text-slate-500">No YouTube resources available.</p>}
-                                  </div>
-                                </div>
-
-                                <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
-                                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2"><Github className="w-4 h-4 text-slate-800" />GitHub repositories</h4>
-                                  <div className="mt-3 space-y-3">
-                                    {milestone.resources.github.map(item => <ResourceLink key={item.url} item={item} icon={<Github className="w-4 h-4 text-slate-700" />} />)}
-                                    {milestone.resources.github.length === 0 && <p className="text-sm text-slate-500">No GitHub repositories available.</p>}
-                                  </div>
-                                </div>
-
-                                <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
-                                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2"><FileText className="w-4 h-4 text-amber-500" />Reading material</h4>
-                                  <div className="mt-3 space-y-3">
-                                    {milestone.resources.reading.map(item => <ResourceLink key={item.url} item={item} icon={<FileText className="w-4 h-4 text-amber-500" />} />)}
-                                    {milestone.resources.reading.length === 0 && <p className="text-sm text-slate-500">No reading material available.</p>}
-                                  </div>
-                                </div>
+                                <Section title="Recommended Media" icon={<Youtube className="w-3.5 h-3.5 text-red-500" />} color="red">
+                                  {milestone.resources.youtube.map(r => <ResourceLink key={r.url} item={r} icon={<PlayCircle className="w-3.5 h-3.5" />} />)}
+                                </Section>
+                                <Section title="Code Samples" icon={<Github className="w-3.5 h-3.5 text-slate-800" />} color="slate">
+                                  {milestone.resources.github.map(r => <ResourceLink key={r.url} item={r} icon={<Github className="w-3.5 h-3.5" />} />)}
+                                </Section>
+                                <Section title="Documentation" icon={<FileText className="w-3.5 h-3.5 text-amber-500" />} color="amber">
+                                  {milestone.resources.reading.map(r => <ResourceLink key={r.url} item={r} icon={<FileText className="w-3.5 h-3.5" />} />)}
+                                </Section>
                               </div>
                             </div>
                           )}
@@ -497,62 +633,32 @@ export default function AdminRoadmapsPage() {
                     })}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
-                  <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2"><Target className="w-5 h-5 text-indigo-600" />Roadmap summary</h2>
-                    <p className="text-sm text-slate-500">{draft.description}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-                      <Pill><Layers3 className="w-3.5 h-3.5" />{draft.phases} milestones</Pill>
-                      <Pill><Brain className="w-3.5 h-3.5" />{draft.generation_meta.provider}</Pill>
-                      <Pill><BookOpen className="w-3.5 h-3.5" />{draft.level}</Pill>
-                      <Pill><GraduationCap className="w-3.5 h-3.5" />{draft.duration}</Pill>
-                    </div>
-                    <div className="rounded-3xl bg-slate-50 border border-slate-200 p-4">
-                      <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Tags</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {draft.tags.map(tag => <span key={tag} className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-sm font-bold">{tag}</span>)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-600" />Aggregate resources</h2>
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 mb-2">YouTube</p>
-                        <div className="space-y-2">
-                          {draft.resources.youtube.map(item => <ResourceLink key={item.url} item={item} icon={<Youtube className="w-4 h-4 text-red-500" />} />)}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 mb-2">GitHub</p>
-                        <div className="space-y-2">
-                          {draft.resources.github.map(item => <ResourceLink key={item.url} item={item} icon={<Github className="w-4 h-4 text-slate-700" />} />)}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 mb-2">Reading</p>
-                        <div className="space-y-2">
-                          {draft.resources.reading.map(item => <ResourceLink key={item.url} item={item} icon={<FileText className="w-4 h-4 text-amber-500" />} />)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
+              </div>
             ) : (
-              <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600">
-                  <Sparkles className="w-8 h-8" />
+              <div className="rounded-[2.5rem] border border-dashed border-slate-200 bg-white p-16 text-center shadow-sm">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-indigo-50 text-indigo-600 mb-8 shadow-inner">
+                  <Sparkles className="w-12 h-12" />
                 </div>
-                <h2 className="mt-4 text-2xl font-black text-slate-900">No roadmap generated yet</h2>
-                <p className="mt-2 text-sm text-slate-500 max-w-2xl mx-auto">Use the input form to generate a roadmap. The backend will first create milestone titles, then expand each one into a full learning path with resources.</p>
+                <h2 className="text-2xl font-black text-slate-900">Await Generation</h2>
+                <p className="mt-4 text-slate-500 max-w-md mx-auto text-lg leading-relaxed">
+                  Fill out the parameters on the left and click <b>Generate</b> to see AI-driven learning paths tailored to your specialization.
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
     </AdminNavigation>
+  );
+}
+
+function Section({ title, icon, children, color }: { title: string; icon: React.ReactNode; children: React.ReactNode; color: string }) {
+  return (
+    <div className="p-5 rounded-[1.5rem] bg-white border border-slate-100 shadow-sm space-y-4">
+      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">{icon} {title}</h4>
+      <div className="space-y-2">
+        {React.Children.count(children) > 0 ? children : <p className="text-[11px] text-slate-400 italic py-2">No specific resources found in this category.</p>}
+      </div>
+    </div>
   );
 }

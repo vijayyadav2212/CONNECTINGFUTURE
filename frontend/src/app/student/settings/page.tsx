@@ -20,7 +20,11 @@ import {
   Lock,
   Edit2,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  Hash,
+  Trophy,
+  MapPin,
+  Cpu
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
@@ -36,11 +40,17 @@ interface StudentProfile {
   major: string;
   graduationYear: string;
   bio: string;
-  skills: string[];
+  skills: string;
   interests: string[];
   linkedin: string;
   github: string;
   portfolio: string;
+  rollNumber: string;
+  yearOfStudy: string;
+  semester: string;
+  department: string;
+  cgpa: string;
+  location: string;
 }
 
 interface NotificationSettings {
@@ -80,11 +90,17 @@ export default function Settings() {
     major: '',
     graduationYear: '',
     bio: '',
-    skills: [],
+    skills: '',
     interests: [],
     linkedin: '',
     github: '',
-    portfolio: ''
+    portfolio: '',
+    rollNumber: '',
+    yearOfStudy: '',
+    semester: '',
+    department: '',
+    cgpa: '',
+    location: ''
   });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
@@ -135,11 +151,17 @@ export default function Settings() {
           major: data.user.major || '',
           graduationYear: data.user.graduation_year?.toString() || '',
           bio: data.user.bio || '',
-          skills: data.user.skills ? data.user.skills.split(',') : [],
+          skills: typeof data.user.skills === 'string' ? data.user.skills : Array.isArray(data.user.skills) ? data.user.skills.join(', ') : '',
           interests: [],
           linkedin: data.user.linkedin_url || '',
           github: data.user.github_url || '',
-          portfolio: data.user.website_url || ''
+          portfolio: data.user.website_url || '',
+          rollNumber: data.user.roll_number || '',
+          yearOfStudy: data.user.year_of_study || '',
+          semester: data.user.semester || '',
+          department: data.user.department || data.user.major || '',
+          cgpa: data.user.cgpa ? String(data.user.cgpa) : '',
+          location: data.user.location || ''
         });
       }
     } catch (error) {
@@ -176,6 +198,12 @@ export default function Settings() {
           portfolio: profile.portfolio,
           skills: profile.skills,
           picture: profile.avatar,
+          rollNumber: profile.rollNumber,
+          yearOfStudy: profile.yearOfStudy,
+          semester: profile.semester,
+          department: profile.department,
+          cgpa: profile.cgpa,
+          location: profile.location
         }),
       });
 
@@ -345,13 +373,18 @@ export default function Settings() {
 
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
                         <input
                           type="text"
                           value={profile.name}
                           onChange={(e) => handleProfileChange('name', e.target.value)}
+<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your full name"
+=======
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                          placeholder="e.g. John Doe"
+>>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
                       <div className="col-span-2 md:col-span-1">
@@ -370,51 +403,171 @@ export default function Settings() {
                           type="tel"
                           value={profile.phone}
                           onChange={(e) => handleProfileChange('phone', e.target.value)}
+<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your phone number"
+=======
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="+91 9876543210"
+>>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                          <input
+                            type="text"
+                            value={profile.location}
+                            onChange={(e) => handleProfileChange('location', e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            placeholder="e.g. Mumbai, India"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Enrollment / Roll Number *</label>
+                        <div className="relative">
+                          <Hash className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                          <input
+                            type="text"
+                            value={profile.rollNumber}
+                            onChange={(e) => handleProfileChange('rollNumber', e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            placeholder="e.g. VU4F2223050"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Branch / Department *</label>
+                        <div className="relative">
+                          <Cpu className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                          <input
+                            type="text"
+                            value={profile.department}
+                            onChange={(e) => handleProfileChange('department', e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            placeholder="e.g. Computer Science Engineering"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Year of Study *</label>
+                        <input
+                          type="text"
+                          value={profile.yearOfStudy}
+                          onChange={(e) => handleProfileChange('yearOfStudy', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="e.g. Third Year (TY)"
+                        />
+                      </div>
+
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Current Semester</label>
+                        <input
+                          type="text"
+                          value={profile.semester}
+                          onChange={(e) => handleProfileChange('semester', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="e.g. Semester VI"
+                        />
+                      </div>
+
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Current CGPA</label>
+                        <div className="relative">
+                          <Trophy className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                          <input
+                            type="number"
+                            value={profile.cgpa}
+                            onChange={(e) => handleProfileChange('cgpa', e.target.value)}
+                            min="0"
+                            max="10"
+                            step="0.01"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            placeholder="e.g. 8.5"
+                          />
+                        </div>
+                      </div>
+
                       <div className="col-span-2 md:col-span-1">
                         <label className="block text-sm font-medium text-slate-700 mb-2">University</label>
                         <input
                           type="text"
                           value={profile.university}
                           onChange={(e) => handleProfileChange('university', e.target.value)}
+<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your university"
+=======
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="e.g. Savitribai Phule Pune University"
+>>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
+
                       <div className="col-span-2 md:col-span-1">
                         <label className="block text-sm font-medium text-slate-700 mb-2">Major / Course</label>
                         <input
                           type="text"
                           value={profile.major}
                           onChange={(e) => handleProfileChange('major', e.target.value)}
+<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter your major or course"
+=======
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="e.g. Computer Science"
+>>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
+
                       <div className="col-span-2 md:col-span-1">
                         <label className="block text-sm font-medium text-slate-700 mb-2">Graduation Year</label>
                         <input
                           type="text"
                           value={profile.graduationYear}
                           onChange={(e) => handleProfileChange('graduationYear', e.target.value)}
+<<<<<<< HEAD
                           className={profileFieldClass}
                           placeholder="Enter graduation year"
+=======
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="e.g. 2026"
+>>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                       </div>
 
                       <div className="col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Bio</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">About Yourself</label>
                         <textarea
                           rows={3}
                           value={profile.bio}
                           onChange={(e) => handleProfileChange('bio', e.target.value)}
+<<<<<<< HEAD
                           className={`${profileFieldClass} resize-none`}
                           placeholder="Tell us about yourself..."
+=======
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                          placeholder="Tell us about yourself — your interests, goals, and projects..."
+>>>>>>> 954fc6e5 (Fix: Resolve syntax errors in student settings page and update related components)
                         />
                         <p className="text-xs text-slate-400 mt-2 text-right">{profile.bio.length}/500 characters</p>
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Technical Skills</label>
+                        <input
+                          type="text"
+                          value={profile.skills}
+                          onChange={(e) => handleProfileChange('skills', e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          placeholder="e.g. Python, Java, React, Machine Learning"
+                        />
+                        <p className="text-xs text-slate-500 mt-2">Separate skills with commas</p>
                       </div>
 
                       <div className="col-span-2">
