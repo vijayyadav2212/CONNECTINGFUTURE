@@ -178,7 +178,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                     </span>
                   </div>
                 )}
-                <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#22c55e] rounded-full flex items-center justify-center border-[2.5px] border-white shadow-sm">
+                <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#2563eb] rounded-full flex items-center justify-center border-[2.5px] border-white shadow-sm">
                   <span className="text-white text-[10px] font-bold leading-none">✓</span>
                 </div>
               </div>
@@ -200,7 +200,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
             <div className="mt-4 flex gap-2.5">
               <Link
                 href="/alumni/network"
-                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-green-50 text-green-700 border border-green-100 text-[12px] font-semibold hover:bg-green-100 transition-colors"
+                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-blue-50 text-blue-700 border border-blue-100 text-[12px] font-semibold hover:bg-blue-100 transition-colors"
               >
                 <Users size={13} />
                 <span>Network</span>
@@ -227,13 +227,13 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                         href={item.route}
                         className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 group ${
                           isActive
-                            ? 'bg-[#e8f5ee] text-[#14532d] border-[#b7e4c7] shadow-[0_1px_3px_rgba(22,101,52,0.12)]'
+                            ? 'bg-[#e8efff] text-[#1e3a8a] border-[#bfdbfe] shadow-[0_1px_3px_rgba(37,99,235,0.18)]'
                             : 'text-[#344054] border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
                         }`}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
-                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-transparent'}`} />
-                          <span className={`shrink-0 ${isActive ? 'text-green-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
+                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-transparent'}`} />
+                          <span className={`shrink-0 ${isActive ? 'text-blue-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
                             {item.icon}
                           </span>
                           <span className={`text-[15px] truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>
@@ -251,17 +251,6 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                 })}
               </ul>
         </nav>
-
-        {/* Fixed Bottom Logout */}
-        <div className="px-4 py-4 border-t border-[#e6e9ef] bg-white shrink-0">
-          <Link
-            href="/api/auth/logout"
-            className="flex items-center gap-3.5 px-4 py-3.5 text-gray-700 border border-transparent hover:bg-red-50 hover:text-red-700 hover:border-red-100 rounded-xl transition-all duration-200"
-          >
-            <LogOut size={18} className="text-gray-500" />
-            <span className="text-[15px] font-medium">Logout</span>
-          </Link>
-        </div>
       </aside>
 
       <main className="ml-[300px] min-h-screen">

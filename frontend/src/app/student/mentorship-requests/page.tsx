@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import StudentNavigation from "../StudentNavigation";
+import StudentNavigation from "../StudentNavigation/StudentNavigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ function statusBadge(status: string) {
     accepted: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
     rejected: 'bg-rose-50 text-rose-600 border-rose-200/60',
     removed: 'bg-slate-100 text-slate-600 border-slate-200/80',
-    paid: 'bg-blue-50 text-blue-700 border-blue-200/60',
+    paid: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
     scheduled: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
     completed: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
     active: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
@@ -437,7 +437,7 @@ export default function MentorshipRequests() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_25%_20%,rgba(59,130,246,0.08),transparent_36%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.10),transparent_38%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)]">
+      <div className="min-h-screen bg-[#f4f6fb]">
 
         <div className="p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
@@ -449,13 +449,24 @@ export default function MentorshipRequests() {
               transition={{ duration: 0.6 }}
               className="mb-8"
             >
-              <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center space-x-3 mb-3">
-                      <h1 className="text-[30px] md:text-[36px] font-black text-slate-900 tracking-tight">Find Your Mentor</h1>
+              <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-6 lg:p-8 shadow-xl border border-white/30">
+                <div className="absolute inset-0 bg-white/20 backdrop-blur-sm rounded-3xl"></div>
+                <div className="relative z-10">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">Student Mentorship</h1>
+                  <p className="text-base lg:text-lg text-gray-700 font-medium max-w-2xl mb-4">Find mentors, send requests, book sessions, and track your mentorship progress.</p>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="font-medium">{connectedMentorsCount} Connected Mentors</span>
                     </div>
-                    <p className="text-slate-600 text-sm md:text-base font-medium">Discover mentors, request guidance, purchase sessions, and track progress</p>
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="font-medium">{mentors.length} Mentors Found</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span className="font-medium">{upcomingSessionsCount} Upcoming Sessions</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -469,15 +480,15 @@ export default function MentorshipRequests() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mb-8"
             >
-              <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+              <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 border-slate-200 bg-slate-50" />
-                  <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} className="h-11 border-slate-200 bg-slate-50" />
-                  <Input placeholder="Max price (INR)" type="number" value={maxPrice as any} onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")} className="h-11 border-slate-200 bg-slate-50" />
-                  <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} className="h-11 border-slate-200 bg-slate-50" />
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={clearFilters} disabled={loading} className="h-11 border-slate-200 text-slate-700">Clear</Button>
-                    <Button onClick={loadMentors} disabled={loading} className="h-11 bg-blue-600 hover:bg-blue-700 text-white px-6">{loading ? "Searching..." : "Search"}</Button>
+                  <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Max price (INR)" type="number" value={maxPrice as any} onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <div className="flex gap-2 justify-end md:justify-start lg:justify-end">
+                    <Button variant="outline" onClick={clearFilters} disabled={loading} className="h-12 rounded-[16px] border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-950 shadow-sm">Clear</Button>
+                    <Button onClick={loadMentors} disabled={loading} className="h-12 rounded-[16px] bg-[#4F46E5] hover:bg-indigo-600 text-white px-6">{loading ? "Searching..." : "Search"}</Button>
                   </div>
                 </div>
                 {appliedFilters.length > 0 ? (
@@ -516,64 +527,63 @@ export default function MentorshipRequests() {
               animate="visible"
               variants={fadeInUp}
               transition={{ duration: 0.6, delay: 0.25 }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
             >
-              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+              <div className="bg-white rounded-[32px] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Connected Mentors</p>
-                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{connectedMentorsCount}</p>
-                    <p className="text-[12px] font-semibold text-emerald-600 mt-2">Accepted connections</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Connected Mentors</p>
+                    <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{connectedMentorsCount}</p>
+                    <p className="text-[13px] font-bold text-emerald-600">Accepted connections</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Users size={18} />
+                  <div className="w-14 h-14 rounded-[16px] bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Users size={24} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+              <div className="bg-white rounded-[32px] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Pending Requests</p>
-                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{pendingRequestsCount}</p>
-                    <p className="text-[12px] font-semibold text-amber-600 mt-2">Waiting for mentor action</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Pending Requests</p>
+                    <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{pendingRequestsCount}</p>
+                    <p className="text-[13px] font-bold text-amber-600">Waiting for mentor action</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <BadgeCheck size={18} />
+                  <div className="w-14 h-14 rounded-[16px] bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <BadgeCheck size={24} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+              <div className="bg-white rounded-[32px] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Upcoming Sessions</p>
-                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{upcomingSessionsCount}</p>
-                    <p className="text-[12px] font-semibold text-indigo-600 mt-2">Scheduled mentorship calls</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Upcoming Sessions</p>
+                    <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{upcomingSessionsCount}</p>
+                    <p className="text-[13px] font-bold text-[#4F46E5]">Scheduled mentorship calls</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <CalendarClock size={18} />
+                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
+                    <CalendarClock size={24} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[24px] p-5 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+              <div className="bg-white rounded-[32px] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Active Subscriptions</p>
-                    <p className="mt-2 text-[30px] leading-none font-extrabold text-slate-800">{activeSubscriptionsCount}</p>
-                    <p className="text-[12px] font-semibold text-blue-600 mt-2">Recurring mentor access</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Active Subscriptions</p>
+                    <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{activeSubscriptionsCount}</p>
+                    <p className="text-[13px] font-bold text-[#4F46E5]">Recurring mentor access</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Wallet size={18} />
+                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
+                    <Wallet size={24} />
                   </div>
                 </div>
               </div>
             </motion.div>
-          </div>
-        </div>
+ 
 
-        {/* My Mentors */}
+            {/* My Mentors */}
         <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentors</h2>
@@ -682,7 +692,7 @@ export default function MentorshipRequests() {
                 <div className="p-7 flex flex-col h-full">
                   <div className="flex items-start gap-4 mb-5">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                      <div className="w-16 h-16 bg-[#4F46E5] rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                         {prof?.picture ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={prof.picture} alt={name} className="w-full h-full object-cover" />
@@ -691,7 +701,7 @@ export default function MentorshipRequests() {
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-blue-600 transition-colors duration-200 mb-1">
+                      <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-[#4F46E5] transition-colors duration-200 mb-1">
                         {name}
                       </h3>
                       {prof?.job_title || prof?.company ? (
@@ -724,7 +734,7 @@ export default function MentorshipRequests() {
                       </div>
                       <p className="text-xs text-amber-700 font-semibold">Avg Rating ({m.rating_count || 0})</p>
                     </div>
-                    <div className="bg-blue-50 p-3 rounded-2xl border border-blue-200">
+                    <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-200">
                       <div className="mb-1">
                         <span className="font-black text-blue-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
                       </div>
@@ -740,7 +750,7 @@ export default function MentorshipRequests() {
                     </div>
                   ) : null}
                   <div className="grid grid-cols-1 gap-2 mt-auto pt-4 border-t border-slate-100">
-                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-[#4F46E5] text-white hover:bg-indigo-600 disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
                       {btnText}
                     </Button>
                     {(m.price || m.subscription_price) ? (
@@ -803,7 +813,7 @@ export default function MentorshipRequests() {
                         href={normalizeExternalLink(plan.meeting_link)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold"
+                        className="inline-flex items-center justify-center bg-[#4F46E5] hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-semibold"
                       >
                         Join Daily Session
                       </a>
@@ -960,7 +970,7 @@ export default function MentorshipRequests() {
                           const href = normalizeExternalLink(s.meeting_link || undefined);
                           return (
                             <div>
-                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Join</a>
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-[#4F46E5] hover:bg-indigo-600 text-white px-4 py-2 rounded-md">Join</a>
                             </div>
                           );
                         })()}
@@ -976,13 +986,13 @@ export default function MentorshipRequests() {
                             <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
                           </div>
                           <Input
-                            className="h-12 bg-white border-slate-200 focus:border-blue-400"
+                            className="h-12 bg-white border-slate-200 focus:border-indigo-400"
                             placeholder="Optional feedback"
                             value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
                             onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
                           />
                           <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg disabled:opacity-60"
+                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-[#4F46E5] hover:bg-indigo-600 text-white shadow-md hover:shadow-lg disabled:opacity-60"
                             onClick={() => {
                               if (!ratingForm || ratingForm.session_id !== s.id) return;
                               const r = ratingForm.rating;
@@ -1014,7 +1024,9 @@ export default function MentorshipRequests() {
             )}
           </div>
         </motion.div>
+          </div>
+        </div>
       </div>
-  </StudentNavigation>
+    </StudentNavigation>
   );
 }

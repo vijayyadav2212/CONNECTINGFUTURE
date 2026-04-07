@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import StudentNavigation from '../StudentNavigation';
+import StudentNavigation from '../StudentNavigation/StudentNavigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import { Search, Send, Paperclip, Smile, Phone, Video, MoreHorizontal, User, Clock, Check, CheckCheck, FileText, Pencil, Trash2, X, GraduationCap } from 'lucide-react';
+import { Search, Send, Paperclip, User, Clock, Check, CheckCheck, FileText, Pencil, Trash2, X, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Message {
@@ -469,7 +469,6 @@ const MessagesPage = () => {
     <StudentNavigation>
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
             <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
               <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
@@ -479,175 +478,104 @@ const MessagesPage = () => {
                     <GraduationCap className="w-5 h-5 text-blue-600" />
                     <span className="text-blue-700 font-semibold text-sm">Student Network</span>
                   </div>
-                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-                    Messages
-                  </h1>
-                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
-                    Connect with alumni, mentors, and peers to build your professional network.
-                  </p>
+                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">Messages</h1>
+                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">Connect with alumni, mentors, and peers to build your professional network.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[700px] min-h-0">
-            {/* Conversations List */}
-            <div className="lg:col-span-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden min-h-0 flex flex-col">
-              <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
-                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-                  Conversations
-                </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-[calc(100vh-220px)] min-h-[520px]">
+            <div className="lg:col-span-1 bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-h-0 flex flex-col">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/60">
+                <p className="text-sm font-bold text-slate-900 mb-3 tracking-tight">Conversations</p>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Search conversations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-gray-900 placeholder-gray-500 transition-all duration-200"
+                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                   />
                 </div>
               </div>
-              <div className="p-0">
-                <div className="max-h-[580px] overflow-y-auto min-h-0">
-                  {filteredConversations.map(conv => (
-                    <div
-                      key={conv.id}
-                      onClick={() => { setSelectedConversation(conv.id); setSelectedOtherEmail(conv.email); }}
-                      className={`p-5 border-b border-white/20 cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 hover:transform hover:scale-[1.02] ${
-                        selectedConversation === conv.id 
-                          ? 'bg-gradient-to-r from-blue-100/70 to-purple-100/70 border-blue-200 shadow-md' 
-                          : ''
-                      }`}
-                    >
-                        <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {conv.displayName.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          {conv.isOnline && (
-                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-green-400 to-emerald-500 border-3 border-white rounded-full shadow-lg"></div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-bold text-gray-900 truncate text-lg">{conv.displayName}</h3>
-                            <span className="text-xs font-medium bg-gradient-to-r from-gray-500 to-gray-600 bg-clip-text text-transparent">
-                              {formatTime(conv.lastMessageTime)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-sm text-gray-600 truncate flex-1 leading-relaxed">{conv.lastMessage}</p>
-                            {conv.unreadCount > 0 && (
-                              <span className="ml-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full px-3 py-1 min-w-[24px] text-center font-semibold shadow-lg">
-                                {conv.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {selectedOtherEmail && (
-                              <div className="flex items-center gap-2">
-                                {!connectionStatus && (
-                                  <button onClick={sendConnectionRequest} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">Connect</button>
-                                )}
-                                {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
-                                  <>
-                                    <button onClick={() => respond('accept')} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">Accept</button>
-                                    <button onClick={() => respond('reject')} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
-                                  </>
-                                )}
-                                {connectionStatus === 'pending' && currentConnection?.requester_email.toLowerCase() === currentUserEmail.toLowerCase() && (
-                                  <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700">Pending</span>
-                                )}
-                                {connectionStatus === 'accepted' && (
-                                  <button onClick={removeConnection} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50">Remove</button>
-                                )}
-                                {['rejected','removed'].includes(connectionStatus || '') && (
-                                  <button onClick={sendConnectionRequest} disabled={connLoading} className="text-xs px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">Re-connect</button>
-                                )}
-                                {connectionStatus === 'accepted' && <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Connected</span>}
-                              </div>
-                            )}
-                            <span className={`text-xs px-3 py-1 rounded-full font-semibold shadow-sm ${
-                              conv.role === 'alumni' 
-                                ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700'
-                                : conv.role === 'mentor'
-                                ? 'bg-gradient-to-r from-green-100 to-emerald-200 text-green-700'
-                                : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700'
-                            }`}>
-                              {conv.role.toUpperCase()}
-                            </span>
-                            {conv.isOnline && (
-                              <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full font-medium">
-                                • Online
-                              </span>
-                            )}
-                          </div>
-                        </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {filteredConversations.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-36 text-center px-4">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
+                      <Search className="w-6 h-6 text-slate-300" />
                     </div>
-                      </div>
-                    ))}
+                    <p className="text-sm font-semibold text-slate-700">No conversations found</p>
+                    <p className="text-xs text-slate-400 mt-1">Try another keyword</p>
                   </div>
-                </div>
-              </div>            {/* Chat Area */}
-            <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 flex flex-col overflow-hidden min-h-0">
+                )}
+                {filteredConversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => { setSelectedConversation(conv.id); setSelectedOtherEmail(conv.email); }}
+                    className={`w-full text-left px-4 py-3 border-b border-slate-50 flex items-center gap-3 hover:bg-slate-50 transition-colors ${selectedConversation === conv.id ? 'bg-indigo-50/70 border-l-2 border-l-indigo-500' : ''}`}
+                  >
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${selectedConversation === conv.id ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {conv.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <h3 className="text-xs font-bold text-slate-900 truncate">{conv.displayName}</h3>
+                        <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(conv.lastMessageTime)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] text-slate-500 truncate flex-1">{conv.lastMessage}</p>
+                        {conv.unreadCount > 0 && <span className="ml-2 w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{conv.unreadCount}</span>}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col overflow-hidden min-h-0">
               {selectedConversation ? (
-                  <div className="flex flex-col h-full min-h-0">
-                  {/* Chat Header */}
-                  <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+                <div className="flex flex-col h-full min-h-0">
+                  <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                          {conversations.find(c => c.id === selectedConversation)?.displayName.split(' ').map(n => n[0]).join('')}
+                        <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold flex items-center justify-center shrink-0">
+                          {conversations.find((c) => c.id === selectedConversation)?.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                         </div>
                         <div>
-                          <h3 className="font-bold text-xl text-gray-900">
-                            {conversations.find(c => c.id === selectedConversation)?.displayName || selectedOtherEmail}
-                          </h3>
-                          <p className="text-sm font-medium">
-                            <span className={`inline-flex items-center gap-2 ${
-                              conversations.find(c => c.id === selectedConversation)?.isOnline 
-                                ? 'text-green-600' 
-                                : 'text-gray-500'
-                            }`}>
-                              <div className={`w-2 h-2 rounded-full ${
-                                conversations.find(c => c.id === selectedConversation)?.isOnline 
-                                  ? 'bg-green-500' 
-                                  : 'bg-gray-400'
-                              }`}></div>
-                              {conversations.find(c => c.id === selectedConversation)?.isOnline ? 'Online' : 'Offline'}
-                            </span>
-                          </p>
+                          <h3 className="font-bold text-sm text-slate-900 leading-none">{conversations.find((c) => c.id === selectedConversation)?.displayName || selectedOtherEmail}</h3>
+                          <p className="text-[11px] text-slate-500 mt-0.5">{selectedOtherEmail}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
-                          <Phone className="w-5 h-5" />
-                        </button>
-                        <button className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
-                          <Video className="w-5 h-5" />
-                        </button>
-                        <button className="p-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
-                          <MoreHorizontal className="w-5 h-5" />
-                        </button>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {connLoading && <span className="text-[11px] text-slate-400">Checking…</span>}
+                        {!connLoading && (
+                          <>
+                            {connectionStatus === 'accepted' && <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Connected</span>}
+                            {connectionStatus === 'pending' && currentConnection?.requester_email.toLowerCase() === currentUserEmail.toLowerCase() && <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Pending</span>}
+                            {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
+                              <div className="flex gap-1.5">
+                                <button onClick={() => respond('accept')} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Accept</button>
+                                <button onClick={() => respond('reject')} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-red-50 text-red-600 border border-red-200 font-semibold hover:bg-red-100 disabled:opacity-60">Reject</button>
+                              </div>
+                            )}
+                            {!connectionStatus && <button onClick={sendConnectionRequest} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Connect</button>}
+                            {connectionStatus === 'accepted' && <button onClick={removeConnection} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 disabled:opacity-60">Remove</button>}
+                            {(connectionStatus === 'rejected' || connectionStatus === 'removed') && <button onClick={sendConnectionRequest} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Re-connect</button>}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Messages */}
-                  <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-blue-50/30" onClick={() => setActionMessageId(null)}>
-                    {messages.map(message => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[75%] ${message.isFromMe ? 'order-last' : ''}`}>
+                  <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-slate-50/60" onClick={() => setActionMessageId(null)}>
+                    {messages.map((message) => (
+                      <div key={message.id} className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[72%] ${message.isFromMe ? 'order-last' : ''}`}>
                           <div
-                            className={`p-4 rounded-2xl shadow-md ${
-                              message.isFromMe
-                                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                                : 'bg-white text-gray-900 border border-gray-200'
-                            }`}
+                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${message.isFromMe ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-sm'}`}
                             onDoubleClick={() => {
                               if (message.isFromMe && message.canEditDelete && !message.deletedAt) setActionMessageId(message.id);
                             }}
@@ -661,14 +589,9 @@ const MessagesPage = () => {
                               <p className="text-xs italic opacity-80">This message was deleted</p>
                             ) : (
                               <>
-                                {message.text ? <p className="text-sm leading-relaxed">{message.text}</p> : null}
+                                {message.text ? <p>{message.text}</p> : null}
                                 {message.attachmentUrl ? (
-                                  <a
-                                    href={message.attachmentUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl ${message.isFromMe ? 'bg-white/20 hover:bg-white/25' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'}`}
-                                  >
+                                  <a href={message.attachmentUrl} target="_blank" rel="noopener noreferrer" className={`mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl ${message.isFromMe ? 'bg-white/15 hover:bg-white/20' : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'} transition-colors`}>
                                     <FileText className="w-4 h-4" />
                                     <span className="text-xs font-semibold max-w-[180px] truncate">{message.attachmentName || 'Attachment'}</span>
                                     {message.attachmentSize ? <span className="text-[10px] opacity-80">({formatFileSize(message.attachmentSize)})</span> : null}
@@ -677,31 +600,22 @@ const MessagesPage = () => {
                               </>
                             )}
                           </div>
-                          <div className={`flex items-center gap-2 mt-2 text-xs font-medium ${
-                            message.isFromMe ? 'justify-end text-blue-600' : 'justify-start text-gray-500'
-                          }`}>
-                            <Clock className="w-3 h-3" />
+                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${message.isFromMe ? 'justify-end text-indigo-600' : 'justify-start text-slate-400'}`}>
                             <span>{formatTime(message.timestamp)}</span>
                             {message.editedAt && !message.deletedAt && <span>(edited)</span>}
-                            {message.isFromMe && (
-                              <div className={`${
-                                message.status === 'read' ? 'text-blue-600' : 'text-gray-400'
-                              }`}>
-                                {getStatusIcon(message.status)}
-                              </div>
-                            )}
+                            {message.isFromMe && <div className={`${message.status === 'read' ? 'text-blue-600' : 'text-gray-400'}`}>{getStatusIcon(message.status)}</div>}
                           </div>
                           {message.isFromMe && message.canEditDelete && !message.deletedAt && actionMessageId === message.id && (
                             <div className="mt-2 flex items-center justify-end gap-2">
-                              <button onClick={() => startEditMessage(message)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"><Pencil className="w-3 h-3" />Edit</button>
+                              <button onClick={() => startEditMessage(message)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"><Pencil className="w-3 h-3" />Edit</button>
                               <button onClick={() => deleteMessage(message.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"><Trash2 className="w-3 h-3" />Delete</button>
                             </div>
                           )}
                           {message.isFromMe && editingMessageId === message.id && (
                             <div className="mt-2 flex items-center gap-2">
-                              <input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="flex-1 px-3 py-2 text-xs rounded-lg border border-gray-300" />
-                              <button onClick={() => saveEditMessage(message.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700">Save</button>
-                              <button onClick={cancelEditMessage} className="px-2 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">Cancel</button>
+                              <input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300" />
+                              <button onClick={() => saveEditMessage(message.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Save</button>
+                              <button onClick={cancelEditMessage} className="px-2 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">Cancel</button>
                             </div>
                           )}
                         </div>
@@ -709,8 +623,7 @@ const MessagesPage = () => {
                     ))}
                   </div>
 
-                  {/* Message Input */}
-                  <div className="border-t border-white/20 p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+                  <div className="border-t border-gray-100 p-4">
                     <p className="text-[11px] text-gray-500 mb-2">Double-click or right-click your sent message to edit/delete for {editWindowMinutes} minutes.</p>
                     {selectedFile && (
                       <div className="mb-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-700">
@@ -720,51 +633,39 @@ const MessagesPage = () => {
                         <button onClick={() => setSelectedFile(null)}><X className="w-3.5 h-3.5 text-gray-500" /></button>
                       </div>
                     )}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                       <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                      <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg hover:scale-110 transition-all duration-300">
-                        <Paperclip className="w-5 h-5" />
+                      <button onClick={() => fileInputRef.current?.click()} disabled={connectionStatus !== 'accepted'} className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:bg-slate-100/60 disabled:text-slate-400 shrink-0">
+                        <Paperclip className="w-4 h-4" />
                       </button>
                       <div className="flex-1 relative">
                         <input
                           type="text"
-                          placeholder="Type your message..."
+                          placeholder={connectionStatus === 'accepted' ? 'Type your message…' : 'Connect to start messaging'}
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
-                          className="w-full px-6 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-black placeholder-gray-500 pr-14"
+                          disabled={connectionStatus !== 'accepted'}
+                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 disabled:bg-gray-50 disabled:text-gray-400 pr-14"
                         />
-                        <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200">
-                          <Smile className="w-5 h-5 text-gray-500" />
-                        </button>
                       </div>
-                      <button 
-                        onClick={sendMessage} 
-                        disabled={(!newMessage.trim() && !selectedFile) || connectionStatus !== 'accepted' || sendingMessage}
-                        className={`p-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg ${
-                          (newMessage.trim() || selectedFile) && connectionStatus === 'accepted'
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-xl hover:scale-110'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        <Send className="w-5 h-5" />
+                      <button onClick={sendMessage} disabled={(!newMessage.trim() && !selectedFile) || connectionStatus !== 'accepted' || sendingMessage} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 ${(newMessage.trim() || selectedFile) && connectionStatus === 'accepted' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                        <Send className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <User className="w-20 h-20 mx-auto mb-6 text-gray-300" />
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent mb-3">
-                      Select a conversation
-                    </h3>
-                    <p className="text-lg text-gray-600">Choose a conversation from the list to start messaging</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                  <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4 border border-indigo-100">
+                    <User className="w-7 h-7 text-indigo-300" />
                   </div>
+                  <p className="font-bold text-slate-900 text-sm mb-1">No conversation selected</p>
+                  <p className="text-xs text-slate-400">Choose a conversation from the list to start messaging</p>
                 </div>
               )}
             </div>
-        </div>
+          </div>
         </div>
       </div>
     </StudentNavigation>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import StudentNavigation from "../StudentNavigation";
+import StudentNavigation from "../StudentNavigation/StudentNavigation";
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import apiClient from '../../../lib/apiClient';
 import { GraduationCap, Pencil, Briefcase, TrendingUp, Award, BookOpen, Clock, CheckCircle, Circle, AlertCircle } from "lucide-react";

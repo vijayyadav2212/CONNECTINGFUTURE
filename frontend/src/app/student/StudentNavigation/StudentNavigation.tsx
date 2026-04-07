@@ -291,18 +291,6 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
             </ul>
           </nav>
 
-          {/* Bottom Actions */}
-          <div className="px-4 py-4 border-t border-[#e6e9ef] bg-white">
-            <div className="pt-1">
-              <Link
-                href="/api/auth/logout"
-                className="flex items-center gap-3.5 px-4 py-3.5 text-gray-700 border border-transparent hover:bg-red-50 hover:text-red-700 hover:border-red-100 rounded-xl transition-all duration-200"
-              >
-                <span className="text-gray-500">🚪</span>
-                <span className="font-medium text-[15px]">Logout</span>
-              </Link>
-            </div>
-          </div>
         </div>
       </aside>
 

@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import StudentNavigation from '../StudentNavigation';
-import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase, GraduationCap, AlertTriangle, Bookmark, BookmarkCheck, CheckCircle, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import StudentNavigation from '../StudentNavigation/StudentNavigation';
+import { Search, Filter, MapPin, Building, Clock, DollarSign, BookmarkPlus, ExternalLink, Star, Calendar, Users, Briefcase, GraduationCap, AlertTriangle, Bookmark, BookmarkCheck, CheckCircle, Loader2, RefreshCw, TrendingUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -630,8 +629,18 @@ const JobOpportunitiesPage = () => {
                     placeholder="Search jobs, companies, or locations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium text-gray-900 placeholder-gray-500"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl bg-white text-black placeholder:text-gray-500 caret-black [color-scheme:light] focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium [&:-webkit-autofill]:shadow-[inset_0_0_0px_1000px_white] [&:-webkit-autofill]:[-webkit-text-fill-color:#000]"
                   />
+                  {searchTerm.trim().length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      aria-label="Clear search"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  ) : null}
                 </div>
                 <div className="relative">
                   <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -857,8 +866,8 @@ const JobOpportunitiesPage = () => {
                                 variant="outline"
                                 className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
                                   job.isBookmarked 
-                                    ? 'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100' 
-                                    : 'hover:bg-gray-50 border-gray-300'
+                                    ? 'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800' 
+                                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                                 }`}
                               >
                                 <BookmarkPlus className="w-4 h-4 mr-2" />
@@ -978,74 +987,66 @@ const JobOpportunitiesPage = () => {
           )}
 
           <div className="mt-10">
-            <Card className="border border-gray-100 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Saved Jobs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {jobs.filter(j => j.isBookmarked).length === 0 ? (
-                  <div className="text-gray-600">No saved jobs yet. Click "Save Job" on listings.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {jobs.filter(j => j.isBookmarked).map(job => (
-                      <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div>
-                          <div className="font-semibold text-gray-900">{job.title} — {job.company}</div>
-                          <div className="text-sm text-gray-600">{job.location}</div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={() => toggleBookmark(job.id)}
-                            className="border-yellow-300 text-yellow-700"
-                          >
-                            Remove
-                          </Button>
-                          <Button
-                            onClick={() => openApplyForm(job)}
-                            disabled={appliedJobIds.has(job.id)}
-                            className={`px-6 py-2 rounded-xl font-semibold transition-all duration-200 ${appliedJobIds.has(job.id) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'}`}
-                          >
-                            {appliedJobIds.has(job.id) ? 'Applied' : 'Apply'}
-                          </Button>
-                        </div>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 lg:p-8">
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Saved Jobs</h2>
+              {jobs.filter(j => j.isBookmarked).length === 0 ? (
+                <div className="text-gray-600">No saved jobs yet. Click "Save Job" on listings.</div>
+              ) : (
+                <div className="space-y-4">
+                  {jobs.filter(j => j.isBookmarked).map(job => (
+                    <div key={job.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div>
+                        <div className="font-semibold text-gray-900">{job.title} — {job.company}</div>
+                        <div className="text-sm text-gray-600">{job.location}</div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => toggleBookmark(job.id)}
+                          className="border-yellow-300 text-yellow-700 bg-white hover:bg-yellow-50"
+                        >
+                          Remove
+                        </Button>
+                        <Button
+                          onClick={() => openApplyForm(job)}
+                          disabled={appliedJobIds.has(job.id)}
+                          className={`px-6 py-2 rounded-xl font-semibold transition-all duration-200 ${appliedJobIds.has(job.id) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'}`}
+                        >
+                          {appliedJobIds.has(job.id) ? 'Applied' : 'Apply'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Applied History */}
           <div className="mt-10">
-            <Card className="border border-gray-100 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Applied History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {myApplications.length === 0 ? (
-                  <div className="text-gray-600">No applications yet.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {myApplications.map((app: any) => (
-                      <div key={app.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div>
-                          <div className="font-semibold text-gray-900">{app.title} — {app.company}</div>
-                          <div className="text-sm text-gray-600">{app.location}</div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                            {app.status || 'applied'}
-                          </span>
-                          <span className="text-sm text-gray-500">{app.applied_at ? new Date(app.applied_at).toLocaleDateString() : ''}</span>
-                        </div>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 lg:p-8">
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Applied History</h2>
+              {myApplications.length === 0 ? (
+                <div className="text-gray-600">No applications yet.</div>
+              ) : (
+                <div className="space-y-4">
+                  {myApplications.map((app: any) => (
+                    <div key={app.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div>
+                        <div className="font-semibold text-gray-900">{app.title} — {app.company}</div>
+                        <div className="text-sm text-gray-600">{app.location}</div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                          {app.status || 'applied'}
+                        </span>
+                        <span className="text-sm text-gray-500">{app.applied_at ? new Date(app.applied_at).toLocaleDateString() : ''}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

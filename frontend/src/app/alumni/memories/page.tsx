@@ -480,7 +480,7 @@ export default function MemoriesPage() {
             <button onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} className="px-6 py-3 text-[12px] font-black rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest shadow-sm">Clear Filters</button>
           </div>
         ) : (
-          <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-6 max-w-4xl mx-auto'}`}>
+          <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6' : 'space-y-6 max-w-4xl mx-auto'}`}>
             {filteredMemories.map((memory, i) => React.cloneElement(renderMemoryCard(memory, i) as React.ReactElement, { key: `${memory.id}-${i}` }))}
           </div>
         )}

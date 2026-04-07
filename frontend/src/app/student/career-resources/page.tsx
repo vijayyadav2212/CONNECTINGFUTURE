@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import StudentNavigation from '../StudentNavigation';
+import StudentNavigation from '../StudentNavigation/StudentNavigation';
 import { Search, Filter, BookOpen, Video, FileText, ExternalLink, Star, Clock, Users, TrendingUp, Briefcase, GraduationCap, Code, X, Sparkles, ListChecks, Layers3, Github } from 'lucide-react';
 
 interface Resource {
@@ -125,13 +125,13 @@ export default function CareerResources() {
       <div className="min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-white p-6 lg:p-10">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
-          <div className="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-[40px] p-10 lg:p-12 border border-emerald-100/20 shadow-[0_20px_50px_rgba(0,0,0,0.03)] mb-10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-20 -mt-20 blur-3xl opacity-60" />
+          <div className="bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-[40px] p-10 lg:p-12 border border-white/30 shadow-[0_20px_50px_rgba(0,0,0,0.03)] mb-10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl opacity-60" />
             
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="flex-1">
-                <div className="flex items-center gap-2 text-emerald-600 font-black text-[11px] mb-4 uppercase tracking-[0.2em]">
-                  <Sparkles size={16} className="text-emerald-500 animate-pulse" />
+                <div className="flex items-center gap-2 text-blue-700 font-black text-[11px] mb-4 uppercase tracking-[0.2em]">
+                  <Sparkles size={16} className="text-blue-600 animate-pulse" />
                   <span>Curated Learning</span>
                 </div>
                 
@@ -145,7 +145,7 @@ export default function CareerResources() {
                 
                 <div className="flex flex-wrap gap-3">
                    <div className="bg-white/90 px-5 py-2.5 rounded-full text-[12px] font-black text-slate-500 border border-slate-50 shadow-sm flex items-center gap-2.5 uppercase tracking-widest">
-                     <BookOpen size={16} className="text-emerald-500" />
+                     <BookOpen size={16} className="text-blue-600" />
                      {allResources.length} Resources
                    </div>
                    <div className="bg-white/90 px-5 py-2.5 rounded-full text-[12px] font-black text-slate-500 border border-slate-50 shadow-sm flex items-center gap-2.5 uppercase tracking-widest">
@@ -156,7 +156,7 @@ export default function CareerResources() {
               </div>
               
               <div className="hidden lg:block">
-                <div className="w-32 h-32 rounded-[40px] bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner border border-white">
+                <div className="w-32 h-32 rounded-[40px] bg-gradient-to-br from-blue-50 to-green-100 flex items-center justify-center text-blue-700 shadow-inner border border-white/80">
                   <GraduationCap size={48} strokeWidth={1.5} />
                 </div>
               </div>

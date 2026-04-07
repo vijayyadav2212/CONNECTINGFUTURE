@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { toast } from 'sonner';
-import StudentNavigation from '../StudentNavigation';
+import StudentNavigation from '../StudentNavigation/StudentNavigation';
 import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus, Sparkles, GraduationCap } from 'lucide-react';
 import Image from 'next/image';
 
@@ -245,6 +245,18 @@ function EventsContent() {
     }
   };
 
+  const getTypeAccent = (type: string) => {
+    switch (type) {
+      case 'workshop': return 'from-blue-500/20 via-blue-500/8 to-transparent';
+      case 'seminar': return 'from-emerald-500/20 via-emerald-500/8 to-transparent';
+      case 'networking': return 'from-purple-500/20 via-purple-500/8 to-transparent';
+      case 'career-fair': return 'from-orange-500/20 via-orange-500/8 to-transparent';
+      case 'hackathon': return 'from-rose-500/20 via-rose-500/8 to-transparent';
+      case 'webinar': return 'from-indigo-500/20 via-indigo-500/8 to-transparent';
+      default: return 'from-slate-500/20 via-slate-500/8 to-transparent';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -276,88 +288,61 @@ function EventsContent() {
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
           <div className="mb-10">
-            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
-              <div className="relative z-10 flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
-                    <span className="text-blue-700 font-semibold text-sm">Campus Events</span>
+            <div className="relative overflow-hidden rounded-[32px] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18)_0,_rgba(16,185,129,0.12)_28%,_rgba(245,158,11,0.08)_48%,_rgba(255,255,255,0.98)_100%)] p-8 lg:p-10 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+              <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-blue-300/25 blur-3xl" />
+              <div className="absolute -bottom-12 left-1/4 h-44 w-44 rounded-full bg-emerald-300/20 blur-3xl" />
+              <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-blue-700 shadow-sm backdrop-blur">
+                    <GraduationCap className="w-4 h-4 text-blue-600" />
+                    Campus Events
                   </div>
-                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-                    Events
+                  <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                    Discover events that fit your next step.
                   </h1>
-                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
-                    Join workshops, seminars, and networking opportunities to grow your skills.
+                  <p className="mt-4 max-w-2xl text-[15px] sm:text-base lg:text-lg font-medium leading-relaxed text-slate-600">
+                    Browse workshops, seminars, career fairs, and networking sessions in a clean, focused layout built around the theme colors already used in the app.
                   </p>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Total Events</p>
-                  <p className="text-3xl font-black text-slate-900 mt-1">{events.length}</p>
-                </div>
-                <div className="p-4 bg-blue-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Calendar className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Registered</p>
-                  <p className="text-3xl font-black text-slate-900 mt-1">{events.filter(e => e.isRegistered).length}</p>
-                </div>
-                <div className="p-4 bg-emerald-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Users className="w-6 h-6 text-emerald-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Saved</p>
-                  <p className="text-3xl font-black text-slate-900 mt-1">{events.filter(e => e.isSaved).length}</p>
-                </div>
-                <div className="p-4 bg-amber-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <BookmarkPlus className="w-6 h-6 text-amber-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 hover:shadow-xl transition-all duration-300 group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">Virtual</p>
-                  <p className="text-3xl font-black text-slate-900 mt-1">{events.filter(e => e.isVirtual).length}</p>
-                </div>
-                <div className="p-4 bg-indigo-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <ExternalLink className="w-6 h-6 text-indigo-600" />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[420px]">
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Events</p>
+                    <p className="mt-2 text-2xl font-black text-slate-900">{events.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Registered</p>
+                    <p className="mt-2 text-2xl font-black text-emerald-600">{events.filter(e => e.isRegistered).length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Saved</p>
+                    <p className="mt-2 text-2xl font-black text-amber-600">{events.filter(e => e.isSaved).length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Virtual</p>
+                    <p className="mt-2 text-2xl font-black text-indigo-600">{events.filter(e => e.isVirtual).length}</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Upcoming Events Highlight */}
-          <div className="bg-gradient-to-br from-slate-50/50 via-white to-white rounded-[40px] p-10 border border-slate-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.02)] mb-10">
-            <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="mb-10 rounded-[32px] border border-slate-100/80 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] lg:p-8">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm">
                 🚀
-              </div>
-              Upcoming Events
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                </div>
+                Upcoming Events
+              </h2>
+              <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 sm:inline-flex">
+                Top picks this week
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               {upcomingEvents.map(event => (
-                <div key={event.id} className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100 hover:bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-1 group cursor-pointer">
-                  <div className="flex items-center justify-between mb-4">
+                <div key={event.id} className="group cursor-pointer rounded-[28px] border border-slate-100 bg-gradient-to-br from-slate-50 via-white to-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                  <div className="mb-4 flex items-center justify-between gap-3">
                     <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getTypeColor(event.eventType ?? '')} shadow-sm`}>
                       {(event.eventType ?? '').replace('-', ' ')}
                     </span>
@@ -365,13 +350,13 @@ function EventsContent() {
                       {getDaysUntil(event.date ?? '')}
                     </span>
                   </div>
-                  <h3 className="font-extrabold text-slate-900 mb-3 text-[17px] leading-tight group-hover:text-emerald-600 transition-colors">{event.title}</h3>
+                  <h3 className="mb-3 text-[17px] font-extrabold leading-tight text-slate-950 transition-colors group-hover:text-emerald-700">{event.title}</h3>
                   <div className="space-y-2">
-                    <div className="flex items-center text-xs font-bold text-slate-500">
+                    <div className="flex items-center text-xs font-semibold text-slate-700">
                       <Calendar className="w-3.5 h-3.5 mr-2 text-emerald-500" />
                       {formatDate(event.date ?? '')} <span className="mx-2 text-slate-300">•</span> {event.time}
                     </div>
-                    <div className="flex items-center text-xs font-bold text-slate-500">
+                    <div className="flex items-center text-xs font-semibold text-slate-700">
                       <MapPin className="w-3.5 h-3.5 mr-2 text-blue-500" />
                       {event.location}
                     </div>
@@ -382,8 +367,8 @@ function EventsContent() {
           </div>
 
           {/* Search and Filters */}
-          <div className="bg-gradient-to-br from-slate-50/50 via-white to-white rounded-[40px] p-10 border border-slate-100/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] mb-10">
-            <div className="flex flex-col lg:flex-row gap-6 mb-8">
+          <div className="mb-10 rounded-[32px] border border-slate-100 bg-white/90 p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] backdrop-blur-sm lg:p-8">
+            <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center">
               <div className="flex-1 relative group">
                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
                 <input
@@ -391,14 +376,14 @@ function EventsContent() {
                   placeholder="Search events by title, description, or tags..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-3xl bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-medium text-slate-900 placeholder-slate-400 transition-all duration-200"
+                  className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-[20px] bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-medium text-slate-900 placeholder-slate-400 transition-all duration-200 shadow-sm"
                 />
               </div>
               <div className="flex gap-4">
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
-                  className="px-6 py-4 border border-slate-200 rounded-3xl bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[180px] appearance-none cursor-pointer transition-all"
+                  className="px-6 py-4 border border-slate-200 rounded-[20px] bg-slate-50/60 focus:bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[180px] appearance-none cursor-pointer transition-all shadow-sm"
                 >
                   {eventTypes.map(type => (
                     <option key={type.value} value={type.value}>
@@ -409,7 +394,7 @@ function EventsContent() {
                 <select
                   value={selectedTime}
                   onChange={(e) => setSelectedTime(e.target.value)}
-                  className="px-6 py-4 border border-slate-200 rounded-3xl bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[150px] appearance-none cursor-pointer transition-all"
+                  className="px-6 py-4 border border-slate-200 rounded-[20px] bg-slate-50/60 focus:bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[150px] appearance-none cursor-pointer transition-all shadow-sm"
                 >
                   {timeFilters.map(filter => (
                     <option key={filter.value} value={filter.value}>
@@ -451,10 +436,11 @@ function EventsContent() {
           </div>
 
           {/* Events Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             {filteredEvents.map(event => (
-              <div key={event.id} className="bg-white rounded-[40px] shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 group relative">
-                <div className="relative overflow-hidden aspect-video bg-slate-100">
+              <div key={event.id} className="group relative overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(15,23,42,0.12)]">
+                <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${getTypeAccent(event.eventType ?? '')}`} />
+                <div className="relative aspect-video overflow-hidden bg-slate-100">
                   <Image
                     src={event.image_url || event.image || "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=2070&auto=format&fit=crop"}
                     alt={event.title}
@@ -462,12 +448,16 @@ function EventsContent() {
                     className="object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
                     unoptimized={true} // Using unoptimized as backend domains vary
                   />
-                  {/* Subtle Shimmer Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/25 to-transparent opacity-85 transition-opacity group-hover:opacity-90" />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
-                  
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity"></div>
-                  
-                  <div className="absolute top-5 right-5 flex gap-2">
+
+                  <div className="absolute left-5 top-5 flex gap-2">
+                    <span className={`rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-sm backdrop-blur ${getTypeColor(event.eventType ?? '')}`}>
+                      {(event.eventType ?? '').replace('-', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="absolute right-5 top-5 flex gap-2">
                     {event.isVirtual && (
                       <div className="px-4 py-2 bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-xl border border-white/20">
                         🌐 Virtual
@@ -476,33 +466,33 @@ function EventsContent() {
                   </div>
                 </div>
 
-                <div className="p-8 lg:p-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getTypeColor(event.eventType ?? '')} shadow-sm border border-current opacity-80`}>
-                      {(event.eventType ?? '').replace('-', ' ')}
-                    </span>
+                <div className="p-7 lg:p-8">
+                  <div className="mb-5 flex items-center justify-between gap-3">
                     <span className="text-[11px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-full border border-amber-100/50">
                       {getDaysUntil(event.date ?? '')}
                     </span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      {event.organizer || 'Campus Team'}
+                    </span>
                   </div>
 
-                  <h3 className="text-2xl font-black text-slate-900 mb-4 leading-tight group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{event.title}</h3>
-                  <p className="text-slate-500 font-medium text-[15px] mb-8 line-clamp-2 leading-relaxed">{event.description}</p>
+                  <h3 className="mb-4 text-2xl font-black tracking-tight text-slate-950 transition-colors group-hover:text-emerald-700 leading-tight">{event.title}</h3>
+                  <p className="mb-8 text-[15px] font-medium leading-relaxed text-slate-700 line-clamp-2">{event.description}</p>
 
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                  <div className="mb-8 grid grid-cols-2 gap-3">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
                       <Calendar className="w-4 h-4 mr-3 text-emerald-500" />
                       <span>{formatDate(event.date ?? '')}</span>
                     </div>
-                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
                       <Clock className="w-4 h-4 mr-3 text-blue-500" />
                       <span>{event.time}</span>
                     </div>
-                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
                       <MapPin className="w-4 h-4 mr-3 text-purple-500" />
                       <span className="truncate">{event.location}</span>
                     </div>
-                    <div className="flex items-center text-xs font-bold text-slate-500 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
                       <Users className="w-4 h-4 mr-3 text-indigo-500" />
                       <span>{event.currentAttendees}{event.maxAttendees ? `/${event.maxAttendees}` : ''} joined</span>
                     </div>
@@ -510,18 +500,18 @@ function EventsContent() {
 
                   <div className="flex flex-wrap gap-2 mb-8">
                     {(event.tags ?? []).slice(0, 3).map(tag => (
-                      <span key={tag} className="px-4 py-1.5 bg-slate-50 text-slate-400 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-100 hover:bg-white hover:text-emerald-500 transition-all cursor-default">
+                      <span key={tag} className="px-4 py-1.5 bg-slate-50 text-slate-600 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-100 hover:bg-white hover:text-emerald-600 transition-all cursor-default">
                         #{tag}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between pt-8 border-t border-slate-50">
+                  <div className="flex flex-col gap-4 pt-7 border-t border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col">
                       <span className="text-2xl font-black text-emerald-600 tracking-tight">
                         {event.price === 0 ? 'FREE' : `$${event.price}`}
                       </span>
-                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">by {event.organizer}</span>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">by {event.organizer}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
@@ -576,11 +566,11 @@ function EventsContent() {
       {/* Loading Modal */}
       {isRegistering && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-md w-full text-center relative animate-in zoom-in-95 duration-300 border border-slate-100">
-            <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-[32px] bg-emerald-50 mb-8 items-center justify-center">
+          <div className="relative w-full max-w-md animate-in zoom-in-95 duration-300 rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-2xl">
+            <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-emerald-50">
               <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight uppercase">Processing...</h3>
+            <h3 className="mb-3 text-2xl font-black tracking-tight text-slate-900 uppercase">Processing...</h3>
             <p className="text-slate-500 font-medium px-4">
               Please wait while we secure your spot for this event.
             </p>
@@ -591,14 +581,14 @@ function EventsContent() {
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-lg w-full text-center relative animate-in zoom-in-95 duration-300 border border-slate-100">
-            <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-[32px] bg-emerald-500 shadow-xl shadow-emerald-500/20 mb-8 animate-bounce">
+          <div className="relative w-full max-w-lg animate-in zoom-in-95 duration-300 rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-2xl">
+            <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-emerald-500 shadow-xl shadow-emerald-500/20 animate-bounce">
               <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">Registration Confirmed!</h2>
-            <p className="text-slate-600 mb-10 text-lg font-medium px-4 leading-relaxed">
+            <h2 className="mb-4 text-3xl font-black tracking-tight text-slate-900 uppercase">Registration Confirmed!</h2>
+            <p className="mb-10 px-4 text-lg font-medium leading-relaxed text-slate-600">
               Awesome! You've successfully registered for <span className="font-extrabold text-emerald-600">"{successEventTitle}"</span>.
               Check your inbox for the confirmation details.
             </p>

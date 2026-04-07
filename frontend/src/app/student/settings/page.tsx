@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import StudentNavigation from '../StudentNavigation';
+import StudentNavigation from '../StudentNavigation/StudentNavigation';
 import AvatarSelectionModal from '../../../components/AvatarSelectionModal';
+import Link from 'next/link';
 import {
   User,
   Bell,
@@ -321,10 +322,13 @@ export default function Settings() {
 
                 <div className="mt-8">
                   <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Support</h2>
-                  <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">
+                  <Link
+                    href="/api/auth/logout"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-sm sm:text-[15px] font-medium"
+                  >
                     <LogOut className="w-5 h-5" />
-                    <span className="font-medium">Sign Out</span>
-                  </button>
+                    <span>Sign Out</span>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -410,7 +414,7 @@ export default function Settings() {
                             type="text"
                             value={profile.location}
                             onChange={(e) => handleProfileChange('location', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="e.g. Mumbai, India"
                           />
                         </div>
@@ -424,7 +428,7 @@ export default function Settings() {
                             type="text"
                             value={profile.rollNumber}
                             onChange={(e) => handleProfileChange('rollNumber', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="e.g. VU4F2223050"
                           />
                         </div>
@@ -438,7 +442,7 @@ export default function Settings() {
                             type="text"
                             value={profile.department}
                             onChange={(e) => handleProfileChange('department', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="e.g. Computer Science Engineering"
                           />
                         </div>
@@ -450,7 +454,7 @@ export default function Settings() {
                           type="text"
                           value={profile.yearOfStudy}
                           onChange={(e) => handleProfileChange('yearOfStudy', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
                           placeholder="e.g. Third Year (TY)"
                         />
                       </div>
@@ -461,7 +465,7 @@ export default function Settings() {
                           type="text"
                           value={profile.semester}
                           onChange={(e) => handleProfileChange('semester', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
                           placeholder="e.g. Semester VI"
                         />
                       </div>
@@ -477,7 +481,7 @@ export default function Settings() {
                             min="0"
                             max="10"
                             step="0.01"
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className={profileFieldWithIconClass}
                             placeholder="e.g. 8.5"
                           />
                         </div>
@@ -534,7 +538,7 @@ export default function Settings() {
                           type="text"
                           value={profile.skills}
                           onChange={(e) => handleProfileChange('skills', e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className={profileFieldClass}
                           placeholder="e.g. Python, Java, React, Machine Learning"
                         />
                         <p className="text-xs text-slate-500 mt-2">Separate skills with commas</p>
