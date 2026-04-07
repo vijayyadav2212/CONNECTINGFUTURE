@@ -125,7 +125,7 @@ async function createMentorshipSchema(dbQuery) {
   await dbQuery(`
     CREATE TABLE IF NOT EXISTS mentor_ratings (
       id SERIAL PRIMARY KEY,
-      session_id INT REFERENCES mentorship_sessions(id) ON DELETE SET NULL,
+      session_id INT NOT NULL REFERENCES mentorship_sessions(id) ON DELETE CASCADE,
       student_email VARCHAR(255) NOT NULL,
       mentor_email VARCHAR(255) NOT NULL,
       rating INT CHECK (rating BETWEEN 1 AND 5),

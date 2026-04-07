@@ -90,6 +90,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
     { id: "academic", label: "Academic Progress", icon: <BookOpen className="w-5 h-5" />, route: "/student/academic-progress" },
     { id: "alumni", label: "Alumni Directory", icon: <Users className="w-5 h-5" />, route: "/student/alumni-directory" },
     { id: "mentorship", label: "Find Mentors", icon: <User className="w-5 h-5" />, route: "/student/mentorship-requests" },
+    { id: "resume-review", label: "Resume Reviews", icon: <FileText className="w-5 h-5" />, route: "/student/resume-review" },
     { id: "career", label: "Career Resources", icon: <Target className="w-5 h-5" />, route: "/student/career-resources" },
     { id: "jobs", label: "Job Opportunities", icon: <Briefcase className="w-5 h-5" />, route: "/student/job-opportunities" },
     { id: "events", label: "Events", icon: <Calendar className="w-5 h-5" />, route: "/student/events" },

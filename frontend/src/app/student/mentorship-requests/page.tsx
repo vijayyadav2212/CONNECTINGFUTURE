@@ -919,7 +919,18 @@ export default function MentorshipRequests() {
           <div>
             {sessions.length > 0 ? (
               <div className="space-y-4">
-                {sessions.map((s) => {
+                {sessions
+                  .slice()
+                  .sort((a, b) => {
+                    // Prioritize scheduled sessions first (both have scheduled_at) - newest first
+                    if (a.scheduled_at && b.scheduled_at) return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
+                    // Sessions with scheduled_at come before sessions without
+                    if (a.scheduled_at && !b.scheduled_at) return -1;
+                    if (!a.scheduled_at && b.scheduled_at) return 1;
+                    // For unscheduled sessions, sort by id descending (newest first)
+                    return b.id - a.id;
+                  })
+                  .map((s) => {
                   const prof = profiles[s.mentor_email];
                   const name = prof?.name || s.mentor_email;
                   const displayStatus = getSessionDisplayStatus(s);

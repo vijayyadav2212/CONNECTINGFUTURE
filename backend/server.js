@@ -28,6 +28,7 @@ const { createEventsSchema } = require('./database/events');
 const { createMemoriesSchema } = require('./database/memories');
 const { createExternalJobsSchema } = require('./database/externalJobs');
 const { createSiteSettingsSchema } = require('./database/siteSettings');
+const { createResumeReviewsSchema } = require('./database/resumeReviews');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 dotenv.config({ path: __dirname + '/.env' });
@@ -568,6 +569,7 @@ async function initializeTables() {
     await createRoadmapsSchema(dbQuery);
     await createConnectionsSchema(dbQuery);
     await createMentorshipSchema(dbQuery);
+    await createResumeReviewsSchema(dbQuery);
     await createAcademicProgressSchema(dbQuery);
     await createMemoriesSchema(dbQuery);
     // Ensure jobs and applications schemas exist (these features are used by the API routes)
@@ -2304,6 +2306,262 @@ app.post('/api/academic/courses', async (req, res) => {
   }
 });
 
+// ===== ALUMNI EARNINGS ENDPOINTS =====
+
+// Get earnings statistics for an alumni
+app.get('/api/alumni/earnings/stats', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  try {
+    const emailLower = email.toLowerCase();
+
+    // Get mentorship session earnings - only count as completed if session has actually finished
+    const sessionsResult = await dbQuery(
+      `SELECT 
+        COALESCE(SUM(alumni_earnings), 0) as total_sessions,
+        COALESCE(SUM(CASE WHEN payout_status = 'pending' THEN alumni_earnings ELSE 0 END), 0) as pending_sessions,
+        COUNT(CASE WHEN status = 'completed' OR (scheduled_at IS NOT NULL AND scheduled_at + (duration_minutes || ' minutes')::interval <= NOW()) THEN 1 END) as completed_count
+      FROM mentorship_sessions 
+      WHERE LOWER(mentor_email) = ? AND status IN ('paid', 'scheduled', 'completed')`,
+      [emailLower]
+    );
+
+    // Get subscription earnings
+    const subsResult = await dbQuery(
+      `SELECT 
+        COALESCE(SUM(alumni_earnings), 0) as total_subs,
+        COALESCE(SUM(CASE WHEN payout_status = 'pending' THEN alumni_earnings ELSE 0 END), 0) as pending_subs
+      FROM mentorship_subscriptions 
+      WHERE LOWER(mentor_email) = ? AND status IN ('active', 'expired')`,
+      [emailLower]
+    );
+
+    const sessions = sessionsResult.rows?.[0] || {};
+    const subs = subsResult.rows?.[0] || {};
+
+    const totalEarned = (parseFloat(sessions.total_sessions || 0) + parseFloat(subs.total_subs || 0));
+    const pendingAmount = (parseFloat(sessions.pending_sessions || 0) + parseFloat(subs.pending_subs || 0));
+    const thisMonth = new Date();
+    const monthStart = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1);
+
+    const thisMonthResult = await dbQuery(
+      `SELECT COALESCE(SUM(alumni_earnings), 0) as total
+       FROM (
+         SELECT alumni_earnings, created_at FROM mentorship_sessions WHERE LOWER(mentor_email) = ? AND created_at >= ? AND status IN ('paid', 'scheduled', 'completed')
+         UNION ALL
+         SELECT alumni_earnings, start_at FROM mentorship_subscriptions WHERE LOWER(mentor_email) = ? AND start_at >= ? AND status IN ('active', 'expired')
+       ) combined`,
+      [emailLower, monthStart, emailLower, monthStart]
+    );
+
+    const thisMonthEarned = parseFloat(thisMonthResult.rows?.[0]?.total || 0);
+
+    const stats = {
+      total_earned: totalEarned,
+      pending_amount: pendingAmount,
+      completed_reviews: 0, // Resume reviews not implemented yet
+      completed_sessions: parseInt(sessions.completed_count || 0),
+      this_month: thisMonthEarned
+    };
+
+    return res.json({ stats });
+  } catch (e) {
+    console.error('Error in earnings stats:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Get earnings records for an alumni
+app.get('/api/alumni/earnings', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  try {
+    const emailLower = email.toLowerCase();
+
+    // Get mentorship session earnings with payment breakdown
+    // Include all statuses since 'paid' sessions should show earnings immediately
+    const sessionsResult = await dbQuery(
+      `SELECT 
+        CONCAT('session_', id) as id,
+        id as record_id,
+        'mentorship' as type,
+        'session' as subtype,
+        COALESCE(alumni_earnings, 0) as alumni_amount,
+        COALESCE(amount, 0) as total_amount,
+        CASE WHEN COALESCE(payout_status, 'pending') = 'paid' THEN 'completed' ELSE 'pending' END as status,
+        COALESCE(payout_status, 'pending') as payment_status,
+        created_at as started_at,
+        created_at as date,
+        CONCAT('Mentorship Session - ', COALESCE(duration_minutes, 60), ' minutes') as description,
+        student_email as student_email,
+        mentor_email,
+        CONCAT(COALESCE(duration_minutes, 60), ' min') as duration,
+        COALESCE(duration_minutes, 60) as duration_value,
+        meeting_link,
+        pair_key
+      FROM mentorship_sessions 
+      WHERE LOWER(mentor_email) = ? AND status IN ('paid', 'scheduled', 'completed') AND alumni_earnings > 0
+      ORDER BY created_at DESC
+      LIMIT 100`,
+      [emailLower]
+    );
+
+    // Get subscription earnings with payment breakdown
+    const subsResult = await dbQuery(
+      `SELECT 
+        CONCAT('sub_', id) as id,
+        id as record_id,
+        'mentorship' as type,
+        'subscription' as subtype,
+        COALESCE(alumni_earnings, 0) as alumni_amount,
+        COALESCE(amount, 0) as total_amount,
+        CASE WHEN COALESCE(payout_status, 'pending') = 'paid' THEN 'completed' ELSE 'pending' END as status,
+        COALESCE(payout_status, 'pending') as payment_status,
+        start_at as started_at,
+        start_at as date,
+        CONCAT('Mentorship Subscription - ', COALESCE(duration_days, 30), ' days') as description,
+        student_email as student_email,
+        mentor_email,
+        CONCAT(COALESCE(duration_days, 30), ' days') as duration,
+        COALESCE(duration_days, 30) as duration_value,
+        start_at,
+        end_at,
+        pair_key
+      FROM mentorship_subscriptions 
+      WHERE LOWER(mentor_email) = ? AND status IN ('active', 'expired') AND alumni_earnings > 0
+      ORDER BY start_at DESC
+      LIMIT 100`,
+      [emailLower]
+    );
+
+    // Combine and sort by date
+    const allEarnings = [
+      ...(sessionsResult.rows || []),
+      ...(subsResult.rows || [])
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const earnings = allEarnings.map(e => {
+      const alumniAmount = parseFloat(e.alumni_amount || 0);
+      const totalAmount = parseFloat(e.total_amount || 0);
+      const baseAmount = totalAmount > 0 ? totalAmount / 1.06 : 0;
+      const commission = totalAmount - baseAmount;
+      
+      return {
+        id: e.id,
+        record_id: e.record_id,
+        type: e.type,
+        subtype: e.subtype,
+        alumni_amount: alumniAmount,
+        total_amount: totalAmount,
+        base_amount: parseFloat(baseAmount.toFixed(2)),
+        commission: parseFloat(commission.toFixed(2)),
+        status: e.status,
+        payment_status: e.payment_status,
+        date: e.date,
+        started_at: e.started_at,
+        end_at: e.end_at || null,
+        description: e.description,
+        student_name: e.student_email?.split('@')[0] || 'Student',
+        student_email: e.student_email,
+        mentor_email: e.mentor_email,
+        duration: e.duration,
+        duration_value: e.duration_value,
+        meeting_link: e.meeting_link || null,
+        pair_key: e.pair_key
+      };
+    });
+
+    return res.json({ earnings });
+  } catch (e) {
+    console.error('Error in earnings fetch:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Get detailed earnings record (session or subscription)
+app.get('/api/alumni/earnings/:recordId/:subtype', async (req, res) => {
+  const { email } = req.query;
+  const { recordId, subtype } = req.params;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  
+  try {
+    const emailLower = email.toLowerCase();
+    let result;
+
+    if (subtype === 'session') {
+      result = await dbQuery(
+        `SELECT 
+          id, pair_key, student_email, mentor_email, status, amount, alumni_earnings,
+          payout_status, created_at, duration_minutes, meeting_link, 
+          ROUND(amount / 1.06, 2) as base_amount,
+          ROUND(amount - (amount / 1.06), 2) as commission
+        FROM mentorship_sessions
+        WHERE id = ? AND LOWER(mentor_email) = ?`,
+        [recordId, emailLower]
+      );
+    } else if (subtype === 'subscription') {
+      result = await dbQuery(
+        `SELECT 
+          id, pair_key, student_email, mentor_email, status, amount, alumni_earnings,
+          payout_status, start_at, end_at, duration_days, 
+          ROUND(amount / 1.06, 2) as base_amount,
+          ROUND(amount - (amount / 1.06), 2) as commission
+        FROM mentorship_subscriptions
+        WHERE id = ? AND LOWER(mentor_email) = ?`,
+        [recordId, emailLower]
+      );
+    } else {
+      return res.status(400).json({ error: 'Invalid subtype. Must be "session" or "subscription"' });
+    }
+
+    if (!result.rows || result.rows.length === 0) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+
+    const record = result.rows[0];
+    return res.json({
+      detail: {
+        id: record.id,
+        subtype: subtype,
+        pair_key: record.pair_key,
+        student_email: record.student_email,
+        mentor_email: record.mentor_email,
+        status: record.status,
+        payout_status: record.payout_status,
+        total_amount: parseFloat(record.amount),
+        alumni_earnings: parseFloat(record.alumni_earnings),
+        base_amount: parseFloat(record.base_amount),
+        commission: parseFloat(record.commission),
+        duration: subtype === 'session' ? `${record.duration_minutes} minutes` : `${record.duration_days} days`,
+        meeting_link: record.meeting_link || null,
+        started_at: subtype === 'session' ? record.created_at : record.start_at,
+        ended_at: subtype === 'subscription' ? record.end_at : null,
+        student_name: record.student_email?.split('@')[0] || 'Student'
+      }
+    });
+  } catch (e) {
+    console.error('Error fetching earning detail:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mark earnings as withdrawn/processed
+app.post('/api/alumni/earnings/withdraw', async (req, res) => {
+  const { email, amount } = req.body;
+  if (!email || !amount) return res.status(400).json({ error: 'Email and amount required' });
+  try {
+    // Mock withdrawal - in production, implement actual payment processing
+    return res.json({
+      success: true,
+      message: 'Withdrawal request submitted successfully',
+      amount,
+      status: 'pending_processing'
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check available at: http://localhost:${PORT}/api/health`);
@@ -3017,12 +3275,30 @@ app.get('/api/mentors/profile', async (req, res) => {
     const { rows: userRows } = await dbQuery('SELECT skills FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
     const registeredSkills = userRows && userRows[0] ? (userRows[0].skills || '') : '';
 
+    // Calculate rating only for completed sessions
+    const { rows: ratingRows } = await dbQuery(
+      `SELECT 
+        COALESCE(AVG(mr.rating), 0) as rating_avg,
+        COUNT(*) as rating_count
+      FROM mentor_ratings mr
+      INNER JOIN mentorship_sessions ms ON mr.session_id = ms.id
+      WHERE LOWER(mr.mentor_email) = LOWER(?) 
+        AND (ms.status = 'completed' OR (ms.scheduled_at IS NOT NULL AND ms.scheduled_at + (ms.duration_minutes || ' minutes')::interval <= NOW()))`,
+      [email]
+    );
+    
+    const calculatedRating = ratingRows?.[0] || {};
+    const ratingAvg = parseFloat(calculatedRating.rating_avg || 0);
+    const ratingCount = parseInt(calculatedRating.rating_count || 0, 10);
+
     if (rows && rows.length) {
       const mentor = rows[0];
       return res.json({
         mentor: {
           ...mentor,
           skills: (mentor.skills && String(mentor.skills).trim()) ? mentor.skills : registeredSkills,
+          rating_avg: ratingAvg,
+          rating_count: ratingCount
         }
       });
     }
@@ -3039,8 +3315,8 @@ app.get('/api/mentors/profile', async (req, res) => {
         subscription_price: 0,
         subscription_duration_days: 30,
         payment_upi_id: '',
-        rating_avg: 0,
-        rating_count: 0,
+        rating_avg: ratingAvg,
+        rating_count: ratingCount,
       }
     });
   } catch (e) {
@@ -3692,7 +3968,8 @@ app.get('/api/mentorship/sessions', async (req, res) => {
     if (mentor_email) { sql += ' AND ms.mentor_email = ?'; params.push(mentor_email); }
     if (student_email) { sql += ' AND ms.student_email = ?'; params.push(student_email); }
     if (status) { sql += ' AND ms.status = ?'; params.push(status); }
-    sql += ' ORDER BY COALESCE(ms.scheduled_at, ms.created_at) ASC LIMIT 200';
+    // Order: scheduled sessions first (by scheduled_at ascending), then others by created_at descending
+    sql += ' ORDER BY CASE WHEN ms.status = \'scheduled\' THEN 0 ELSE 1 END ASC, CASE WHEN ms.status = \'scheduled\' THEN ms.scheduled_at ELSE ms.created_at END ASC LIMIT 200';
     const { rows } = await dbQuery(sql, params);
     return res.json({ sessions: rows });
   } catch (e) {
@@ -3703,20 +3980,46 @@ app.get('/api/mentorship/sessions', async (req, res) => {
 // Submit rating for a mentor after session
 app.post('/api/mentorship/ratings', async (req, res) => {
   const { session_id, student_email, mentor_email, rating, feedback } = req.body || {};
+  
+  // Validate all required fields
   if (!session_id || !student_email || !mentor_email || !rating) {
     return res.status(400).json({ error: 'session_id, student_email, mentor_email and rating required' });
   }
+  
   try {
+    // Verify session exists and belongs to the correct mentor and student
+    const { rows: sessions } = await dbQuery(
+      'SELECT * FROM mentorship_sessions WHERE id = ? AND student_email = ? AND mentor_email = ?',
+      [session_id, student_email, mentor_email]
+    );
+    
+    if (!sessions || !sessions.length) {
+      return res.status(404).json({ error: 'Session not found or does not match student/mentor pair' });
+    }
+    
+    const session = sessions[0];
+    
+    // Check if session is completed or past time
+    if (session.status !== 'completed' && session.scheduled_at) {
+      const start = new Date(session.scheduled_at).getTime();
+      const durationMs = (session.duration_minutes || 60) * 60 * 1000;
+      if (Date.now() < start + durationMs) {
+        return res.status(400).json({ error: 'Session must be completed before rating' });
+      }
+    }
+    
     const r = Math.max(1, Math.min(5, parseInt(rating, 10)));
     const { rows } = await dbQuery(
       'INSERT INTO mentor_ratings (session_id, student_email, mentor_email, rating, feedback) VALUES (?, ?, ?, ?, ?) RETURNING *',
       [session_id, student_email, mentor_email, r, feedback || null]
     );
+    
     // Update aggregate rating on mentors
     const { rows: agg } = await dbQuery('SELECT AVG(rating) AS avg, COUNT(*) AS cnt FROM mentor_ratings WHERE mentor_email = ?', [mentor_email]);
     const avg = agg && agg[0] ? Number(agg[0].avg || 0).toFixed(2) : 0;
     const cnt = agg && agg[0] ? parseInt(agg[0].cnt || 0, 10) : 0;
     await dbQuery('UPDATE mentors SET rating_avg = ?, rating_count = ?, updated_at = NOW() WHERE mentor_email = ?', [avg, cnt, mentor_email]);
+    
     return res.status(201).json({ rating: rows[0], ratingSummary: { rating_avg: Number(avg), rating_count: cnt } });
   } catch (e) {
     if (e.message && e.message.includes('UNIQUE constraint failed')) {
@@ -4021,6 +4324,286 @@ app.post('/api/memories/:id/comments', async (req, res) => {
     try { broadcastSse('memory-comment', { id: Number(id), comment: created }); } catch { }
     return res.status(201).json(created);
   } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+// === RESUME REVIEWS ENDPOINTS ===
+
+// GET /api/resume-reviews/mentors - Get approved alumni mentors
+app.get('/api/resume-reviews/mentors', async (req, res) => {
+  try {
+    const { student_email } = req.query || {};
+    
+    const { rows: allMentors } = await dbQuery(`
+      SELECT id, email, name, picture, skills, graduation_year, major, 
+             job_title, company, location, bio, is_mentor
+      FROM users 
+      WHERE user_type = 'alumni' 
+        AND approval_status = 'approved' 
+        AND is_mentor = true
+      ORDER BY name ASC
+    `);
+    
+    let mentors = (allMentors || []).map(m => ({
+      email: m.email,
+      name: m.name || m.email,
+      picture: m.picture,
+      skills: m.skills,
+      graduation_year: m.graduation_year,
+      major: m.major,
+      job_title: m.job_title,
+      company: m.company,
+      location: m.location,
+      bio: m.bio,
+      isConnected: false,
+      connectionStatus: 'none',
+    }));
+    
+    if (student_email) {
+      const decodedEmail = decodeURIComponent(student_email);
+      const { rows: connections } = await dbQuery(`
+        SELECT mentor_email, status FROM mentorship_requests 
+        WHERE student_email = $1
+      `, [decodedEmail]);
+      
+      const connectionMap = new Map();
+      (connections || []).forEach(c => {
+        connectionMap.set(c.mentor_email, c.status);
+      });
+      
+      mentors = mentors.map(m => ({
+        ...m,
+        isConnected: connectionMap.has(m.email) && connectionMap.get(m.email) === 'accepted',
+        connectionStatus: connectionMap.get(m.email) || 'none',
+      }));
+      
+      mentors.sort((a, b) => {
+        if (a.isConnected !== b.isConnected) {
+          return a.isConnected ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+    }
+    
+    return res.json({ mentors });
+  } catch (e) {
+    console.error('Error fetching mentors:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/resume-reviews/request - Student submits request
+app.post('/api/resume-reviews/request', async (req, res) => {
+  try {
+    const { student_email, alumni_email, resume_url, filename, student_message } = req.body;
+        
+    if (!student_email || !alumni_email || !resume_url) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Fetch student info from users table
+    const { rows: studentCheck } = await dbQuery(`
+      SELECT email, name FROM users
+      WHERE email = $1 AND user_type = 'student'
+    `, [student_email]);
+    
+    if (studentCheck.length === 0) {
+      return res.status(400).json({ error: 'Student not found or invalid user type' });
+    }
+
+    const correctStudentEmail = studentCheck[0].email;
+    const correctStudentName = studentCheck[0].name || 'Student';
+
+    // Fetch alumni info from users table
+    const { rows: alumniCheck } = await dbQuery(`
+      SELECT email, name FROM users
+      WHERE email = $1 AND user_type = 'alumni' AND approval_status = 'approved' AND is_mentor = true
+    `, [alumni_email]);
+    
+    if (alumniCheck.length === 0) {
+      return res.status(400).json({ error: 'Selected mentor not available' });
+    }
+
+    const correctAlumniEmail = alumniCheck[0].email;
+    const correctAlumniName = alumniCheck[0].name || 'Alumni';
+    const pair_key = `${correctStudentEmail}|${correctAlumniEmail}|resume`;
+    
+    const result = await dbQuery(`
+      INSERT INTO resume_reviews (
+        pair_key, student_email, student_name, alumni_email, alumni_name,
+        resume_url, filename, student_message, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [pair_key, correctStudentEmail, correctStudentName, correctAlumniEmail, correctAlumniName, resume_url, filename, student_message, 'pending']);
+
+    console.log('[RESUME REQUEST CREATED] ID:', result.rows[0].id, 'Student:', result.rows[0].student_name, 'Alumni:', result.rows[0].alumni_name);
+    return res.status(201).json({ review: result.rows[0] });
+  } catch (e) {
+    console.error('[RESUME REQUEST ERROR]', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/resume-reviews/student/:email - Student views their requests
+app.get('/api/resume-reviews/student/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const decodedEmail = decodeURIComponent(email);
+    
+    const result = await dbQuery(`
+      SELECT * FROM resume_reviews
+      WHERE student_email = $1
+      ORDER BY requested_at DESC
+    `, [decodedEmail]);
+
+    return res.json({ reviews: result.rows });
+  } catch (e) {
+    console.error('Error fetching student reviews:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/resume-reviews/alumni/:email - Alumni views their requests
+app.get('/api/resume-reviews/alumni/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const decodedEmail = decodeURIComponent(email);
+    
+    console.log('[ALUMNI FETCH] Email:', decodedEmail);
+    
+    const result = await dbQuery(`
+      SELECT 
+        id, pair_key, student_email, student_name, alumni_email, alumni_name,
+        resume_url, filename, status, student_message, alumni_feedback,
+        requested_at, accepted_at, completed_at, rejected_at, created_at, updated_at
+      FROM resume_reviews
+      WHERE LOWER(alumni_email) = LOWER($1)
+      ORDER BY 
+        CASE WHEN status = 'pending' THEN 0 
+             WHEN status = 'accepted' THEN 1 
+             WHEN status = 'completed' THEN 2
+             ELSE 3 END,
+        requested_at DESC
+    `, [decodedEmail]);
+
+    
+    // Transform data to ensure clean response
+    const transformedReviews = result.rows.map(row => ({
+      ...row,
+      student_name: row.student_name || null,
+      alumini_feedback: row.alumni_feedback || null
+    }));
+    
+    if (transformedReviews.length > 0) {    }
+    
+    return res.json({ reviews: transformedReviews });
+  } catch (e) {
+    console.error('Error fetching alumni reviews:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/resume-reviews/:id/accept - Alumni accepts request
+app.post('/api/resume-reviews/:id/accept', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await dbQuery(`
+      UPDATE resume_reviews
+      SET status = 'accepted', accepted_at = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    console.log('[RESUME ACCEPTED] ID:', id);
+    return res.json({ review: result.rows[0] });
+  } catch (e) {
+    console.error('Error accepting request:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/resume-reviews/:id/reject - Alumni rejects request
+app.post('/api/resume-reviews/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await dbQuery(`
+      UPDATE resume_reviews
+      SET status = 'rejected', rejected_at = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    console.log('[RESUME REJECTED] ID:', id);
+    return res.json({ review: result.rows[0] });
+  } catch (e) {
+    console.error('Error rejecting request:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/resume-reviews/:id/submit-feedback - Alumni submits feedback
+app.post('/api/resume-reviews/:id/submit-feedback', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { alumni_feedback } = req.body;
+    
+    if (!alumni_feedback) {
+      return res.status(400).json({ error: 'Feedback is required' });
+    }
+
+    const result = await dbQuery(`
+      UPDATE resume_reviews
+      SET status = 'completed', alumni_feedback = $1, completed_at = NOW(), updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `, [alumni_feedback, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    console.log('[FEEDBACK SUBMITTED] ID:', id);
+    return res.json({ review: result.rows[0] });
+  } catch (e) {
+    console.error('Error submitting feedback:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// DEBUG: GET /api/resume-reviews/debug - Show all resume reviews
+app.get('/api/resume-reviews/debug', async (req, res) => {
+  try {
+    const allReviews = await dbQuery(`
+      SELECT id, pair_key, student_email, alumni_email, status, filename, requested_at 
+      FROM resume_reviews 
+      ORDER BY requested_at DESC
+    `);
+    
+    const stats = {
+      totalRecords: allReviews.rows.length,
+      byStatus: {},
+      byAlumniEmail: {},
+      records: allReviews.rows
+    };
+    
+    allReviews.rows.forEach(row => {
+      stats.byStatus[row.status] = (stats.byStatus[row.status] || 0) + 1;
+      stats.byAlumniEmail[row.alumni_email] = (stats.byAlumniEmail[row.alumni_email] || 0) + 1;
+    });
+    
+    return res.json(stats);
+  } catch (e) {
+    console.error('Debug endpoint error:', e.message);
     return res.status(500).json({ error: e.message });
   }
 });

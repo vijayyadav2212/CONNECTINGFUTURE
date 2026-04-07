@@ -139,6 +139,8 @@ export default function MentorshipPage() {
   } | null>(null);
   const [meetingDialog, setMeetingDialog] = useState<Session | null>(null);
   const [alertedStart, setAlertedStart] = useState<Record<number, boolean>>({});
+  const [paidSessionAlert, setPaidSessionAlert] = useState<Session | null>(null);
+  const [dismissedSessions, setDismissedSessions] = useState<Record<number, boolean>>({});
   const [dailySessions, setDailySessions] = useState<DailySessionPlan[]>([]);
   const [savingDailyPlan, setSavingDailyPlan] = useState(false);
   const [deactivatingPlanId, setDeactivatingPlanId] = useState<number | null>(null);
@@ -163,10 +165,20 @@ export default function MentorshipPage() {
     [sessions]);
   const sortedSessions = useMemo(() =>
     sessions.slice().sort((a, b) => {
+      // Priority 1: Paid (unscheduled) sessions first - newest first (need immediate scheduling)
+      const aIsPaid = a.status === 'paid';
+      const bIsPaid = b.status === 'paid';
+      if (aIsPaid && !bIsPaid) return -1;
+      if (!aIsPaid && bIsPaid) return 1;
+      if (aIsPaid && bIsPaid) return b.id - a.id;
+      
+      // Priority 2: Scheduled sessions - sort by scheduled_at ascending (soonest first)
       if (a.scheduled_at && b.scheduled_at) return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
-      if (a.scheduled_at) return -1;
-      if (b.scheduled_at) return 1;
-      return 0;
+      if (a.scheduled_at && !b.scheduled_at) return -1;
+      if (!a.scheduled_at && b.scheduled_at) return 1;
+      
+      // Priority 3: Others by id descending
+      return b.id - a.id;
     }), [sessions]);
 
   async function reloadMentorData() {
@@ -182,6 +194,12 @@ export default function MentorshipPage() {
       const newSessions: Session[] = sj.sessions || [];
       setRequests(newRequests);
       setSessions(newSessions);
+
+      // Check for new paid sessions awaiting scheduling
+      const paidSessions = newSessions.filter(s => s.status === 'paid' && !dismissedSessions[s.id]);
+      if (paidSessions.length > 0 && !paidSessionAlert) {
+        setPaidSessionAlert(paidSessions[0]);
+      }
 
       // Check for sessions starting now
       newSessions.forEach(s => {
@@ -813,7 +831,22 @@ export default function MentorshipPage() {
                             )}
                             {s.status === 'paid' && (
                               <button
-                                onClick={() => setScheduleForm(isActive ? null : { session_id: s.id, scheduled_at: '', duration_minutes: s.duration_minutes || 60, meeting_link: s.meeting_link || '' })}
+                                onClick={() => {
+                                  if (isActive) {
+                                    setScheduleForm(null);
+                                  } else {
+                                    // Initialize with current time + 1 hour in proper datetime-local format
+                                    const now = new Date();
+                                    now.setHours(now.getHours() + 1);
+                                    const defaultDateTime = now.toISOString().slice(0, 16);
+                                    setScheduleForm({ 
+                                      session_id: s.id, 
+                                      scheduled_at: defaultDateTime, 
+                                      duration_minutes: s.duration_minutes || 60, 
+                                      meeting_link: s.meeting_link || '' 
+                                    });
+                                  }
+                                }}
                                 className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-[#4F46E5] text-white hover:bg-indigo-600 transition-all shadow-md shadow-indigo-500/20"
                               >
                                 {isActive ? 'Cancel Setup' : 'Schedule Meets'}
@@ -826,15 +859,25 @@ export default function MentorshipPage() {
                         {s.status === 'paid' && isActive && (
                           <div className="p-6 pt-0 border-t border-slate-100/80 bg-[#f8fafc] mt-2">
                             <h4 className="text-[13px] font-bold text-slate-800 mb-4 mt-6 uppercase tracking-wider">Finalize Schedule</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                               <input
                                 type="datetime-local"
                                 value={scheduleForm?.scheduled_at || ''}
                                 onChange={e => setScheduleForm(f => f ? { ...f, scheduled_at: e.target.value } : f)}
                                 className="col-span-2 text-[14px] px-4 py-3.5 rounded-[16px] border border-slate-100 bg-white text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 shadow-inner shadow-slate-100/50 transition-all"
+                                required
                               />
                               <input
-                                placeholder="Add generic Meet link..."
+                                type="number"
+                                min="5"
+                                max="480"
+                                value={scheduleForm?.duration_minutes || 60}
+                                onChange={e => setScheduleForm(f => f ? { ...f, duration_minutes: parseInt(e.target.value) || 60 } : f)}
+                                placeholder="Duration (min)"
+                                className="text-[14px] px-4 py-3.5 rounded-[16px] border border-slate-100 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 shadow-inner shadow-slate-100/50 transition-all"
+                              />
+                              <input
+                                placeholder="Meet link (Google Meet, Zoom...)"
                                 value={scheduleForm?.meeting_link || ''}
                                 onChange={e => setScheduleForm(f => f ? { ...f, meeting_link: e.target.value } : f)}
                                 className="text-[14px] px-4 py-3.5 rounded-[16px] border border-slate-100 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400/50 shadow-inner shadow-slate-100/50 transition-all"
@@ -861,6 +904,55 @@ export default function MentorshipPage() {
           </div>
         </div>
       </div>
+
+      {/* Paid Session Scheduling Alert Modal */}
+      {paidSessionAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setPaidSessionAlert(null)}>
+          <div className="bg-white rounded-[32px] max-w-md w-full p-8 shadow-[0_20px_60px_rgb(0,0,0,0.1)] border border-white relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-50/80 rounded-full blur-[40px] -mt-10 -mr-10 pointer-events-none" />
+            <div className="relative z-10 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-sm border border-emerald-200/50">
+                <Calendar size={30} strokeWidth={2} />
+              </div>
+              <h2 className="text-[22px] font-extrabold text-slate-900 mb-2">Schedule Session</h2>
+              <p className="text-[15px] font-medium text-slate-600 mb-6 px-4">
+                <span className="font-bold text-slate-800">{profiles[paidSessionAlert.student_email]?.name || paidSessionAlert.student_email}</span> has purchased a session
+                {paidSessionAlert.amount && <span className="block mt-2 font-bold text-emerald-600">₹{paidSessionAlert.amount}</span>}
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    const now = new Date();
+                    now.setHours(now.getHours() + 1);
+                    const defaultDateTime = now.toISOString().slice(0, 16);
+                    setScheduleForm({
+                      session_id: paidSessionAlert.id,
+                      scheduled_at: defaultDateTime,
+                      duration_minutes: paidSessionAlert.duration_minutes || 60,
+                      meeting_link: paidSessionAlert.meeting_link || ''
+                    });
+                    setPaidSessionAlert(null);
+                  }}
+                  className="w-full py-3 text-[15px] font-bold rounded-[20px] bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/25"
+                >
+                  Schedule Now
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setDismissedSessions(prev => ({ ...prev, [paidSessionAlert.id]: true }));
+                    setPaidSessionAlert(null);
+                  }}
+                  className="w-full py-3 text-[15px] font-bold rounded-[20px] bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200/60"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Meeting Start Modal */}
       {meetingDialog && (

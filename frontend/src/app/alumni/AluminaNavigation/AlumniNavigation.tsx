@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Users, Building2, MessageSquare,
   Trophy, Settings, Heart, Calendar, Map, Camera,
-  Zap, Clock, XCircle, LayoutDashboard
+  Zap, Clock, XCircle, LayoutDashboard, TrendingUp, FileText
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
@@ -101,11 +101,13 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, route: "/alumni/dashboard" },
     { id: "network", label: "Network", icon: <Users size={20} />, route: "/alumni/network" },
     { id: "mentorship", label: "Mentorship", icon: <Zap size={20} />, route: "/alumni/mentorship" },
+    { id: "resume-reviews", label: "Resume Reviews", icon: <FileText size={20} />, route: "/alumni/resume-reviews" },
     { id: "jobs", label: "Jobs & Internship", icon: <Building2 size={20} />, route: "/alumni/job-posting", badge: jobNewBadge > 0 ? jobNewBadge : undefined },
     { id: "events", label: "Events", icon: <Calendar size={20} />, route: "/alumni/events" },
     { id: "roadmaps", label: "Roadmaps", icon: <Map size={20} />, route: "/alumni/roadmap" },
     { id: "memories", label: "Memories", icon: <Camera size={20} />, route: "/alumni/memories" },
     { id: "leaderboard", label: "Leaderboard", icon: <Trophy size={20} />, route: "/alumni/leaderboard" },
+    { id: "earnings", label: "Earnings", icon: <TrendingUp size={20} />, route: "/alumni/earnings" },
     { id: "messages", label: "Messages", icon: <MessageSquare size={20} />, route: "/alumni/messages", badge: messageUnread > 0 ? messageUnread : undefined },
     { id: "donations", label: "Donations", icon: <Heart size={20} />, route: "/alumni/donation" },
     { id: "settings", label: "Settings", icon: <Settings size={20} />, route: "/alumni/settings" },
