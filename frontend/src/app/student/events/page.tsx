@@ -266,6 +266,8 @@ function EventsContent() {
     });
   };
 
+  
+
   const getDaysUntil = (dateString: string) => {
     const eventDate = new Date(dateString);
     const today = new Date();
