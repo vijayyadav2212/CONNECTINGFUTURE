@@ -409,32 +409,57 @@ function AlumniResumeReviewsContent() {
 
       {/* Feedback Modal */}
       {feedbackModal.visible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-[24px] max-w-md w-full p-8 space-y-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-            <h3 className="text-2xl font-bold text-slate-900">Provide Feedback</h3>
-            <p className="text-sm text-slate-600">Share your constructive feedback to help the student improve their resume.</p>
-            <textarea
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              placeholder="What are their strengths? What could they improve? Any specific suggestions?"
-              className="w-full px-4 py-3 border border-slate-300 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-medium resize-none"
-              rows={5}
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setFeedbackModal({ visible: false })}
-                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-2.5 rounded-[12px] transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitFeedback}
-                disabled={submittingFeedback || !feedbackText.trim()}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-[12px] transition flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(34,197,94,0.3)]"
-              >
-                {submittingFeedback ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {submittingFeedback ? 'Submitting...' : 'Submit'}
-              </button>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setFeedbackModal({ visible: false })}>
+          <div className="bg-white rounded-[32px] max-w-md w-full shadow-[0_20px_60px_rgb(0,0,0,0.1)] overflow-hidden border border-white relative" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-50/80 rounded-full blur-[40px] -mt-10 -mr-10 pointer-events-none" />
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-8 py-7 border-b border-slate-200 relative z-10">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
+                <h3 className="text-2xl font-bold text-slate-900">Provide Feedback</h3>
+              </div>
+              <p className="text-sm text-slate-600 ml-5">Share constructive feedback to help the student improve their resume</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 space-y-5 relative z-10">
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-slate-900">Your Feedback</label>
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="What are their strengths? Areas to improve? Specific suggestions?"
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-[14px] bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:bg-white text-slate-700 font-medium resize-none transition placeholder-slate-400"
+                  rows={6}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setFeedbackModal({ visible: false })}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-3 rounded-[12px] transition text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitFeedback}
+                  disabled={submittingFeedback || !feedbackText.trim()}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-[12px] transition text-sm flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(34,197,94,0.3)]"
+                >
+                  {submittingFeedback ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Submit</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
