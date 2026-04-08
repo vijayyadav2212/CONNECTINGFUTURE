@@ -14,6 +14,7 @@ interface NavItem {
   badge?: string | number;
 }
 
+
 interface AdminNavigationProps {
   children: React.ReactNode;
 }
