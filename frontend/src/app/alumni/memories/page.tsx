@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, MessageCircle, Calendar, MapPin, Camera, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, MapPin, Camera, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen, UserPlus, Bell } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,9 +22,33 @@ const categoryIcons: Record<string, React.ComponentType<any>> = {
   achievement: Trophy, competition: Trophy, friendship: Users, academic: BookOpen, event: Calendar, sports: Trophy,
 };
 
+type TaggedUser = {
+  id?: number;
+  name: string;
+  email?: string;
+  picture?: string | null;
+  department?: string;
+  graduation_year?: number | null;
+  relation?: 'following' | 'connected' | 'all';
+};
+
 const normalizeMemory = (m: any) => {
   if (!m) return m;
   if (m.author && m.author.name) return m;
+  const taggedUsers = Array.isArray(m.tagged_users)
+    ? m.tagged_users.map((u: any) => ({ id: u?.id, name: u?.name, email: u?.email })).filter((u: any) => u?.name)
+    : [];
+  const taggedUserNames = Array.isArray(m.taggedUserNames)
+    ? m.taggedUserNames
+    : (Array.isArray(m.tagged_user_names)
+      ? m.tagged_user_names
+      : (typeof m.tagged_user_names === 'string' ? m.tagged_user_names.split(',').map((x: string) => x.trim()).filter(Boolean) : []));
+  const taggedUserEmails = Array.isArray(m.taggedUserEmails)
+    ? m.taggedUserEmails
+    : (Array.isArray(m.tagged_user_emails)
+      ? m.tagged_user_emails
+      : (typeof m.tagged_user_emails === 'string' ? m.tagged_user_emails.split(',').map((x: string) => x.trim()).filter(Boolean) : []));
+
   return {
     id: m.id, title: m.title, description: m.description,
     image: m.image || m.image_url || '',
@@ -32,6 +57,8 @@ const normalizeMemory = (m: any) => {
     likes: m.likes ?? 0, comments: m.comments ?? m.comments_count ?? 0,
     isLiked: m.isLiked ?? m.is_liked ?? false, views: m.views ?? 0, saved: m.saved ?? false,
     tags: Array.isArray(m.tags) ? m.tags : (typeof m.tags === 'string' && m.tags.length ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []),
+    taggedUsers: taggedUsers.length ? taggedUsers : taggedUserNames.map((name: string, idx: number) => ({ name, email: taggedUserEmails[idx] })),
+    taggedUserNames,
     author: { name: m.author_name || 'Alumni', avatar: m.author_avatar || '', batch: m.author_batch || '', department: m.author_department || '' },
   };
 };
@@ -39,7 +66,9 @@ const normalizeMemory = (m: any) => {
 const inputCls = "w-full px-4 py-3 text-[14px] rounded-[16px] border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all shadow-sm";
 
 export default function MemoriesPage() {
+  const { user } = useUser();
   const { toast } = useToast();
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [memories, setMemories] = useState<any[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -59,6 +88,248 @@ export default function MemoriesPage() {
     2: [{ id: 1, author: 'Team Member', text: 'Great teamwork everyone! 🚀', time: '1 day ago', likes: 8 }],
   });
   const [newMemory, setNewMemory] = useState({ title: '', description: '', location: '', tags: '', category: 'friendship' });
+  const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionRange, setMentionRange] = useState<{ start: number; end: number } | null>(null);
+  const [mentionSuggestions, setMentionSuggestions] = useState<TaggedUser[]>([]);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [tagProfile, setTagProfile] = useState<any>(null);
+  const [tagProfileConnectionStatus, setTagProfileConnectionStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected' | 'removed'>('none');
+  const [tagProfileIsRequester, setTagProfileIsRequester] = useState(false);
+  const [tagActionBusy, setTagActionBusy] = useState(false);
+  const [tagNotifications, setTagNotifications] = useState<any[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  const normalizeEmail = (value: string) => String(value || '').trim().toLowerCase();
+  const unreadTagNotifications = useMemo(
+    () => (tagNotifications || []).filter((n: any) => !n?.is_read).length,
+    [tagNotifications]
+  );
+
+  const loadTagNotifications = async () => {
+    if (!user?.email) return;
+    try {
+      setNotificationsLoading(true);
+      const resp = await apiClient.get(`/memories/tag-notifications?email=${encodeURIComponent(user.email)}`);
+      setTagNotifications(resp?.notifications || []);
+    } catch {
+      setTagNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const openNotificationMemory = async (memoryId: number) => {
+    const memoryFromList = (memories || []).find((m: any) => Number(m.id) === Number(memoryId));
+    if (memoryFromList) {
+      setSelectedMemory(memoryFromList);
+      return;
+    }
+    try {
+      const resp = await apiClient.get(`/memories/${memoryId}`);
+      if (resp?.memory) {
+        const normalized = normalizeMemory(resp.memory);
+        setMemories((prev) => [normalized, ...(prev || []).filter((m: any) => m.id !== normalized.id)]);
+        setSelectedMemory(normalized);
+      }
+    } catch {
+      toast({ title: 'Memory unavailable', description: 'This memory could not be opened.', variant: 'destructive' });
+    }
+  };
+
+  const markTagNotificationRead = async (notification: any) => {
+    if (!notification?.id) return;
+    try {
+      await apiClient.post(`/memories/tag-notifications/${notification.id}/read`, {});
+      setTagNotifications((prev) => (prev || []).map((n: any) => n.id === notification.id ? { ...n, is_read: true } : n));
+      if (notification.memory_id) {
+        await openNotificationMemory(Number(notification.memory_id));
+      }
+      setNotificationsOpen(false);
+    } catch {
+      toast({ title: 'Unable to update notification', description: 'Please try again.', variant: 'destructive' });
+    }
+  };
+
+  const syncTaggedUsersWithText = (descriptionText: string) => {
+    const next = (taggedUsers || []).filter((u) => {
+      if (!u?.name) return false;
+      return descriptionText.toLowerCase().includes(`@${String(u.name).toLowerCase()}`);
+    });
+    if (next.length !== taggedUsers.length) setTaggedUsers(next);
+  };
+
+  const updateMentionState = (text: string, caretPosition: number) => {
+    const before = text.slice(0, caretPosition);
+    const atPos = before.lastIndexOf('@');
+    if (atPos < 0) {
+      setMentionOpen(false);
+      setMentionQuery('');
+      setMentionRange(null);
+      return;
+    }
+    const fragment = before.slice(atPos + 1);
+    if (/\s/.test(fragment)) {
+      setMentionOpen(false);
+      setMentionQuery('');
+      setMentionRange(null);
+      return;
+    }
+    setMentionRange({ start: atPos, end: caretPosition });
+    setMentionQuery(fragment);
+    setMentionOpen(true);
+  };
+
+  const insertMention = (candidate: TaggedUser) => {
+    if (!mentionRange) return;
+    if (!candidate?.name) return;
+    if (taggedUsers.some((u) => normalizeEmail(u.email || '') === normalizeEmail(candidate.email || '') || u.name.toLowerCase() === candidate.name.toLowerCase())) {
+      setMentionOpen(false);
+      return;
+    }
+    if (taggedUsers.length >= 10) {
+      toast({ title: 'Tag limit reached', description: 'You can tag up to 10 users in one memory.', variant: 'destructive' });
+      setMentionOpen(false);
+      return;
+    }
+
+    const mentionText = `@${candidate.name} `;
+    const before = newMemory.description.slice(0, mentionRange.start);
+    const after = newMemory.description.slice(mentionRange.end);
+    const merged = `${before}${mentionText}${after}`;
+    setNewMemory((prev) => ({ ...prev, description: merged }));
+    setTaggedUsers((prev) => [...prev, candidate]);
+    setMentionOpen(false);
+    setMentionQuery('');
+    setMentionRange(null);
+
+    requestAnimationFrame(() => {
+      const nextPos = before.length + mentionText.length;
+      if (descriptionRef.current) {
+        descriptionRef.current.focus();
+        descriptionRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    });
+  };
+
+  const resolveConnectionForEmail = (otherEmail: string) => {
+    const me = normalizeEmail(user?.email || '');
+    const target = normalizeEmail(otherEmail || '');
+    if (!me || !target) return { status: 'none' as const, isRequester: false };
+    const conn = (connections || []).find((c: any) => {
+      const requester = normalizeEmail(c.requester_email || '');
+      const targetEmail = normalizeEmail(c.target_email || '');
+      return (requester === me && targetEmail === target) || (requester === target && targetEmail === me);
+    });
+    if (!conn) return { status: 'none' as const, isRequester: false };
+    return {
+      status: (conn.status || 'none') as 'none' | 'pending' | 'accepted' | 'rejected' | 'removed',
+      isRequester: normalizeEmail(conn.requester_email || '') === me,
+    };
+  };
+
+  const requestConnectFromTag = async () => {
+    if (!user?.email || !tagProfile?.email) return;
+    try {
+      setTagActionBusy(true);
+      const resp = await apiClient.post('/connections/request', {
+        requester_email: user.email,
+        target_email: tagProfile.email,
+      });
+      setConnections((prev) => [resp?.connection, ...(prev || []).filter((c: any) => c?.pair_key !== resp?.connection?.pair_key)]);
+      setTagProfileConnectionStatus('pending');
+      setTagProfileIsRequester(true);
+      toast({ title: 'Connection requested', description: `Request sent to ${tagProfile.name || tagProfile.email}` });
+    } catch {
+      toast({ title: 'Unable to send request', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setTagActionBusy(false);
+    }
+  };
+
+  const respondToTagConnection = async (action: 'accept' | 'reject') => {
+    if (!user?.email || !tagProfile?.email) return;
+    try {
+      setTagActionBusy(true);
+      const resp = await apiClient.post('/connections/respond', {
+        user_email: user.email,
+        other_email: tagProfile.email,
+        action,
+      });
+      setConnections((prev) => (prev || []).map((c: any) => c?.pair_key === resp?.connection?.pair_key ? resp.connection : c));
+      setTagProfileConnectionStatus(action === 'accept' ? 'accepted' : 'rejected');
+      setTagProfileIsRequester(false);
+      toast({ title: action === 'accept' ? 'Connected' : 'Request declined', description: tagProfile.name || tagProfile.email });
+    } catch {
+      toast({ title: 'Unable to update request', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setTagActionBusy(false);
+    }
+  };
+
+  const renderMemoryDescription = (memory: any, className: string) => {
+    const description = String(memory?.description || '');
+    const users = Array.isArray(memory?.taggedUsers) ? memory.taggedUsers.filter((u: any) => u?.name) : [];
+    if (!description || !users.length) return <p className={className}>{description}</p>;
+
+    const sorted = users
+      .map((u: any) => ({ ...u, token: `@${u.name}` }))
+      .sort((a: any, b: any) => b.token.length - a.token.length);
+
+    const parts: Array<{ text: string; user?: any }> = [];
+    let idx = 0;
+
+    while (idx < description.length) {
+      let nextMatch: { pos: number; user: any; token: string } | null = null;
+      for (const u of sorted) {
+        const pos = description.toLowerCase().indexOf(String(u.token).toLowerCase(), idx);
+        if (pos < 0) continue;
+        if (!nextMatch || pos < nextMatch.pos) nextMatch = { pos, user: u, token: u.token };
+      }
+      if (!nextMatch) {
+        parts.push({ text: description.slice(idx) });
+        break;
+      }
+      if (nextMatch.pos > idx) {
+        parts.push({ text: description.slice(idx, nextMatch.pos) });
+      }
+      parts.push({ text: description.slice(nextMatch.pos, nextMatch.pos + nextMatch.token.length), user: nextMatch.user });
+      idx = nextMatch.pos + nextMatch.token.length;
+    }
+
+    return (
+      <p className={className}>
+        {parts.map((p, i) => (
+          p.user ? (
+            <button
+              key={`mention-${i}`}
+              type="button"
+              onClick={async () => {
+                if (!p.user?.email) return;
+                try {
+                  const resp = await apiClient.get(`/users/by-email?email=${encodeURIComponent(p.user.email)}`);
+                  setTagProfile(resp?.user || null);
+                  const relation = resolveConnectionForEmail(p.user.email);
+                  setTagProfileConnectionStatus(relation.status);
+                  setTagProfileIsRequester(relation.isRequester);
+                } catch {
+                  toast({ title: 'Unable to open profile', description: 'Please try again.', variant: 'destructive' });
+                }
+              }}
+              className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+            >
+              {p.text}
+            </button>
+          ) : (
+            <React.Fragment key={`txt-${i}`}>{p.text}</React.Fragment>
+          )
+        ))}
+      </p>
+    );
+  };
 
   const fetchCommentsForMemory = async (memoryId: number) => {
     try {
@@ -80,6 +351,55 @@ export default function MemoriesPage() {
     if (!selectedMemory?.id) return;
     fetchCommentsForMemory(selectedMemory.id);
   }, [selectedMemory?.id]);
+
+  useEffect(() => {
+    const loadConnections = async () => {
+      if (!user?.email) {
+        setConnections([]);
+        return;
+      }
+      try {
+        const resp = await apiClient.get(`/connections?user_email=${encodeURIComponent(user.email)}`);
+        setConnections(resp?.connections || []);
+      } catch {
+        setConnections([]);
+      }
+    };
+    loadConnections();
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!user?.email) {
+      setTagNotifications([]);
+      return;
+    }
+    loadTagNotifications();
+    const interval = window.setInterval(() => {
+      loadTagNotifications();
+    }, 20000);
+    return () => window.clearInterval(interval);
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!mentionOpen) {
+      setMentionSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setMentionLoading(true);
+        const resp = await apiClient.get(
+          `/users/mention-suggestions?q=${encodeURIComponent(mentionQuery)}&current_email=${encodeURIComponent(user?.email || '')}&limit=8`
+        );
+        setMentionSuggestions(resp?.users || []);
+      } catch {
+        setMentionSuggestions([]);
+      } finally {
+        setMentionLoading(false);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [mentionOpen, mentionQuery, user?.email]);
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -171,9 +491,25 @@ export default function MemoriesPage() {
         const fd = new FormData(); fd.append('image', imageFile);
         try { const up = await apiClient.postFormData('/uploads/memory-image', fd); image_url = up?.url || null; } catch {}
       }
-      await apiClient.post('/memories', { author_name: 'You', author_avatar: null, author_batch: '2020-2024', author_department: 'Your Department', title: newMemory.title, description: newMemory.description || '', image_url, date: new Date().toISOString().split('T')[0], location: newMemory.location || 'Campus', tags: newMemory.tags.split(',').map(t => t.trim()).filter(Boolean), category: newMemory.category, type: 'photo' });
+      await apiClient.post('/memories', {
+        author_name: user?.name || 'You',
+        author_email: user?.email || null,
+        author_avatar: user?.picture || null,
+        author_batch: '2020-2024',
+        author_department: 'Your Department',
+        title: newMemory.title,
+        description: newMemory.description || '',
+        image_url,
+        date: new Date().toISOString().split('T')[0],
+        location: newMemory.location || 'Campus',
+        tags: newMemory.tags.split(',').map(t => t.trim()).filter(Boolean),
+        tagged_users: taggedUsers.map((u) => ({ id: u.id, name: u.name, email: u.email })),
+        category: newMemory.category,
+        type: 'photo'
+      });
       toast({ title: 'Memory shared!', description: 'Your memory has been posted.', className: "bg-indigo-500 text-white rounded-2xl border-none" });
       setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
+      setTaggedUsers([]);
       setImagePreview(null); setImageFile(null); setShowAddForm(false);
       const resp = await apiClient.get(`/memories?q=&category=all&sort=recent&page=1&limit=50`);
       setMemories((resp?.memories || resp || []).map((m: any) => normalizeMemory(m)));
@@ -183,7 +519,10 @@ export default function MemoriesPage() {
 
   const filteredMemories = memories.filter(m => {
     const matchCat = selectedCategory === 'all' || m.category === selectedCategory;
-    const matchSearch = !searchQuery || m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || m.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = !searchQuery
+      || m.title?.toLowerCase().includes(searchQuery.toLowerCase())
+      || m.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      || (m.taggedUserNames || []).some((name: string) => String(name).toLowerCase().includes(searchQuery.toLowerCase()));
     return matchCat && matchSearch;
   });
 
@@ -272,7 +611,9 @@ export default function MemoriesPage() {
           </div>
           
           <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-indigo-600 transition-colors line-clamp-2 min-h-[44px]" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
-          <p className="text-[13px] font-medium text-slate-500 line-clamp-2 min-h-[40px] mb-4 leading-relaxed">{memory.description}</p>
+          <div className="line-clamp-2 min-h-[40px] mb-4 leading-relaxed">
+            {renderMemoryDescription(memory, 'text-[13px] font-medium text-slate-500')}
+          </div>
           
           {memory.location ? (
             <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 min-h-[16px] line-clamp-1"><MapPin className="w-3.5 h-3.5 text-slate-300" />{memory.location}</p>
@@ -400,6 +741,51 @@ export default function MemoriesPage() {
                 {t.icon}{t.label}
               </button>
             ))}
+            <div className="ml-auto relative">
+              <button
+                onClick={() => setNotificationsOpen(v => !v)}
+                className="relative flex items-center gap-2 px-4 py-2.5 rounded-[14px] bg-white border border-slate-200 text-[12px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all"
+              >
+                <Bell className="w-4 h-4" />
+                Alerts
+                {unreadTagNotifications > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {unreadTagNotifications > 9 ? '9+' : unreadTagNotifications}
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-[360px] max-w-[92vw] rounded-2xl border border-slate-200 bg-white shadow-2xl z-40 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Tag Notifications</p>
+                    <button
+                      onClick={loadTagNotifications}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificationsLoading ? (
+                      <p className="px-4 py-4 text-[13px] text-slate-500">Loading notifications…</p>
+                    ) : tagNotifications.length === 0 ? (
+                      <p className="px-4 py-4 text-[13px] text-slate-500">No notifications yet.</p>
+                    ) : tagNotifications.map((n: any) => (
+                      <button
+                        key={n.id}
+                        onClick={() => markTagNotificationRead(n)}
+                        className={`w-full text-left px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-indigo-50 transition-colors ${n.is_read ? 'bg-white' : 'bg-indigo-50/40'}`}
+                      >
+                        <p className="text-[13px] font-semibold text-slate-800">{n.message || 'You were tagged in a memory'}</p>
+                        <p className="text-[11px] text-slate-500 mt-1">{n.actor_email ? `By ${n.actor_email}` : 'By another user'}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -445,7 +831,76 @@ export default function MemoriesPage() {
               
               <div className="space-y-4">
                 <input placeholder="Memory Title *" value={newMemory.title} onChange={e => setNewMemory({ ...newMemory, title: e.target.value })} className={inputCls} />
-                <textarea placeholder="Describe this memory in detail…" value={newMemory.description} onChange={e => setNewMemory({ ...newMemory, description: e.target.value })} rows={4} className={`${inputCls} resize-none`} />
+                <div className="relative">
+                  <textarea
+                    ref={descriptionRef}
+                    placeholder="Describe this memory in detail… Use @ to tag alumni/students"
+                    value={newMemory.description}
+                    onChange={e => {
+                      const value = e.target.value;
+                      setNewMemory({ ...newMemory, description: value });
+                      syncTaggedUsersWithText(value);
+                      updateMentionState(value, e.target.selectionStart || value.length);
+                    }}
+                    onClick={e => {
+                      const t = e.target as HTMLTextAreaElement;
+                      updateMentionState(t.value, t.selectionStart || t.value.length);
+                    }}
+                    onKeyUp={e => {
+                      const t = e.target as HTMLTextAreaElement;
+                      updateMentionState(t.value, t.selectionStart || t.value.length);
+                    }}
+                    onKeyDown={e => {
+                      if (!mentionOpen || !mentionSuggestions.length) return;
+                      if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        insertMention(mentionSuggestions[0]);
+                      }
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setMentionOpen(false);
+                      }
+                    }}
+                    rows={4}
+                    className={`${inputCls} resize-none`}
+                  />
+
+                  {mentionOpen && (
+                    <div className="absolute z-30 left-0 right-0 mt-2 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                      <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50">
+                        Mention users
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {mentionLoading ? (
+                          <p className="px-4 py-3 text-[13px] text-slate-500">Loading suggestions…</p>
+                        ) : mentionSuggestions.length === 0 ? (
+                          <p className="px-4 py-3 text-[13px] text-slate-500">No matching users</p>
+                        ) : mentionSuggestions.map((u, idx) => (
+                          <button
+                            key={`${u.email || u.id || u.name}-${idx}`}
+                            type="button"
+                            onClick={() => insertMention(u)}
+                            className="w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[12px] font-black flex items-center justify-center shrink-0">
+                                {String(u.name || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[13px] font-bold text-slate-800 truncate">{u.name}</p>
+                                <p className="text-[11px] text-slate-500 truncate">{u.department || 'Department not set'} {u.graduation_year ? `• ${u.graduation_year}` : ''}</p>
+                              </div>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${u.relation === 'following' ? 'bg-indigo-100 text-indigo-700' : u.relation === 'connected' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                {u.relation || 'all'}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[12px] text-slate-500 font-medium">Type @ to tag users. Max 10 tags.</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -461,8 +916,18 @@ export default function MemoriesPage() {
                 </select>
               </div>
               
+              {taggedUsers.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {taggedUsers.map((u, idx) => (
+                    <span key={`${u.email || u.name}-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">
+                      @{u.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
-                <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); }} className="px-6 py-3.5 text-sm font-black rounded-[16px] bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest text-center">Cancel</button>
+                <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); setTaggedUsers([]); setMentionOpen(false); }} className="px-6 py-3.5 text-sm font-black rounded-[16px] bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest text-center">Cancel</button>
                 <button onClick={handleAddMemory} disabled={isSharing} className="px-8 py-3.5 bg-indigo-500 text-white text-sm font-black rounded-[16px] hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-60 uppercase tracking-widest text-center">
                   {isSharing ? 'Sharing…' : 'Post Memory'}
                 </button>
@@ -541,7 +1006,7 @@ export default function MemoriesPage() {
                 <div className="p-6 md:p-8 flex flex-col flex-1">
                   <div className="flex-grow">
                     <h2 className="text-[30px] md:text-[34px] font-extrabold text-slate-800 tracking-tight leading-[1.1] mb-3 break-words">{selectedMemory.title}</h2>
-                    <p className="text-[15px] text-slate-600 leading-relaxed font-medium whitespace-pre-line mb-6">{selectedMemory.description}</p>
+                    {renderMemoryDescription(selectedMemory, 'text-[15px] text-slate-600 leading-relaxed font-medium whitespace-pre-line mb-6')}
                   
                     {Array.isArray(selectedMemory.tags) && selectedMemory.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-2 mb-6">
@@ -575,6 +1040,74 @@ export default function MemoriesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+        <Dialog open={!!tagProfile} onOpenChange={() => setTagProfile(null)}>
+          <DialogContent className="max-w-lg p-0 bg-white rounded-[28px] border border-slate-100 overflow-hidden">
+            <DialogTitle className="sr-only">Tagged user profile</DialogTitle>
+            {tagProfile && (
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 font-black text-[18px] flex items-center justify-center">
+                    {String(tagProfile.name || tagProfile.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[18px] font-extrabold text-slate-800 truncate">{tagProfile.name || 'Unknown user'}</p>
+                    <p className="text-[13px] text-slate-500 truncate">{tagProfile.email}</p>
+                    <p className="text-[12px] text-slate-400 mt-1">{tagProfile.major || tagProfile.department || 'Department not available'} {tagProfile.graduation_year ? `• ${tagProfile.graduation_year}` : ''}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 mb-5">
+                  {tagProfileConnectionStatus === 'accepted' ? (
+                    <p className="text-[13px] text-slate-600 font-medium">You are connected. Full profile context is visible.</p>
+                  ) : (
+                    <p className="text-[13px] text-slate-600 font-medium">Limited profile preview. Connect to view full details and start networking.</p>
+                  )}
+                  <p className="text-[13px] text-slate-600 mt-2 leading-relaxed">
+                    {tagProfileConnectionStatus === 'accepted' ? (tagProfile.bio || 'No bio shared yet.') : 'Bio and extended details are hidden until you are connected.'}
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  {tagProfileConnectionStatus === 'none' || tagProfileConnectionStatus === 'removed' || tagProfileConnectionStatus === 'rejected' ? (
+                    <button
+                      onClick={requestConnectFromTag}
+                      disabled={tagActionBusy || !user?.email || !tagProfile?.email}
+                      className="flex-1 h-11 rounded-xl bg-indigo-600 text-white text-[13px] font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Connect
+                    </button>
+                  ) : tagProfileConnectionStatus === 'pending' && !tagProfileIsRequester ? (
+                    <>
+                      <button
+                        onClick={() => respondToTagConnection('accept')}
+                        disabled={tagActionBusy}
+                        className="flex-1 h-11 rounded-xl bg-emerald-600 text-white text-[13px] font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => respondToTagConnection('reject')}
+                        disabled={tagActionBusy}
+                        className="flex-1 h-11 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 text-[13px] font-bold hover:bg-rose-100 transition-colors disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex-1 h-11 rounded-xl bg-slate-100 text-slate-500 text-[13px] font-bold"
+                    >
+                      {tagProfileConnectionStatus === 'accepted' ? 'Connected' : 'Request Sent'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
       {expandedImage && (
         <div

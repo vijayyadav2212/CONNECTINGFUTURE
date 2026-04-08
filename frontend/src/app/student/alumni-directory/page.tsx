@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import StudentNavigation from '../StudentNavigation/StudentNavigation';
 import { Search, Filter, MapPin, Building, GraduationCap, Linkedin, Mail, MessageSquare, Star, Users, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,8 +20,8 @@ interface Alumni {
   location: string;
   expertise: string[];
   isOpenToMentoring: boolean;
-  rating: number;
-  responseTime: string;
+  rating?: number;
+  responseTime?: string;
   linkedinUrl?: string;
   avatar?: string;
 }
@@ -82,10 +82,10 @@ const AlumniDirectoryPage = () => {
             company: u.company || '',
             position: u.job_title || u.current_job || '',
             location: u.location || '',
-            expertise: skills.length ? skills : ['General Mentoring'],
+            expertise: skills,
             isOpenToMentoring: Boolean(u.is_mentor),
-            rating: 4.8,
-            responseTime: '< 48 hours',
+            rating: typeof u.rating === 'number' ? u.rating : undefined,
+            responseTime: u.response_time || u.responseTime || undefined,
             linkedinUrl: undefined,
             avatar: u.picture || undefined,
           } as Alumni;
@@ -179,7 +179,10 @@ const AlumniDirectoryPage = () => {
     }
   }
 
-  const expertiseOptions = ['all', 'Software Engineering', 'Data Science', 'Machine Learning', 'Business Development', 'Strategy Consulting', 'Hardware Design'];
+  const expertiseOptions = useMemo(() => {
+    const allExpertise = alumni.flatMap((alum) => alum.expertise || []);
+    return ['all', ...Array.from(new Set(allExpertise)).sort()];
+  }, [alumni]);
 
   const filteredAlumni = alumni.filter(alum => {
     const matchesSearch = alum.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -545,21 +548,27 @@ const AlumniDirectoryPage = () => {
                       </div>
 
                       {/* Rating and Response Time */}
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                            <span className="font-bold text-yellow-800">{alum.rating}</span>
+                      {(alum.rating !== undefined || alum.responseTime) && (
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                              <span className="font-bold text-yellow-800">
+                                {alum.rating !== undefined ? alum.rating : 'N/A'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-yellow-700 font-medium">Rating</p>
                           </div>
-                          <p className="text-xs text-yellow-700 font-medium">Rating</p>
-                        </div>
-                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                          <div className="mb-1">
-                            <span className="font-bold text-emerald-800 text-sm">{alum.responseTime}</span>
+                          <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                            <div className="mb-1">
+                              <span className="font-bold text-emerald-800 text-sm">
+                                {alum.responseTime || 'N/A'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-emerald-700 font-medium">Response Time</p>
                           </div>
-                          <p className="text-xs text-emerald-700 font-medium">Response Time</p>
                         </div>
-                      </div>
+                      )}
 
                       {/* Mentoring Status */}
                       {alum.isOpenToMentoring ? (

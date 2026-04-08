@@ -3153,6 +3153,14 @@ app.post('/api/academic/semesters', async (req, res) => {
     const { auth0_id, semester_key, name, gpa, total_credits, is_current } = body;
     if (!auth0_id || !semester_key) return res.status(400).json({ error: 'auth0_id and semester_key required' });
 
+    // If a semester is marked current, clear current flag from other semesters for this student.
+    if (!!is_current) {
+      await dbQuery(
+        'UPDATE academic_semesters SET is_current = FALSE, updated_at = NOW() WHERE student_auth0_id = ? AND semester_key <> ?',
+        [auth0_id, semester_key]
+      );
+    }
+
     const q = `
       INSERT INTO academic_semesters (student_auth0_id, semester_key, name, gpa, total_credits, is_current, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -4025,6 +4033,98 @@ app.get('/api/users', async (req, res) => {
     const { rows: countRows } = await dbQuery(`SELECT COUNT(*) as total FROM users ${whereSql}`, params);
     const total = countRows && countRows[0] ? parseInt(countRows[0].total, 10) : 0;
     return res.json({ users: list, page: p, limit: l, total, totalPages: Math.ceil(total / l) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Mention suggestions for @tagging in memories
+app.get('/api/users/mention-suggestions', async (req, res) => {
+  try {
+    const { q = '', current_email, limit = 8 } = req.query || {};
+    const l = Math.min(20, Math.max(1, parseInt(String(limit), 10) || 8));
+    const normalizedQuery = String(q || '').trim().toLowerCase();
+
+    const where = ["LOWER(COALESCE(user_type, '')) IN ('alumni', 'student')"];
+    const params = [];
+
+    if (normalizedQuery) {
+      const like = `%${normalizedQuery}%`;
+      where.push(`(
+        LOWER(COALESCE(name, '')) LIKE ? OR
+        LOWER(COALESCE(email, '')) LIKE ? OR
+        LOWER(COALESCE(major, '')) LIKE ? OR
+        LOWER(COALESCE(department, '')) LIKE ?
+      )`);
+      params.push(like, like, like, like);
+    }
+
+    if (current_email) {
+      where.push('LOWER(email) <> LOWER(?)');
+      params.push(String(current_email));
+    }
+
+    const { rows: users } = await dbQuery(
+      `SELECT id, email, name, picture, user_type, graduation_year, major, department
+       FROM users
+       WHERE ${where.join(' AND ')}
+       ORDER BY COALESCE(name, email) ASC
+       LIMIT ?`,
+      [...params, 200]
+    );
+
+    const candidates = users || [];
+    if (!candidates.length) return res.json({ users: [] });
+
+    const relationMap = new Map();
+    if (current_email) {
+      const me = String(current_email).toLowerCase().trim();
+      const emails = candidates.map(u => String(u.email || '').toLowerCase()).filter(Boolean);
+      if (emails.length) {
+        const placeholders = emails.map(() => '?').join(',');
+        const { rows: conns } = await dbQuery(
+          `SELECT requester_email, target_email, status
+           FROM connections
+           WHERE (LOWER(requester_email) = LOWER(?) AND LOWER(target_email) IN (${placeholders}))
+              OR (LOWER(target_email) = LOWER(?) AND LOWER(requester_email) IN (${placeholders}))`,
+          [me, ...emails, me, ...emails]
+        );
+
+        (conns || []).forEach((c) => {
+          const requester = String(c.requester_email || '').toLowerCase();
+          const target = String(c.target_email || '').toLowerCase();
+          const other = requester === me ? target : requester;
+          if (!other) return;
+
+          const isFollowing = requester === me && (c.status === 'pending' || c.status === 'accepted');
+          const isConnected = c.status === 'accepted';
+          if (isFollowing) relationMap.set(other, 'following');
+          else if (isConnected && relationMap.get(other) !== 'following') relationMap.set(other, 'connected');
+          else if (!relationMap.has(other)) relationMap.set(other, 'all');
+        });
+      }
+    }
+
+    const ranked = candidates
+      .map((u) => {
+        const emailKey = String(u.email || '').toLowerCase();
+        const relation = relationMap.get(emailKey) || 'all';
+        const rank = relation === 'following' ? 1 : relation === 'connected' ? 2 : 3;
+        return {
+          id: u.id,
+          email: u.email,
+          name: u.name || u.email,
+          picture: u.picture || null,
+          department: u.major || u.department || '',
+          graduation_year: u.graduation_year || null,
+          relation,
+          rank,
+        };
+      })
+      .sort((a, b) => a.rank - b.rank || String(a.name).localeCompare(String(b.name)))
+      .slice(0, l);
+
+    return res.json({ users: ranked });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -4965,12 +5065,149 @@ app.get('/api/memories/stream', (req, res) => {
   req.on('close', () => { sseClients.delete(res); });
 });
 
+function splitCsv(value) {
+  if (!value) return [];
+  return String(value)
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function normalizeMemoryRecord(row) {
+  if (!row) return row;
+  const tags = splitCsv(row.tags);
+  const taggedUserIds = splitCsv(row.tagged_user_ids).map((x) => Number(x)).filter((x) => Number.isFinite(x));
+  const taggedUserNames = splitCsv(row.tagged_user_names);
+  const taggedUserEmails = splitCsv(row.tagged_user_emails);
+  const max = Math.max(taggedUserIds.length, taggedUserNames.length, taggedUserEmails.length);
+  const taggedUsers = [];
+  for (let i = 0; i < max; i += 1) {
+    taggedUsers.push({
+      id: taggedUserIds[i] || null,
+      name: taggedUserNames[i] || null,
+      email: taggedUserEmails[i] || null,
+    });
+  }
+  return {
+    ...row,
+    tags,
+    taggedUserIds,
+    taggedUserNames,
+    taggedUserEmails,
+    tagged_users: taggedUsers.filter((u) => u.id || u.name || u.email),
+  };
+}
+
+function extractMentionNames(text) {
+  if (!text) return [];
+  const matches = String(text).match(/@([a-zA-Z0-9._]+(?:\s+[a-zA-Z0-9._]+){0,3})/g) || [];
+  const names = matches.map((m) => m.replace(/^@/, '').trim()).filter(Boolean);
+  return Array.from(new Set(names));
+}
+
+async function resolveTaggedUsersFromInput(inputUsers = [], mentionNames = []) {
+  const normalized = Array.isArray(inputUsers) ? inputUsers : [];
+  const emailSet = new Set();
+  const idSet = new Set();
+
+  for (const item of normalized) {
+    if (!item || typeof item !== 'object') continue;
+    if (item.email) emailSet.add(String(item.email).toLowerCase().trim());
+    const numId = Number(item.id);
+    if (Number.isFinite(numId) && numId > 0) idSet.add(numId);
+  }
+
+  const conditions = [];
+  const params = [];
+
+  if (idSet.size) {
+    const ids = Array.from(idSet);
+    conditions.push(`id IN (${ids.map(() => '?').join(',')})`);
+    params.push(...ids);
+  }
+
+  if (emailSet.size) {
+    const emails = Array.from(emailSet);
+    conditions.push(`LOWER(email) IN (${emails.map(() => '?').join(',')})`);
+    params.push(...emails);
+  }
+
+  if (mentionNames.length) {
+    const names = mentionNames.slice(0, 20).map((n) => String(n).trim().toLowerCase()).filter(Boolean);
+    if (names.length) {
+      conditions.push(`LOWER(COALESCE(name, '')) IN (${names.map(() => '?').join(',')})`);
+      params.push(...names);
+    }
+  }
+
+  if (!conditions.length) return [];
+
+  const { rows } = await dbQuery(
+    `SELECT id, email, name FROM users WHERE ${conditions.join(' OR ')}`,
+    params
+  );
+
+  const uniqueByEmail = new Map();
+  for (const row of rows || []) {
+    const email = String(row.email || '').toLowerCase();
+    if (!email || uniqueByEmail.has(email)) continue;
+    uniqueByEmail.set(email, {
+      id: row.id,
+      email: row.email,
+      name: row.name || row.email,
+    });
+  }
+
+  return Array.from(uniqueByEmail.values()).slice(0, 10);
+}
+
+async function createTagNotifications({ memoryId, actorEmail, taggedUsers }) {
+  if (!Array.isArray(taggedUsers) || !taggedUsers.length) return;
+
+  const recipients = taggedUsers
+    .filter((u) => u && u.email)
+    .map((u) => String(u.email).toLowerCase())
+    .filter((email) => email && email !== String(actorEmail || '').toLowerCase());
+
+  const uniqueRecipients = Array.from(new Set(recipients));
+  if (!uniqueRecipients.length) return;
+
+  for (const recipient of uniqueRecipients) {
+    await dbQuery(
+      `INSERT INTO memory_tag_notifications (recipient_email, actor_email, memory_id, message)
+       VALUES (?, ?, ?, ?)`,
+      [recipient, actorEmail || null, memoryId, 'You were tagged in a memory']
+    );
+  }
+
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      });
+      const baseUrl = `${process.env.FRONTEND_BASE_URL || 'http://localhost:3000'}/alumni/memories`;
+      for (const recipient of uniqueRecipients) {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: recipient,
+          subject: 'You were tagged in a memory',
+          html: `<p>You were tagged in a memory.</p><p><a href="${baseUrl}">Open Memories</a></p>`,
+        });
+      }
+    } catch (emailErr) {
+      console.warn('Memory tag email notification failed:', emailErr && emailErr.message ? emailErr.message : emailErr);
+    }
+  }
+}
+
 // --- Memories CRUD ---
 // Create a memory
 app.post('/api/memories', async (req, res) => {
   try {
     const {
       author_name,
+      author_email,
       author_avatar,
       author_batch,
       author_department,
@@ -4980,6 +5217,7 @@ app.post('/api/memories', async (req, res) => {
       date,
       location,
       tags,
+      tagged_users,
       category,
       type
     } = req.body || {};
@@ -4987,17 +5225,33 @@ app.post('/api/memories', async (req, res) => {
     if (!title) return res.status(400).json({ error: 'Title is required' });
 
     const tagsStr = Array.isArray(tags) ? tags.join(',') : (tags || null);
+    const mentionNames = extractMentionNames(description || '');
+    const resolvedTaggedUsers = await resolveTaggedUsersFromInput(tagged_users, mentionNames);
+    const taggedIdsStr = resolvedTaggedUsers.map((u) => u.id).filter(Boolean).join(',') || null;
+    const taggedNamesStr = resolvedTaggedUsers.map((u) => u.name).filter(Boolean).join(',') || null;
+    const taggedEmailsStr = resolvedTaggedUsers.map((u) => String(u.email || '').toLowerCase()).filter(Boolean).join(',') || null;
     const { rows } = await dbQuery(`
       INSERT INTO memories (
         author_name, author_avatar, author_batch, author_department,
-        title, description, image_url, date, location, tags, category, type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        title, description, image_url, date, location, tags, tagged_user_ids, tagged_user_names, tagged_user_emails, category, type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
     `, [
       author_name || null, author_avatar || null, author_batch || null, author_department || null,
-      title, description || null, image_url || null, date || null, location || null, tagsStr, category || null, type
+      title,
+      description || null,
+      image_url || null,
+      date || null,
+      location || null,
+      tagsStr,
+      taggedIdsStr,
+      taggedNamesStr,
+      taggedEmailsStr,
+      category || null,
+      type,
     ]);
-    const created = rows && rows[0];
+    const created = normalizeMemoryRecord(rows && rows[0]);
+    await createTagNotifications({ memoryId: created.id, actorEmail: author_email || null, taggedUsers: resolvedTaggedUsers });
     try { broadcastSse('memory-create', created); } catch { }
     return res.status(201).json(created);
   } catch (e) {
@@ -5015,12 +5269,16 @@ app.get('/api/memories', async (req, res) => {
     const offset = (p - 1) * l;
     const where = [];
     const params = [];
-    if (q) { where.push('(LOWER(title) LIKE ? OR LOWER(description) LIKE ?)'); const like = `%${String(q).toLowerCase()}%`; params.push(like, like); }
+    if (q) {
+      where.push('(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(tagged_user_names, \'\')) LIKE ?)');
+      const like = `%${String(q).toLowerCase()}%`;
+      params.push(like, like, like);
+    }
     if (tag) { where.push('tags LIKE ?'); params.push(`%${String(tag)}%`); }
     if (author) { where.push('LOWER(author_name) = LOWER(?)'); params.push(author); }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const { rows } = await dbQuery(`SELECT * FROM memories ${whereSql} ORDER BY COALESCE(date, created_at) DESC LIMIT ? OFFSET ?`, [...params, l, offset]);
-    return res.json({ memories: rows, page: p, limit: l });
+    return res.json({ memories: (rows || []).map(normalizeMemoryRecord), page: p, limit: l });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -5032,7 +5290,40 @@ app.get('/api/memories/:id', async (req, res) => {
     const { id } = req.params;
     const { rows } = await dbQuery('SELECT * FROM memories WHERE id = ? LIMIT 1', [id]);
     if (!rows || !rows.length) return res.status(404).json({ error: 'Not found' });
-    return res.json({ memory: rows[0] });
+    return res.json({ memory: normalizeMemoryRecord(rows[0]) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/memories/tag-notifications', async (req, res) => {
+  try {
+    const { email, unread_only } = req.query || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const where = ['LOWER(recipient_email) = LOWER(?)'];
+    const params = [email];
+    if (String(unread_only || '') === '1' || String(unread_only || '').toLowerCase() === 'true') {
+      where.push('is_read = FALSE');
+    }
+    const { rows } = await dbQuery(
+      `SELECT * FROM memory_tag_notifications WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 100`,
+      params
+    );
+    return res.json({ notifications: rows || [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/memories/tag-notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await dbQuery(
+      'UPDATE memory_tag_notifications SET is_read = TRUE WHERE id = ? RETURNING *',
+      [id]
+    );
+    if (!rows || !rows.length) return res.status(404).json({ error: 'Notification not found' });
+    return res.json({ notification: rows[0] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

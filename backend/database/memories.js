@@ -16,6 +16,9 @@ async function createMemoriesSchema(dbQuery) {
       date               DATE DEFAULT CURRENT_DATE,
       location           VARCHAR(255),
       tags               TEXT,                -- comma-separated tags
+      tagged_user_ids    TEXT,                -- comma-separated user ids
+      tagged_user_names  TEXT,                -- comma-separated display names
+      tagged_user_emails TEXT,                -- comma-separated emails for profile navigation
       category           VARCHAR(50),         -- friendship, achievement, academic, sports, event, competition
       type               VARCHAR(20) DEFAULT 'photo', -- photo | video
       likes              INT DEFAULT 0,
@@ -31,10 +34,28 @@ async function createMemoriesSchema(dbQuery) {
 
   // Ensure share_count exists for already-created tables
   await dbQuery('ALTER TABLE memories ADD COLUMN IF NOT EXISTS share_count INT DEFAULT 0');
+  await dbQuery('ALTER TABLE memories ADD COLUMN IF NOT EXISTS tagged_user_ids TEXT');
+  await dbQuery('ALTER TABLE memories ADD COLUMN IF NOT EXISTS tagged_user_names TEXT');
+  await dbQuery('ALTER TABLE memories ADD COLUMN IF NOT EXISTS tagged_user_emails TEXT');
 
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_memories_date ON memories(date)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at)');
+
+  // In-app notifications for memory tagging alerts
+  await dbQuery(`
+    CREATE TABLE IF NOT EXISTS memory_tag_notifications (
+      id SERIAL PRIMARY KEY,
+      recipient_email VARCHAR(255) NOT NULL,
+      actor_email VARCHAR(255),
+      memory_id INT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_memory_tag_notifications_recipient ON memory_tag_notifications(LOWER(recipient_email), created_at DESC)');
 
   // memory_comments table stores comments for individual memories
   await dbQuery(`

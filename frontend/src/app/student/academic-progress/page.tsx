@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import StudentNavigation from "../StudentNavigation/StudentNavigation";
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import apiClient from '../../../lib/apiClient';
-import { GraduationCap, Pencil, Briefcase, TrendingUp, Award, BookOpen, Clock, CheckCircle, Circle, AlertCircle } from "lucide-react";
+import { GraduationCap, Pencil, TrendingUp, BookOpen, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 /* ------------------ HOOKS ------------------ */
@@ -60,14 +60,57 @@ function useAnimatedCounter(end: number, duration = 2000, trigger = true) {
   return count;
 }
 
+function getGradeFromMarks(marks: number) {
+  if (!Number.isFinite(marks)) return '';
+  if (marks >= 90) return 'A+';
+  if (marks >= 80) return 'A';
+  if (marks >= 70) return 'B+';
+  if (marks >= 60) return 'B';
+  if (marks >= 50) return 'C';
+  if (marks >= 40) return 'D';
+  return 'F';
+}
+
+function ensureAllSemesters(semesters: Semester[]): Semester[] {
+  // Deduplicate by semester number and ensure semesters 1-8 all exist
+  const semesterMap = new Map<number, Semester>();
+
+  for (const sem of semesters) {
+    const semesterNumber = parseInt(sem.name.match(/\d+/)?.[0] || '0', 10);
+    if (semesterNumber >= 1 && semesterNumber <= 8 && !semesterMap.has(semesterNumber)) {
+      semesterMap.set(semesterNumber, sem);
+    }
+  }
+
+  for (let semesterNumber = 1; semesterNumber <= 8; semesterNumber++) {
+    if (!semesterMap.has(semesterNumber)) {
+      semesterMap.set(semesterNumber, {
+        id: `semester-${semesterNumber}`,
+        semester_key: `semester-${semesterNumber}`,
+        name: `Semester ${semesterNumber}`,
+        gpa: 0,
+        is_current: false,
+        courses: []
+      });
+    }
+  }
+
+  return Array.from(semesterMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([, semester]) => semester);
+}
+
 
 /* ------------------ TYPES ------------------ */
 interface Course {
   id: string;
+  course_key?: string;
   name: string;
   code: string;
   credits: number;
+  backlog_count: number;
   grade: string;
+  progress: number;
   status: "completed" | "in-progress" | "upcoming";
 }
 
@@ -76,6 +119,7 @@ interface Semester {
   semester_key?: string;
   name: string;
   gpa: number;
+  is_current?: boolean;
   courses: Course[];
 }
 
@@ -124,14 +168,10 @@ const StatCard = ({ icon: Icon, value, label, color, delay, isVisible }: {
 };
 
 
-const CourseCard = ({ course, delay }: { course: Course, delay: number }) => {
-  const statusConfig = {
-    completed: { color: 'text-emerald-700 bg-emerald-100 border-emerald-200', icon: CheckCircle },
-    'in-progress': { color: 'text-blue-700 bg-blue-100 border-blue-200', icon: Clock }, // animate-pulse removed from here to avoid text jitter, can add to dot
-    upcoming: { color: 'text-gray-600 bg-gray-100 border-gray-200', icon: Circle },
-  };
-
-  const StatusIcon = statusConfig[course.status].icon;
+const SubjectCard = ({ course, delay }: { course: Course, delay: number }) => {
+  const marks = Math.max(0, Math.min(100, Number(course.progress || 0)));
+  const derivedGrade = getGradeFromMarks(marks);
+  const backlogCount = Math.max(0, Number(course.backlog_count || 0));
 
   return (
     <div
@@ -144,21 +184,32 @@ const CourseCard = ({ course, delay }: { course: Course, delay: number }) => {
         </div>
         <div>
           <h4 className="font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">{course.name}</h4>
-          <p className="text-sm text-gray-500">{course.code} • {course.credits} Credits</p>
+          <p className="text-sm text-gray-500">{course.code}</p>
+          <div className="mt-3 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-2 text-xs font-medium text-gray-500">
+              <span>Marks</span>
+              <span>{course.progress ? `${marks}%` : '-'}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
+                style={{ width: `${marks}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center gap-6">
         <div className="flex flex-col items-end">
-          <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Grade</span>
-          <span className={`font-bold ${course.grade === 'A' || course.grade === 'A+' ? 'text-emerald-600' : 'text-gray-700'}`}>
-            {course.grade}
+          <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Subject Mark</span>
+          <span className={`font-bold ${marks >= 75 ? 'text-emerald-600' : marks >= 50 ? 'text-amber-600' : 'text-gray-700'}`}>
+            {course.progress ? `${marks}%` : '-'}
           </span>
-        </div>
-
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border ${statusConfig[course.status].color}`}>
-          <StatusIcon size={14} className={course.status === 'in-progress' ? 'animate-spin-slow' : ''} />
-          <span className="capitalize">{course.status.replace('-', ' ')}</span>
+          <span className="text-xs text-gray-400 mt-1">{derivedGrade || course.grade || 'Grade pending'}</span>
+          {backlogCount > 0 && (
+            <span className="mt-1 text-xs font-semibold text-red-600">Backlogs: {backlogCount}</span>
+          )}
         </div>
       </div>
     </div>
@@ -176,7 +227,6 @@ export default function AcademicProgress() {
     semester_key: '',
     name: '',
     gpa: '',
-    total_credits: '',
     is_current: true,
   });
   const [selectedSemesterKey, setSelectedSemesterKey] = useState('');
@@ -185,12 +235,17 @@ export default function AcademicProgress() {
     name: '',
     code: '',
     credits: '',
+    backlog_count: '',
     grade: '',
     status: 'upcoming',
     progress: '',
   });
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [showCourseForm, setShowCourseForm] = useState(false);
+  const [selectedSemesterGpa, setSelectedSemesterGpa] = useState('');
+  const [isSavingSemesterGpa, setIsSavingSemesterGpa] = useState(false);
+  const [isTogglingCurrentSemester, setIsTogglingCurrentSemester] = useState(false);
+  const [subjectNotice, setSubjectNotice] = useState<{ title: string; message: string } | null>(null);
 
   // Refs
 
@@ -204,27 +259,25 @@ export default function AcademicProgress() {
   const showSemester = useIntersectionObserver(semesterRef);
 
   // Data
-  const { user, isAuthenticated } = useAuthToken();
-  const [semesters, setSemesters] = useState<Semester[]>([
-    {
-      id: 'sem6',
-      semester_key: 'sem6',
-      name: 'Semester 6',
-      gpa: 8.5,
-      courses: [
-        { id: 'c1', name: 'Data Structures & Algorithms', code: 'CS301', credits: 4, grade: 'A', status: 'completed' },
-        { id: 'c2', name: 'Database Management Systems', code: 'CS302', credits: 3, grade: 'B+', status: 'in-progress' },
-        { id: 'c3', name: 'Operating Systems', code: 'CS303', credits: 3, grade: '-', status: 'in-progress' },
-        { id: 'c4', name: 'Computer Networks', code: 'CS304', credits: 4, grade: '-', status: 'upcoming' },
-      ],
-    },
-  ]);
+  const { user } = useAuthToken();
+  const [semesters, setSemesters] = useState<Semester[]>([]);
 
+  const semesterOptions = ensureAllSemesters(semesters);
   const overallGpa = semesters.length ? semesters.reduce((s, x) => s + (Number(x.gpa) || 0), 0) / semesters.length : 0;
-  // Ensure animatedGpa is treated as number for StatCard, although useAnimatedCounter returns number
+  const selectedSemester = semesterOptions.find(s => (s.semester_key || s.id) === selectedSemesterKey);
+  const activeSemester = selectedSemester || null;
+  const currentSemester = semesterOptions.find(s => s.is_current);
+  const allCourses = semesters.flatMap(s => s.courses || []);
+  const backlogCount = allCourses.reduce((sum, c) => {
+    const explicitBacklog = Math.max(0, Number(c.backlog_count || 0));
+    if (explicitBacklog > 0) return sum + explicitBacklog;
+    return ['F', 'RA', 'BACKLOG'].includes((c.grade || '').toUpperCase()) ? sum + 1 : sum;
+  }, 0);
+  const attendancePercent = allCourses.length ? Math.round((allCourses.filter(c => c.status !== 'upcoming').length / allCourses.length) * 100) : 0;
+
   const animatedGpa = useAnimatedCounter(overallGpa, 1500, showStats);
-  const totalCredits = 120; // Keep as fallback
-  const creditsEarned = useAnimatedCounter(semesters.reduce((acc, s) => acc + (s.courses ? s.courses.reduce((a,c)=>a+(c.credits||0),0) : 0), 0), 2000, showStats);
+  const formInputClass = "w-full px-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm";
+  const formSelectClass = "w-full px-4 py-3 bg-white text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm";
 
   // Fetch real data from backend when user is available
   useEffect(() => {
@@ -242,24 +295,10 @@ export default function AcademicProgress() {
               semester_key: s.semester_key || (s.id ? String(s.id) : ''),
               name: s.name || s.semester_key || '',
               gpa: s.gpa != null ? Number(s.gpa) : 0,
+              is_current: !!s.is_current,
               courses: [],
             }));
             setSemesters(mapped);
-            // default select the first semester
-            setSelectedSemesterKey(mapped[0].semester_key || mapped[0].id);
-
-          // Fetch courses for the first semester as an initial load
-          const first = resp.semesters[0];
-            if (first && first.semester_key) {
-            try {
-              const cResp = await apiClient.get(`/academic/courses?auth0_id=${encodeURIComponent(auth0Id)}&semester_key=${encodeURIComponent(first.semester_key)}`);
-              if (!cancelled && cResp && Array.isArray(cResp.courses)) {
-                  setSemesters(prev => prev.map(p => ((p.semester_key === first.semester_key || p.id === (first.id || first.semester_key) || p.name === first.name) ? { ...p, courses: cResp.courses.map((c: any) => ({ id: String(c.id), name: c.name, code: c.code, credits: Number(c.credits || 0), grade: c.grade || '-', status: c.status || 'upcoming' })) } : p)));
-              }
-            } catch (e) {
-              console.error('Failed fetching courses for semester', e);
-            }
-          }
         }
       } catch (e) {
         console.error('Failed to load academic progress:', e);
@@ -268,6 +307,154 @@ export default function AcademicProgress() {
     load();
     return () => { cancelled = true; };
   }, [user, reloadCounter]);
+
+  useEffect(() => {
+    const loadSemesterCourses = async () => {
+      if (!user || !semesters.length) return;
+      try {
+        const auth0Id = user.sub || user.user_id || user?.id;
+        if (!auth0Id) return;
+        const semesterKeys = semesters.map(semester => semester.semester_key || semester.id).filter(Boolean);
+
+        const courseResults = await Promise.all(
+          semesterKeys.map(async semesterKey => {
+            const cResp = await apiClient.get(`/academic/courses?auth0_id=${encodeURIComponent(auth0Id)}&semester_key=${encodeURIComponent(semesterKey)}`);
+            return {
+              semesterKey,
+              courses: cResp && Array.isArray(cResp.courses)
+                ? cResp.courses.map((c: any) => ({
+                    id: String(c.id),
+                    course_key: c.course_key || '',
+                    name: c.name,
+                    code: c.code,
+                    credits: Number(c.credits || 0),
+                    backlog_count: Number(c.backlog_count || 0),
+                    grade: c.grade || '-',
+                    progress: Number(c.progress || 0),
+                    status: c.status || 'upcoming',
+                  }))
+                : [],
+            };
+          })
+        );
+
+        setSemesters(prev => prev.map(p => {
+          const match = courseResults.find(result => result.semesterKey === (p.semester_key || p.id));
+          return match ? { ...p, courses: match.courses } : p;
+        }));
+      } catch (e) {
+        console.error('Failed loading semester courses', e);
+      }
+    };
+
+    loadSemesterCourses();
+  }, [user, semesters.length, reloadCounter]);
+
+  useEffect(() => {
+    if (!selectedSemesterKey) {
+      setSelectedSemesterGpa('');
+      return;
+    }
+    const selected = semesterOptions.find(s => (s.semester_key || s.id) === selectedSemesterKey);
+    setSelectedSemesterGpa(selected && selected.gpa != null ? String(selected.gpa) : '');
+  }, [selectedSemesterKey]);
+
+  const saveSelectedSemesterGpa = async () => {
+    if (!user || !selectedSemesterKey) return;
+
+    const gpaValue = selectedSemesterGpa.trim() === '' ? null : Number(selectedSemesterGpa);
+    if (gpaValue != null && !Number.isFinite(gpaValue)) return;
+
+    const selected = semesterOptions.find(s => (s.semester_key || s.id) === selectedSemesterKey);
+    if (!selected) return;
+
+    const semesterKey = selected.semester_key || selected.id;
+    const normalizedGpa = gpaValue ?? 0;
+
+    // Reflect CGPA immediately in the academic overview UI.
+    setSemesters(prev => {
+      const exists = prev.some(p => (p.semester_key || p.id) === selectedSemesterKey);
+      if (exists) {
+        return prev.map(p => (
+          (p.semester_key || p.id) === selectedSemesterKey
+            ? { ...p, gpa: normalizedGpa }
+            : p
+        ));
+      }
+      return [
+        ...prev,
+        {
+          id: selected.id || semesterKey,
+          semester_key: semesterKey,
+          name: selected.name,
+          gpa: normalizedGpa,
+          courses: []
+        }
+      ];
+    });
+
+    try {
+      setIsSavingSemesterGpa(true);
+      const auth0Id = user.sub || user.user_id || user?.id;
+      if (!auth0Id) return;
+      const response = await apiClient.post('/academic/semesters', {
+        auth0_id: auth0Id,
+        semester_key: semesterKey,
+        name: selected.name,
+        gpa: gpaValue,
+        is_current: false,
+      });
+
+      const savedSemester = response && response.semester ? response.semester : null;
+      if (savedSemester && savedSemester.gpa != null) {
+        setSelectedSemesterGpa(String(savedSemester.gpa));
+      }
+
+      setReloadCounter(c => c + 1);
+    } catch (err) {
+      console.error('Failed to save semester CGPA', err);
+    } finally {
+      setIsSavingSemesterGpa(false);
+    }
+  };
+
+  const toggleSelectedSemesterCurrent = async (nextIsCurrent: boolean) => {
+    if (!user || !selectedSemesterKey) return;
+
+    const selected = semesterOptions.find(s => (s.semester_key || s.id) === selectedSemesterKey);
+    if (!selected) return;
+
+    try {
+      setIsTogglingCurrentSemester(true);
+      const auth0Id = user.sub || user.user_id || user?.id;
+      if (!auth0Id) return;
+
+      await apiClient.post('/academic/semesters', {
+        auth0_id: auth0Id,
+        semester_key: selected.semester_key || selected.id,
+        name: selected.name,
+        gpa: selected.gpa,
+        is_current: nextIsCurrent,
+      });
+
+      setSemesters(prev => prev.map(p => {
+        if (nextIsCurrent) {
+          return {
+            ...p,
+            is_current: (p.semester_key || p.id) === selectedSemesterKey,
+          };
+        }
+        return (p.semester_key || p.id) === selectedSemesterKey
+          ? { ...p, is_current: false }
+          : p;
+      }));
+      setReloadCounter(c => c + 1);
+    } catch (err) {
+      console.error('Failed to mark current semester', err);
+    } finally {
+      setIsTogglingCurrentSemester(false);
+    }
+  };
 
   const handleSemesterFormChange = (k: string, v: any) => setSemesterForm(s => ({ ...s, [k]: v }));
 
@@ -282,12 +469,11 @@ export default function AcademicProgress() {
         semester_key: String(semesterForm.semester_key || semesterForm.name || 'sem-' + Date.now()).trim(),
         name: String(semesterForm.name || semesterForm.semester_key || '').trim(),
         gpa: semesterForm.gpa ? Number(semesterForm.gpa) : null,
-        total_credits: semesterForm.total_credits ? Number(semesterForm.total_credits) : 0,
         is_current: !!semesterForm.is_current,
       };
       await apiClient.post('/academic/semesters', payload);
       setEditOpen(false);
-      setSemesterForm({ semester_key: '', name: '', gpa: '', total_credits: '', is_current: true });
+      setSemesterForm({ semester_key: '', name: '', gpa: '', is_current: true });
       setReloadCounter(c => c + 1);
     } catch (err) {
       console.error('Failed to save semester', err);
@@ -367,12 +553,7 @@ export default function AcademicProgress() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      // open modal and default-select currently loaded semester
-                      const first = semesters && semesters.length ? (semesters[0].semester_key || semesters[0].id) : '';
-                      setSelectedSemesterKey(first);
-                      setEditOpen(true);
-                    }}
+                    onClick={() => setEditOpen(true)}
                     className="hidden md:flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-white/40"
                   >
                     <Pencil className="w-4 h-4 text-gray-700" />
@@ -396,18 +577,18 @@ export default function AcademicProgress() {
                 initial={{ scale: 0.95, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="relative z-10 w-full max-w-5xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl mb-8 overflow-hidden border border-white/20"
+                className="relative z-10 w-full max-w-2xl bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl mb-8 overflow-hidden border border-white/20"
               >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600/90 to-purple-600/90 backdrop-blur-lg px-8 py-6">
+                <div className="bg-gradient-to-r from-indigo-600/90 to-purple-600/90 backdrop-blur-lg px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
                         <Pencil className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-2xl font-bold text-white">Edit Academic Goals</h3>
-                        <p className="text-indigo-100 text-sm">Manage your semesters and courses</p>
+                        <h3 className="text-xl font-bold text-white">Edit Academic Goals</h3>
+                        <p className="text-indigo-100 text-sm">Manage your semesters and subjects</p>
                       </div>
                     </div>
                     <button 
@@ -421,100 +602,52 @@ export default function AcademicProgress() {
                   </div>
                 </div>
 
-                <div className="p-8 bg-gradient-to-br from-white/50 to-gray-50/50 backdrop-blur-sm">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Left Column: Semester Form */}
-                    <form onSubmit={submitSemester} className="space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <GraduationCap className="w-5 h-5 text-indigo-600" />
-                        <h4 className="text-lg font-semibold text-gray-800">Semester Information</h4>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Semester Key</label>
-                            <input 
-                              placeholder="e.g., sem7" 
-                              value={semesterForm.semester_key} 
-                              onChange={e => handleSemesterFormChange('semester_key', e.target.value)} 
-                              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
-                            />
-                          </div> */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Semester Name</label>
-                            <input 
-                              placeholder="e.g., Semester 7" 
-                              value={semesterForm.name} 
-                              onChange={e => handleSemesterFormChange('name', e.target.value)} 
-                              className="w-full px-4 py-3 bg-Black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
-                            />
-                          </div>
+                <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-white backdrop-blur-sm">
+                  {subjectNotice && (
+                    <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-4 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                          <CheckCircle className="h-5 w-5" />
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Target GPA</label>
-                            <input 
-                              type="number"
-                              step="0.01"
-                              placeholder="e.g., 8.5" 
-                              value={semesterForm.gpa} 
-                              onChange={e => handleSemesterFormChange('gpa', e.target.value)} 
-                              className="w-full px-4 py-3 bg-black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Total Credits</label>
-                            <input 
-                              type="number"
-                              placeholder="e.g., 24" 
-                              value={semesterForm.total_credits} 
-                              onChange={e => handleSemesterFormChange('total_credits', e.target.value)} 
-                              className="w-full px-4 py-3 bg-black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm" 
-                            />
-                          </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-bold uppercase tracking-wider text-emerald-700">
+                            {subjectNotice.title}
+                          </h4>
+                          <p className="mt-1 text-sm font-medium text-slate-700">
+                            {subjectNotice.message}
+                          </p>
                         </div>
-
-                        <label className="flex items-center gap-3 p-4 bg-indigo-50/80 backdrop-blur-sm rounded-xl cursor-pointer hover:bg-indigo-100/80 transition-colors border border-indigo-200/50">
-                          <input 
-                            type="checkbox" 
-                            checked={semesterForm.is_current} 
-                            onChange={e => handleSemesterFormChange('is_current', e.target.checked)}
-                            className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
-                          />
-                          <span className="text-sm font-medium text-gray-700">Mark as current semester</span>
-                        </label>
-                      </div>
-
-                      <div className="flex gap-3 pt-4">
-                        <button 
-                          type="button" 
-                          onClick={() => setEditOpen(false)} 
-                          className="flex-1 px-6 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/50 text-gray-700 font-semibold rounded-xl hover:bg-gray-50/80 transition-all shadow-sm"
+                        <button
+                          type="button"
+                          onClick={() => setSubjectNotice(null)}
+                          className="rounded-lg px-2 py-1 text-slate-400 transition-colors hover:bg-white hover:text-slate-600"
+                          aria-label="Dismiss notification"
                         >
-                          Close
-                        </button>
-                        <button 
-                          type="submit" 
-                          className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all backdrop-blur-sm"
-                        >
-                          Save Semester
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
                         </button>
                       </div>
-                    </form>
+                    </div>
+                  )}
 
-                    {/* Right Column: Courses */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
+                  <div className="grid grid-cols-1 gap-8">
+                    {/* Subject Management */}
+                    <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.04)] space-y-4">
+                      <div className="flex items-center gap-2">
                         <BookOpen className="w-5 h-5 text-indigo-600" />
-                        <h4 className="text-lg font-semibold text-gray-800">Course Management</h4>
+                        <h4 className="text-lg font-semibold text-slate-900">Subject Management</h4>
+                        {currentSemester && (currentSemester.semester_key || currentSemester.id) === selectedSemesterKey && (
+                          <span className="ml-auto rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+                            Current Semester
+                          </span>
+                        )}
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Semester</label>
-                        <select 
-                          value={selectedSemesterKey} 
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Select Semester</label>
+                        <select
+                          value={selectedSemesterKey}
                           onChange={async e => {
                             const key = e.target.value;
                             setSelectedSemesterKey(key);
@@ -524,16 +657,56 @@ export default function AcademicProgress() {
                               if (!auth0Id) return;
                               const cResp = await apiClient.get(`/academic/courses?auth0_id=${encodeURIComponent(auth0Id)}&semester_key=${encodeURIComponent(key)}`);
                               if (cResp && Array.isArray(cResp.courses)) {
-                                setSemesters(prev => prev.map(p => (p.semester_key === key ? { ...p, courses: cResp.courses.map((c: any) => ({ id: String(c.id), name: c.name, code: c.code, credits: Number(c.credits||0), grade: c.grade||'-', status: c.status||'upcoming' })) } : p)));
+                                setSemesters(prev => prev.map(p => ((p.semester_key || p.id) === key ? { ...p, courses: cResp.courses.map((c: any) => ({ id: String(c.id), course_key: c.course_key || '', name: c.name, code: c.code, credits: Number(c.credits||0), backlog_count: Number(c.backlog_count||0), grade: c.grade||'-', progress: Number(c.progress||0), status: c.status||'upcoming' })) } : p)));
                               }
                             } catch (e) { console.error('Failed loading courses', e); }
-                          }} 
-                          className="w-full px-4 py-3 bg-black/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                          }}
+                          className={formSelectClass}
                         >
                           <option value="">-- Choose semester --</option>
-                          {semesters.map(s => <option key={s.id} value={s.semester_key || s.id}>{s.name}</option>)}
+                          {semesterOptions.map(s => <option key={s.id} value={s.semester_key || s.id}>{s.name}</option>)}
                         </select>
                       </div>
+
+                      {selectedSemesterKey && (
+                        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">CGPA</label>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              autoComplete="off"
+                              value={selectedSemesterGpa}
+                              onChange={e => setSelectedSemesterGpa(e.target.value)}
+                              placeholder="e.g., 8.50"
+                              className={formInputClass}
+                            />
+                            <button
+                              type="button"
+                              onClick={saveSelectedSemesterGpa}
+                              disabled={isSavingSemesterGpa}
+                              className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {isSavingSemesterGpa ? 'Saving...' : 'Save CGPA'}
+                            </button>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-3">
+                            <p className="text-xs font-medium text-slate-500">
+                              {selectedSemester?.is_current ? 'This semester is currently marked as active.' : 'You can mark this semester as current.'}
+                            </p>
+                            <label className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white/90 px-3 py-2 text-sm font-semibold text-emerald-700">
+                              <input
+                                type="checkbox"
+                                checked={!!selectedSemester?.is_current}
+                                onChange={e => toggleSelectedSemesterCurrent(e.target.checked)}
+                                disabled={isTogglingCurrentSemester}
+                                className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                              />
+                              <span>{isTogglingCurrentSemester ? 'Updating...' : 'Mark as Current Semester'}</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                         {(semesters.find(s => (s.semester_key || s.id) === selectedSemesterKey)?.courses || []).map((c, idx) => (
@@ -542,17 +715,15 @@ export default function AcademicProgress() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            className="group relative bg-white/60 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 hover:border-indigo-300/80 hover:shadow-lg transition-all"
+                            className="group relative bg-slate-50/80 backdrop-blur-md p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
-                                <div className="font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors">{c.name}</div>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                <div className="font-semibold text-slate-900 group-hover:text-indigo-700 transition-colors">{c.name}</div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                                   <span className="font-mono bg-white px-2 py-1 rounded">{c.code}</span>
                                   <span>•</span>
-                                  <span>{c.credits} credits</span>
-                                  <span>•</span>
-                                  <span className="font-semibold text-indigo-600">{c.grade}</span>
+                                  <span className="font-semibold text-indigo-600">{c.progress ? `${Math.max(0, Math.min(100, Number(c.progress || 0)))}% marks` : 'Marks pending'}</span>
                                 </div>
                               </div>
                               <div className="flex gap-2">
@@ -560,21 +731,13 @@ export default function AcademicProgress() {
                                   type="button" 
                                   onClick={() => {
                                     setEditingCourseId(c.id);
-                                    setCourseForm({ course_key: c.id, name: c.name, code: c.code, credits: String(c.credits || ''), grade: c.grade || '', status: (c as any).status || 'upcoming', progress: '' });
+                                    setSubjectNotice(null);
+                                    setCourseForm({ course_key: c.course_key || c.id, name: c.name, code: c.code, credits: '', backlog_count: String(c.backlog_count || ''), grade: c.grade || getGradeFromMarks(Number(c.progress || 0)), status: (c as any).status || 'upcoming', progress: String(c.progress || '') });
                                     setShowCourseForm(true);
                                   }} 
-                                  className="px-3 py-1.5 text-xs bg-white/90 backdrop-blur-sm border border-gray-300/50 text-gray-700 font-medium rounded-lg hover:bg-indigo-50/90 hover:border-indigo-300/80 transition-all shadow-sm"
+                                  className="px-3 py-1.5 text-xs bg-white backdrop-blur-sm border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-all shadow-sm"
                                 >
                                   Edit
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={async () => {
-                                    setSemesters(prev => prev.map(p => p.semester_key === (p.semester_key || p.id) && (p.semester_key || p.id) === selectedSemesterKey ? { ...p, courses: p.courses.filter(x => x.id !== c.id) } : p));
-                                  }} 
-                                  className="px-3 py-1.5 text-xs bg-white/90 backdrop-blur-sm border border-red-200/50 text-red-600 font-medium rounded-lg hover:bg-red-50/90 hover:border-red-300/80 transition-all shadow-sm"
-                                >
-                                  Remove
                                 </button>
                               </div>
                             </div>
@@ -584,7 +747,7 @@ export default function AcademicProgress() {
                         {selectedSemesterKey && (semesters.find(s => (s.semester_key || s.id) === selectedSemesterKey)?.courses || []).length === 0 && (
                           <div className="text-center py-8 text-gray-400">
                             <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No courses added yet</p>
+                            <p className="text-sm">No subjects added yet</p>
                           </div>
                         )}
                       </div>
@@ -593,135 +756,164 @@ export default function AcademicProgress() {
                         type="button" 
                         onClick={() => {
                           setEditingCourseId(null);
-                          setCourseForm({ course_key: '', name: '', code: '', credits: '', grade: '', status: 'upcoming', progress: '' });
+                          setSubjectNotice(null);
+                          setCourseForm({ course_key: '', name: '', code: '', credits: '', backlog_count: '', grade: '', status: 'upcoming', progress: '' });
                           setShowCourseForm(true);
                         }} 
-                        className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 backdrop-blur-sm"
+                        className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        Add New Course
+                        Add New Subject
                       </button>
                     </div>
                   </div>
 
-                  {/* Course Form */}
+                  {/* Subject Form */}
                   {showCourseForm && (
-                    <motion.form 
+                    <motion.form
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       onSubmit={async e => {
                         e.preventDefault();
                         if (!user) return;
                         try {
+                          const isEditingSubject = !!editingCourseId;
                           const auth0Id = user.sub || user.user_id || user?.id;
                           if (!auth0Id) return;
                           const semesterKey = selectedSemesterKey || (semesterForm.semester_key || semesterForm.name || (semesters[0] && (semesters[0].semester_key || semesters[0].id)));
-                          if (!semesterKey) { alert('Please select or save a semester first'); return; }
+                          if (!semesterKey) {
+                            alert('Please select or save a semester first');
+                            return;
+                          }
+
+                          const marks = Number(courseForm.progress || 0);
+                          const backlogCountValue = Math.max(0, Number(courseForm.backlog_count || 0));
                           const payload = {
                             auth0_id: auth0Id,
                             semester_key: semesterKey,
                             course_key: String(courseForm.course_key || courseForm.name || ('course-' + Date.now())).trim(),
                             name: String(courseForm.name || '').trim(),
-                            code: String(courseForm.code || '').trim(),
-                            credits: courseForm.credits ? Number(courseForm.credits) : 0,
-                            grade: courseForm.grade || null,
+                            code: String(courseForm.code || '').trim() || null,
+                            grade: getGradeFromMarks(marks) || null,
                             status: courseForm.status || 'upcoming',
-                            progress: courseForm.progress ? Number(courseForm.progress) : 0,
+                            progress: Number.isFinite(marks) ? marks : 0,
                           };
-                          await apiClient.post('/academic/courses', payload);
-                          setReloadCounter(c => c + 1);
+
+                          const resp = await apiClient.post('/academic/courses', payload);
+                          const saved = resp && resp.course ? resp.course : null;
+
+                          if (saved) {
+                            const normalized = {
+                              id: String(saved.id),
+                              course_key: saved.course_key || payload.course_key,
+                              name: saved.name || payload.name,
+                              code: saved.code || payload.code || '',
+                              credits: Number(saved.credits || 0),
+                              backlog_count: Number(courseForm.backlog_count || 0),
+                              grade: saved.grade || payload.grade || '-',
+                              progress: Number(saved.progress || payload.progress || 0),
+                              status: saved.status || payload.status || 'upcoming',
+                            };
+
+                            setSemesters(prev => prev.map(p => {
+                              if ((p.semester_key || p.id) !== semesterKey) return p;
+                              const existing = (p.courses || []).findIndex(x => x.id === normalized.id || x.course_key === normalized.course_key);
+                              if (existing >= 0) {
+                                const updatedCourses = [...(p.courses || [])];
+                                updatedCourses[existing] = normalized as any;
+                                return { ...p, courses: updatedCourses };
+                              }
+                              return { ...p, courses: [...(p.courses || []), normalized as any] };
+                            }));
+                          } else {
+                            setReloadCounter(c => c + 1);
+                          }
+
                           setShowCourseForm(false);
+                          setEditingCourseId(null);
+
+                          setSubjectNotice({
+                            title: isEditingSubject ? 'Successfully Edited' : 'Successfully Added',
+                            message: isEditingSubject
+                              ? 'Your subject changes have been saved.'
+                              : 'Your new subject has been added to the semester.',
+                          });
                         } catch (err) {
                           console.error('Failed saving course', err);
                         }
-                      }} 
-                      className="mt-8 pt-8 border-t-2 border-gray-200/50 backdrop-blur-sm"
+                      }}
+                      className="mt-8 pt-8 border-t border-slate-200"
                     >
                       <div className="flex items-center gap-2 mb-6">
-                        <div className="p-2 bg-blue-100/80 backdrop-blur-sm rounded-lg">
+                        <div className="p-2 bg-blue-100 rounded-lg">
                           <Pencil className="w-5 h-5 text-blue-600" />
                         </div>
-                        <h4 className="text-lg font-semibold text-gray-800">
-                          {editingCourseId ? 'Edit Course Details' : 'New Course Details'}
-                        </h4>
+                        <div>
+                          <h4 className="text-lg font-semibold text-slate-900">
+                            {editingCourseId ? 'Edit Subject Details' : 'New Subject Details'}
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Grade is assigned automatically from marks: {getGradeFromMarks(Number(courseForm.progress || 0)) || '-'}
+                          </p>
+                        </div>
                       </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Course Key</label>
-                          <input 
-                            placeholder="e.g., cs401" 
-                            value={courseForm.course_key} 
-                            onChange={e => setCourseForm(f => ({ ...f, course_key: e.target.value }))} 
-                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
-                          />
-                        </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
-                          <input 
-                            placeholder="e.g., Artificial Intelligence" 
-                            value={courseForm.name} 
-                            onChange={e => setCourseForm(f => ({ ...f, name: e.target.value }))} 
-                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Subject Name</label>
+                          <input
+                            placeholder="e.g., Artificial Intelligence"
+                            value={courseForm.name}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCourseForm(f => ({ ...f, name: e.target.value }))}
+                            className={formInputClass}
                           />
                         </div>
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Course Code</label>
-                          <input 
-                            placeholder="e.g., CS401" 
-                            value={courseForm.code} 
-                            onChange={e => setCourseForm(f => ({ ...f, code: e.target.value }))} 
-                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Credits</label>
-                          <input 
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Marks (%)</label>
+                          <input
                             type="number"
-                            placeholder="e.g., 4" 
-                            value={courseForm.credits} 
-                            onChange={e => setCourseForm(f => ({ ...f, credits: e.target.value }))} 
-                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                            min="0"
+                            max="100"
+                            placeholder="e.g., 88"
+                            value={courseForm.progress}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCourseForm(f => ({ ...f, progress: e.target.value }))}
+                            className={formInputClass}
                           />
+                          <p className="mt-2 text-xs text-slate-500">
+                            Current grade preview: {getGradeFromMarks(Number(courseForm.progress || 0)) || '-'}
+                          </p>
                         </div>
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Grade</label>
-                          <input 
-                            placeholder="e.g., A" 
-                            value={courseForm.grade} 
-                            onChange={e => setCourseForm(f => ({ ...f, grade: e.target.value }))} 
-                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm" 
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Backlogs</label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="e.g., 1"
+                            value={courseForm.backlog_count}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCourseForm(f => ({ ...f, backlog_count: e.target.value }))}
+                            className={formInputClass}
                           />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                          <select 
-                            value={courseForm.status} 
-                            onChange={e => setCourseForm(f => ({ ...f, status: e.target.value }))} 
-                            className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                          >
-                            <option value="upcoming">📅 Upcoming</option>
-                            <option value="in-progress">📚 In Progress</option>
-                            <option value="completed">✅ Completed</option>
-                          </select>
+                          <p className="mt-2 text-xs text-slate-500">Enter 0 if no backlog for this subject.</p>
                         </div>
                       </div>
 
                       <div className="flex gap-3">
-                        <button 
-                          type="button" 
-                          onClick={() => setShowCourseForm(false)} 
-                          className="flex-1 px-6 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/50 text-gray-700 font-semibold rounded-xl hover:bg-gray-50/80 transition-all shadow-sm"
+                        <button
+                          type="button"
+                          onClick={() => setShowCourseForm(false)}
+                          className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm"
                         >
                           Cancel
                         </button>
-                        <button 
-                          type="submit" 
+                        <button
+                          type="submit"
                           className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all backdrop-blur-sm"
                         >
-                          {editingCourseId ? 'Update Course' : 'Add Course'}
+                          {editingCourseId ? 'Update Subject' : 'Add Subject'}
                         </button>
                       </div>
                     </motion.form>
@@ -736,7 +928,7 @@ export default function AcademicProgress() {
           <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <StatCard
               icon={TrendingUp}
-              value={animatedGpa} // Will display nicely even if float
+              value={animatedGpa}
               label="Overall CGPA"
               color="blue"
               delay="0"
@@ -744,35 +936,27 @@ export default function AcademicProgress() {
             />
             <StatCard
               icon={BookOpen}
-              value={creditsEarned}
-              label="Credits Earned"
-              color="green"
-              delay="100"
-              isVisible={showStats}
-            />
-            <StatCard
-              icon={Briefcase}
-              value={semesters[0].name}
-              label="Current Semester"
+              value={allCourses.length}
+              label="Total Subjects"
               color="purple"
-              delay="200"
+                delay="100"
               isVisible={showStats}
             />
             <StatCard
-              icon={Award}
-              value="Top 10%"
-              label="Class Rank"
+              icon={AlertCircle}
+              value={backlogCount}
+              label="Backlogs"
               color="orange"
-              delay="300"
+                delay="200"
               isVisible={showStats}
             />
           </div>
 
           {/* MAIN CONTENT SPLIT */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8">
 
             {/* LEFT COLUMN: SEMESTER OVERVIEW & COURSES */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="space-y-8">
 
               {/* CURRENT SEMESTER HEADER */}
               <div
@@ -780,77 +964,52 @@ export default function AcademicProgress() {
                 className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 border border-white/50 shadow-xl transition-all duration-700
                         ${showSemester ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               >
-                <div className="flex justify-between items-end mb-6 border-b border-gray-100 pb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Current Semester</h2>
-                    <p className="text-indigo-500 font-medium">{semesters[0].name} • 2024-2025</p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 border-b border-gray-100 pb-4">
+                  <div className="space-y-1">
+                    <h2 className="text-2xl font-bold text-gray-800">Semester Overview</h2>
+                    <p className="text-indigo-500 font-medium">Select a semester to view its data</p>
+                  </div>
+                  <div className="w-full sm:w-72">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                      Semester
+                    </label>
+                    <select
+                      value={selectedSemesterKey}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedSemesterKey(e.target.value)}
+                      className={formSelectClass}
+                    >
+                      <option value="">-- Select semester --</option>
+                      {semesterOptions.map(s => (
+                        <option key={s.id} value={s.semester_key || s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="text-right hidden sm:block">
-                    <span className="text-3xl font-bold text-gray-800">{semesters[0].gpa}</span>
-                    <span className="text-sm text-gray-400 block uppercase tracking-wider">Target GPA</span>
+                    <span className="text-3xl font-bold text-gray-800">{activeSemester?.gpa ?? '-'}</span>
+                    <span className="text-sm text-gray-400 block uppercase tracking-wider">CGPA</span>
+                    {activeSemester?.is_current && (
+                      <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+                        Current Semester
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Course List */}
+                {/* Subject List */}
                 <div ref={coursesRef} className="space-y-4">
-                  {semesters[0].courses.map((course, index) => (
-                    <CourseCard key={course.id} course={course} delay={index * 100} />
+                  {(activeSemester?.courses || []).map((course, index) => (
+                    <SubjectCard key={course.id} course={course} delay={index * 100} />
                   ))}
+                  {(!activeSemester || (activeSemester.courses || []).length === 0) && (
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+                      No subjects available for this semester.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-
-            {/* RIGHT COLUMN: INSIGHTS / ALERTS */}
-            <div className="space-y-6">
-              <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl p-6 text-white shadow-2xl shadow-indigo-200 transform hover:scale-[1.02] transition-transform duration-500">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-                    <Award className="w-6 h-6 text-yellow-300" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold mb-1">Scholarship Eligible</h3>
-                    <p className="text-indigo-100 text-sm leading-relaxed">
-                      Your GPA of 8.5 qualifies you for the "Dean's List" scholarship next semester!
-                    </p>
-                  </div>
-                </div>
-                <button className="w-full py-3 bg-white text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition-colors shadow-lg">
-                  Apply Now
-                </button>
-              </div>
-
-              <div className="bg-white/60 backdrop-blur-md border border-white/60 rounded-3xl p-6 shadow-lg">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <AlertCircle size={18} className="text-orange-500" />
-                  Upcoming Deadlines
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-                    <div className="text-center min-w-[3rem]">
-                      <span className="block text-xs text-gray-400 uppercase font-bold">Feb</span>
-                      <span className="block text-lg font-bold text-gray-800">15</span>
-                    </div>
-                    <div className="w-px h-8 bg-gray-100"></div>
-                    <div>
-                      <p className="font-semibold text-gray-700 text-sm">Course Registration</p>
-                      <p className="text-xs text-gray-400">Fall 2025 Semester</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-                    <div className="text-center min-w-[3rem]">
-                      <span className="block text-xs text-gray-400 uppercase font-bold">Feb</span>
-                      <span className="block text-lg font-bold text-gray-800">28</span>
-                    </div>
-                    <div className="w-px h-8 bg-gray-100"></div>
-                    <div>
-                      <p className="font-semibold text-gray-700 text-sm">Exam Schedule</p>
-                      <p className="text-xs text-gray-400">Finals for Sem 6</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
 
         </div>

@@ -26,6 +26,18 @@ interface AcademicSemester {
   gpa: number | null;
   total_credits: number;
   is_current: boolean;
+  courses?: AcademicCourse[];
+}
+
+interface AcademicCourse {
+  id: string;
+  name: string;
+  code: string;
+  credits: number;
+  backlog_count: number;
+  grade: string;
+  progress: number;
+  status: string;
 }
 
 interface JobApplication {
@@ -108,7 +120,21 @@ export default function StudentDashboard() {
 
   // ── Derived academic stats ──────────────────────────────────────────────
   const currentSemester = useMemo(() => semesters.find(s => s.is_current) || semesters[0] || null, [semesters]);
-  const totalCreditsEarned = useMemo(() => semesters.reduce((sum, s) => sum + (s.total_credits || 0), 0), [semesters]);
+  const currentSemesterCourses = useMemo(() => currentSemester?.courses || [], [currentSemester]);
+  const currentSemesterGpa = useMemo(() => currentSemester?.gpa ?? profile?.gpa ?? 0, [currentSemester, profile?.gpa]);
+  const currentSemesterAverageMarks = useMemo(() => {
+    if (!currentSemesterCourses.length) return 0;
+    const totalMarks = currentSemesterCourses.reduce((sum, course) => sum + (Number(course.progress) || 0), 0);
+    return Math.round(totalMarks / currentSemesterCourses.length);
+  }, [currentSemesterCourses]);
+  const currentSemesterBacklogs = useMemo(
+    () => currentSemesterCourses.reduce((sum, course) => {
+      const explicitBacklogs = Math.max(0, Number(course.backlog_count || 0));
+      if (explicitBacklogs > 0) return sum + explicitBacklogs;
+      return ['F', 'RA', 'BACKLOG'].includes(String(course.grade || '').toUpperCase()) ? sum + 1 : sum;
+    }, 0),
+    [currentSemesterCourses]
+  );
   const activeApplications = useMemo(() => applications.filter(a => ['applied', 'screening', 'interview', 'offer'].includes(String(a.status || '').toLowerCase())).length, [applications]);
   const acceptedMentors = useMemo(() => mentorships.filter(m => m.status === 'accepted').length, [mentorships]);
   const recentActivity = useMemo(() => {
@@ -166,10 +192,78 @@ export default function StudentDashboard() {
   // ── Academic semesters ────────────────────────────────────────────────────
   useEffect(() => {
     if (!profile?.auth0Id) return;
-    fetch(`${API_BASE}/academic/semesters?auth0_id=${encodeURIComponent(profile.auth0Id)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.semesters) setSemesters(data.semesters); })
-      .catch(() => { });
+
+    let cancelled = false;
+
+    const loadAcademicData = async () => {
+      try {
+        const semestersResp = await fetch(`${API_BASE}/academic/semesters?auth0_id=${encodeURIComponent(profile.auth0Id)}`, { cache: 'no-store' });
+        if (!semestersResp.ok) return;
+
+        const semestersData = await semestersResp.json();
+        const mappedSemesters: AcademicSemester[] = Array.isArray(semestersData?.semesters)
+          ? semestersData.semesters.map((semester: any) => ({
+              id: semester.id || semester.semester_key || String(Math.random()),
+              semester_key: semester.semester_key || (semester.id ? String(semester.id) : ''),
+              name: semester.name || semester.semester_key || '',
+              gpa: semester.gpa != null ? Number(semester.gpa) : null,
+              total_credits: semester.total_credits != null ? Number(semester.total_credits) : 0,
+              is_current: !!semester.is_current,
+              courses: [],
+            }))
+          : [];
+
+        if (cancelled) return;
+        setSemesters(mappedSemesters);
+
+        const semesterKeys = mappedSemesters.map(semester => semester.semester_key).filter(Boolean);
+        if (!semesterKeys.length) return;
+
+        const courseResults = await Promise.all(
+          semesterKeys.map(async semesterKey => {
+            const coursesResp = await fetch(`${API_BASE}/academic/courses?auth0_id=${encodeURIComponent(profile.auth0Id)}&semester_key=${encodeURIComponent(semesterKey)}`, { cache: 'no-store' });
+            if (!coursesResp.ok) return { semesterKey, courses: [] as AcademicCourse[] };
+
+            const coursesData = await coursesResp.json();
+            return {
+              semesterKey,
+              courses: Array.isArray(coursesData?.courses)
+                ? coursesData.courses.map((course: any) => ({
+                    id: String(course.id),
+                    name: course.name,
+                    code: course.code,
+                    credits: Number(course.credits || 0),
+                    backlog_count: Number(course.backlog_count || 0),
+                    grade: course.grade || '-',
+                    progress: Number(course.progress || 0),
+                    status: course.status || 'upcoming',
+                  }))
+                : [],
+            };
+          })
+        );
+
+        if (!cancelled) {
+          setSemesters(prev => prev.map(semester => {
+            const match = courseResults.find(result => result.semesterKey === semester.semester_key);
+            return match ? { ...semester, courses: match.courses } : semester;
+          }));
+        }
+      } catch {
+        // Keep dashboard resilient if academic data is unavailable.
+      }
+    };
+
+    loadAcademicData();
+    const intervalId = window.setInterval(loadAcademicData, 30000);
+    const handleFocus = () => { loadAcademicData(); };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [API_BASE, profile?.auth0Id]);
 
   // ── Job applications ────────────────────────────────────────────────────
@@ -425,10 +519,13 @@ export default function StudentDashboard() {
                 <div>
                   <p className="text-gray-600 text-sm font-medium">Academic Progress</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {currentSemester?.name || (semesters.length === 0 ? '–' : `Sem ${semesters.length}`)}
+                    {currentSemester?.name || 'No semester selected'}
                   </p>
                   <p className="text-green-600 text-sm mt-1">
-                    {profile?.gpa ? `${profile.gpa} CGPA` : 'No data yet'}
+                    {currentSemesterGpa ? `${Number(currentSemesterGpa).toFixed(2)} CGPA` : 'No data yet'}
+                  </p>
+                  <p className={`text-xs mt-1 ${currentSemesterBacklogs > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                    {currentSemesterBacklogs > 0 ? `${currentSemesterBacklogs} backlog${currentSemesterBacklogs !== 1 ? 's' : ''}` : 'No backlogs'}
                   </p>
                 </div>
                 <div className="p-3 bg-gradient-to-br from-green-100 to-green-200 rounded-xl shadow-md">
@@ -523,7 +620,14 @@ export default function StudentDashboard() {
                       <BookOpen className="w-5 h-5 text-green-600" />
                     </div>
                     <p className="text-2xl font-bold text-green-600">{currentSemester?.name || 'Not Set'}</p>
-                    <p className="text-sm text-gray-600 mt-1">{currentSemester ? `${currentSemester.total_credits} credits this semester` : 'Add in Academic Progress'}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {currentSemesterCourses.length > 0
+                        ? `${currentSemesterCourses.length} subjects updated from Academic Progress`
+                        : 'Add subjects in Academic Progress'}
+                    </p>
+                    <p className={`text-xs mt-1 ${currentSemesterBacklogs > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                      {currentSemesterBacklogs > 0 ? `${currentSemesterBacklogs} backlog${currentSemesterBacklogs !== 1 ? 's' : ''} in this semester` : 'No backlogs in this semester'}
+                    </p>
                   </motion.div>
 
                   <motion.div
@@ -542,26 +646,30 @@ export default function StudentDashboard() {
                 {/* Progress Bar */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Degree Progress</h3>
-                    <span className="text-sm text-gray-600">{totalCreditsEarned} credits across {semesters.length} semesters</span>
+                    <h3 className="font-semibold text-gray-900">Semester Marks</h3>
+                    <span className="text-sm text-gray-600">
+                      {currentSemesterCourses.length > 0
+                        ? `${currentSemesterCourses.length} subjects, ${currentSemesterAverageMarks}% average`
+                        : 'No subject marks yet'}
+                    </span>
                   </div>
-                  {semesters.length > 0 ? (
+                  {currentSemesterCourses.length > 0 ? (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, (totalCreditsEarned / 160) * 100)}%` }}
+                          animate={{ width: `${Math.min(100, currentSemesterAverageMarks)}%` }}
                           transition={{ duration: 1.5, ease: "easeOut" }}
                           className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full"
                         />
                       </div>
                       <div className="flex justify-between text-sm text-gray-600 mt-1">
-                        <span>{totalCreditsEarned} credits earned</span>
-                        <span>160 total required</span>
+                        <span>{currentSemesterAverageMarks}% average</span>
+                        <span>{currentSemesterCourses.length} subjects tracked</span>
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm text-gray-500 bg-gray-50 rounded-xl p-3">Add semesters in Academic Progress to track your degree completion</p>
+                    <p className="text-sm text-gray-500 bg-gray-50 rounded-xl p-3">Add subjects in Academic Progress to track semester marks here</p>
                   )}
                 </div>
 

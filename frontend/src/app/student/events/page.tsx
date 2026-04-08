@@ -291,42 +291,38 @@ function EventsContent() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-blue-50 py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
-          <div className="mb-10">
-            <div className="relative overflow-hidden rounded-[32px] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18)_0,_rgba(16,185,129,0.12)_28%,_rgba(245,158,11,0.08)_48%,_rgba(255,255,255,0.98)_100%)] p-8 lg:p-10 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+          <div className="mb-8">
+            <div className="relative overflow-hidden rounded-[32px] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18)_0,_rgba(16,185,129,0.12)_32%,_rgba(255,255,255,0.98)_100%)] p-6 lg:p-8 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
               <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-blue-300/25 blur-3xl" />
               <div className="absolute -bottom-12 left-1/4 h-44 w-44 rounded-full bg-emerald-300/20 blur-3xl" />
-              <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
                   <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-blue-700 shadow-sm backdrop-blur">
                     <GraduationCap className="w-4 h-4 text-blue-600" />
                     Campus Events
                   </div>
-                  <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                  <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 mb-3 tracking-tight">
                     Discover events that fit your next step.
                   </h1>
-                  <p className="mt-4 max-w-2xl text-[15px] sm:text-base lg:text-lg font-medium leading-relaxed text-slate-600">
+                  <p className="max-w-2xl text-base lg:text-lg text-slate-700 font-medium leading-relaxed mb-4">
                     Browse workshops, seminars, career fairs, and networking sessions in a clean, focused layout built around the theme colors already used in the app.
                   </p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[420px]">
-                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Events</p>
-                    <p className="mt-2 text-2xl font-black text-slate-900">{events.length}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Registered</p>
-                    <p className="mt-2 text-2xl font-black text-emerald-600">{events.filter(e => e.isRegistered).length}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Saved</p>
-                    <p className="mt-2 text-2xl font-black text-amber-600">{events.filter(e => e.isSaved).length}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Virtual</p>
-                    <p className="mt-2 text-2xl font-black text-indigo-600">{events.filter(e => e.isVirtual).length}</p>
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="font-medium">{events.length} Events</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      <span className="font-medium">{events.filter(e => e.isRegistered).length} Registered</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full" />
+                      <span className="font-medium">{events.filter(e => e.isSaved).length} Saved</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -334,7 +330,7 @@ function EventsContent() {
           </div>
 
           {/* Upcoming Events Highlight */}
-          <div className="mb-10 rounded-[32px] border border-slate-100/80 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] lg:p-8">
+          <div className="mb-8 rounded-[32px] border border-slate-100/80 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] lg:p-8">
             <div className="mb-6 flex items-center justify-between gap-4">
               <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm">
@@ -342,7 +338,7 @@ function EventsContent() {
                 </div>
                 Upcoming Events
               </h2>
-              <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 sm:inline-flex">
+              <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-600 sm:inline-flex">
                 Top picks this week
               </span>
             </div>
@@ -359,11 +355,11 @@ function EventsContent() {
                   </div>
                   <h3 className="mb-3 text-[17px] font-extrabold leading-tight text-slate-950 transition-colors group-hover:text-emerald-700">{event.title}</h3>
                   <div className="space-y-2">
-                    <div className="flex items-center text-xs font-semibold text-slate-700">
+                    <div className="flex items-center text-xs font-bold text-slate-800">
                       <Calendar className="w-3.5 h-3.5 mr-2 text-emerald-500" />
                       {formatDate(event.date ?? '')} <span className="mx-2 text-slate-300">•</span> {event.time}
                     </div>
-                    <div className="flex items-center text-xs font-semibold text-slate-700">
+                    <div className="flex items-center text-xs font-bold text-slate-800">
                       <MapPin className="w-3.5 h-3.5 mr-2 text-blue-500" />
                       {event.location}
                     </div>
@@ -374,7 +370,7 @@ function EventsContent() {
           </div>
 
           {/* Search and Filters */}
-          <div className="mb-10 rounded-[32px] border border-slate-100 bg-white/90 p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] backdrop-blur-sm lg:p-8">
+          <div className="mb-8 rounded-[32px] border border-slate-100 bg-white/90 p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] backdrop-blur-sm lg:p-8">
             <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center">
               <div className="flex-1 relative group">
                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
@@ -423,7 +419,7 @@ function EventsContent() {
                   <div className={`w-10 h-5 rounded-full transition-colors ${virtualOnly ? 'bg-emerald-500' : 'bg-slate-200'}`} />
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${virtualOnly ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
-                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Virtual Only</span>
+                <span className="text-xs font-black text-slate-700 uppercase tracking-widest">Virtual Only</span>
               </label>
 
               <label className="flex items-center gap-3 cursor-pointer group">
@@ -437,7 +433,7 @@ function EventsContent() {
                   <div className={`w-10 h-5 rounded-full transition-colors ${autoRefresh ? 'bg-emerald-500' : 'bg-slate-200'}`} />
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoRefresh ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
-                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Auto-refresh (10s)</span>
+                <span className="text-xs font-black text-slate-700 uppercase tracking-widest">Auto-refresh (10s)</span>
               </label>
             </div>
           </div>
@@ -485,28 +481,28 @@ function EventsContent() {
                     <span className="text-[11px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-full border border-amber-100/50">
                       {getDaysUntil(event.date ?? '')}
                     </span>
-                    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">
                       {event.organizer || 'Campus Team'}
                     </span>
                   </div>
 
                   <h3 className="mb-4 text-2xl font-black tracking-tight text-slate-950 transition-colors group-hover:text-emerald-700 leading-tight">{event.title}</h3>
-                  <p className="mb-8 text-[15px] font-medium leading-relaxed text-slate-700 line-clamp-2">{event.description}</p>
+                  <p className="mb-8 text-[15px] font-semibold leading-relaxed text-slate-800 line-clamp-2">{event.description}</p>
 
                   <div className="mb-8 grid grid-cols-2 gap-3">
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
                       <Calendar className="w-4 h-4 mr-3 text-emerald-500" />
                       <span>{formatDate(event.date ?? '')}</span>
                     </div>
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
                       <Clock className="w-4 h-4 mr-3 text-blue-500" />
                       <span>{event.time}</span>
                     </div>
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
                       <MapPin className="w-4 h-4 mr-3 text-purple-500" />
                       <span className="truncate">{event.location}</span>
                     </div>
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700 shadow-sm">
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
                       <Users className="w-4 h-4 mr-3 text-indigo-500" />
                       <span>{event.currentAttendees}{event.maxAttendees ? `/${event.maxAttendees}` : ''} joined</span>
                     </div>
@@ -514,37 +510,39 @@ function EventsContent() {
 
                   <div className="flex flex-wrap gap-2 mb-8">
                     {(event.tags ?? []).slice(0, 3).map(tag => (
-                      <span key={tag} className="px-4 py-1.5 bg-slate-50 text-slate-600 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-100 hover:bg-white hover:text-emerald-600 transition-all cursor-default">
+                      <span key={tag} className="px-4 py-1.5 bg-slate-50 text-slate-700 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-200 hover:bg-white hover:text-emerald-600 transition-all cursor-default">
                         #{tag}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex flex-col gap-4 pt-7 border-t border-slate-100 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-black text-emerald-600 tracking-tight">
+                  <div className="flex flex-col gap-5 pt-7 border-t border-slate-100 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-2xl font-black text-emerald-600 tracking-tight leading-none">
                         {event.price === 0 ? 'FREE' : `$${event.price}`}
                       </span>
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">by {event.organizer}</span>
+                      <span className="mt-1 max-w-[16rem] truncate text-[10px] font-black text-slate-700 uppercase tracking-widest">
+                        by {event.organizer}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                       <button
                         className={`p-3 rounded-2xl transition-all duration-300 shadow-sm border ${event.isSaved
                           ? 'bg-amber-500 text-white border-amber-600 hover:scale-110'
-                          : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-white hover:text-emerald-500 hover:scale-110'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white hover:text-emerald-500 hover:scale-110'
                           }`}
                       >
                         <BookmarkPlus className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleShare(event)}
-                        className="p-3 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl hover:bg-white hover:text-emerald-500 hover:scale-110 transition-all duration-300"
+                        className="p-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl hover:bg-white hover:text-emerald-500 hover:scale-110 transition-all duration-300 shrink-0"
                         title="Share Event"
                       >
                         <Share2 className="w-5 h-5" />
                       </button>
                       <button
-                        className={`px-8 py-3 rounded-2xl font-black text-[13px] uppercase tracking-widest transition-all duration-300 shadow-lg active:scale-95 ${event.isRegistered
+                        className={`px-5 py-3 rounded-2xl font-black text-[13px] uppercase tracking-widest transition-all duration-300 shadow-lg active:scale-95 shrink-0 whitespace-nowrap ${event.isRegistered
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-not-allowed shadow-none'
                           : registeringEventId === event.id
                             ? 'bg-slate-200 text-slate-400 cursor-wait'
@@ -571,7 +569,7 @@ function EventsContent() {
                 <Calendar className="w-12 h-12 text-slate-300" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">No Events Found</h3>
-              <p className="text-slate-500 font-medium text-lg max-w-md mx-auto">Try adjusting your search criteria or filters to discover more events</p>
+              <p className="text-slate-600 font-semibold text-lg max-w-md mx-auto">Try adjusting your search criteria or filters to discover more events</p>
             </div>
           )}
         </div>
