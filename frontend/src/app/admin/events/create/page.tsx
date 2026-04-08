@@ -61,8 +61,8 @@ export default function CreateEventPage() {
         let image_url = '';
         if (formData.image) {
           const imgForm = new FormData();
-          imgForm.append('image', formData.image);
-          const imgRes = await fetch(`${API_BASE}/api/uploads/event-image`, { method: 'POST', body: imgForm });
+          imgForm.append('file', formData.image);
+          const imgRes = await fetch(`${API_BASE}/api/upload/event-image`, { method: 'POST', body: imgForm });
           if (imgRes.ok) { const d = await imgRes.json(); image_url = d.url; }
           else { alert('Image upload failed'); return; }
         }

@@ -4,7 +4,12 @@ const nextConfig = {
   reactStrictMode: true,
   // Allowing Auth0 domain in images
   images: {
-    domains: ['lh3.googleusercontent.com', 's.gravatar.com'], // For Auth0 profile pictures
+    domains: [
+      'lh3.googleusercontent.com', 
+      's.gravatar.com',
+      'res.cloudinary.com',  // Cloudinary hosted images
+      'api.dicebear.com',    // Avatar generation service
+    ], // For Auth0 profile pictures and Cloudinary uploads
   },
   // Adding rewrites for API proxy to backend
   async rewrites() {

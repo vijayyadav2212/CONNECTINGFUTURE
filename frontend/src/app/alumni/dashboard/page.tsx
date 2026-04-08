@@ -15,6 +15,23 @@ export default function AlumniDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
 
+  const normalizeExternalUrl = (value?: string | null) => {
+    const rawValue = String(value || '').trim();
+    if (!rawValue) return '';
+    if (/^https?:\/\//i.test(rawValue)) return rawValue;
+    return `https://${rawValue.replace(/^\/+/, '')}`;
+  };
+
+  const linkedInUrl = normalizeExternalUrl(profile?.linkedin_url || profile?.linkedin || profile?.linkedIn);
+  const totalImpact = Number(profile?.impact_score ?? profile?.total_points ?? profile?.impactScore ?? 0);
+  const impactBreakdown = profile?.impact_breakdown || {};
+  const impactRows = [
+    { label: 'Jobs posted', value: Number(impactBreakdown.jobs ?? 0) },
+    { label: 'Roadmaps shared', value: Number(impactBreakdown.roadmaps ?? 0) },
+    { label: 'Mentorships completed', value: Number(impactBreakdown.mentorships ?? 0) },
+    { label: 'Sessions completed', value: Number(impactBreakdown.sessions_completed ?? impactBreakdown.mentorships ?? 0) },
+  ];
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -139,8 +156,13 @@ export default function AlumniDashboard() {
              <div className="space-y-6">
                  <div className="flex items-center gap-2">
                     <Linkedin size={20} className="text-[#0a66c2]" strokeWidth={1.5} />
-                    <a href={profile?.linkedin || '#'} target="_blank" rel="noopener noreferrer" className="text-[#0a66c2] font-semibold text-[15px] hover:underline">
-                      View LinkedIn Profile
+                    <a
+                      href={linkedInUrl || '/alumni/settings'}
+                      target={linkedInUrl ? '_blank' : undefined}
+                      rel={linkedInUrl ? 'noopener noreferrer' : undefined}
+                      className="text-[#0a66c2] font-semibold text-[15px] hover:underline"
+                    >
+                      {linkedInUrl ? 'View LinkedIn Profile' : 'Add LinkedIn Profile'}
                     </a>
                  </div>
 
@@ -165,13 +187,21 @@ export default function AlumniDashboard() {
                   <span>Total Impact</span>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-center mb-8">
+                <div className="flex-1 flex flex-col justify-start -mt-2 mb-8">
                    <div className="text-[100px] font-extrabold leading-none tracking-tighter mb-4 drop-shadow-sm">
-                     {profile?.impact_score || '0'}
+                     {Number.isFinite(totalImpact) ? totalImpact.toLocaleString() : '0'}
                    </div>
-                   <p className="text-white/80 font-semibold text-[17px]">
+                   <p className="text-white/80 font-semibold text-[17px] mb-4">
                      Contributions this year
                    </p>
+                   <div className="space-y-4">
+                     {impactRows.map((row) => (
+                       <div key={row.label} className="flex items-center justify-between gap-4 text-[11px] leading-none text-white/75">
+                         <span className="font-medium uppercase tracking-[0.18em] truncate">{row.label}</span>
+                         <span className="font-bold tabular-nums">{row.value}</span>
+                       </div>
+                     ))}
+                   </div>
                 </div>
               </div>
           </div>

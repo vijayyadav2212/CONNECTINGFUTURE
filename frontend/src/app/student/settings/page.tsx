@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import StudentNavigation from '../StudentNavigation/StudentNavigation';
-import AvatarSelectionModal from '../../../components/AvatarSelectionModal';
+import ProfilePhotoModal from '../../../components/ProfilePhotoModal';
 import Link from 'next/link';
 import {
   User,
@@ -371,7 +371,7 @@ export default function Settings() {
                         onClick={() => setIsAvatarModalOpen(true)}
                         className="text-green-600 text-sm font-semibold hover:underline"
                       >
-                        Change Avatar
+                        Change Photo
                       </button>
                     </div>
 
@@ -746,11 +746,11 @@ export default function Settings() {
         </div>
       </div>
       </div>
-      <AvatarSelectionModal
+      <ProfilePhotoModal
         isOpen={isAvatarModalOpen}
         onClose={() => setIsAvatarModalOpen(false)}
         onSelect={(url) => setProfile(prev => ({ ...prev, avatar: url }))}
-        currentAvatar={profile.avatar}
+        currentPhoto={profile.avatar}
       />
     </StudentNavigation>
   );

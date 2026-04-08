@@ -33,6 +33,11 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getPreviewUrl = (url?: string | null, fileName?: string) => {
+    if (!url) return '';
+    return `/api/files/preview?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(fileName || 'event-image.jpg')}`;
+  };
+
   React.useEffect(() => { fetchEvents(); }, []);
 
   const fetchEvents = async () => {
@@ -232,7 +237,9 @@ export default function EventsPage() {
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none z-10" />
                       {event.image_url && (
                         <div className="mb-5 rounded-[16px] overflow-hidden h-48 w-full shadow-inner">
-                          <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <a href={getPreviewUrl(event.image_url, `${event.title || 'event'}.jpg`)} target="_blank" rel="noreferrer" className="block w-full h-full">
+                            <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                          </a>
                         </div>
                       )}
                       <div className="flex items-start justify-between gap-4 mb-3">

@@ -232,7 +232,7 @@ export default function MessagesPage() {
       if (selectedFile) {
         const fd = new FormData();
         fd.append('file', selectedFile);
-        const uploadResp = await fetch(`${API_ROOT}/uploads/message-file`, { method: 'POST', body: fd });
+        const uploadResp = await fetch(`${API_ROOT}/upload/message-attachment`, { method: 'POST', body: fd });
         const uploadData = await uploadResp.json().catch(() => ({}));
         if (!uploadResp.ok) throw new Error(uploadData?.error || 'Failed to upload file');
         attachmentPayload = {
@@ -307,6 +307,12 @@ export default function MessagesPage() {
     if (size < 1024) return `${size} B`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getPreviewUrl = (url?: string | null, fileName?: string | null) => {
+    if (!url) return '';
+    const safeName = fileName && fileName.trim() ? fileName.trim() : 'attachment';
+    return `/api/files/preview?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}`;
   };
 
   const initials = (email: string) => email.split('@')[0].slice(0, 2).toUpperCase();
@@ -451,7 +457,7 @@ export default function MessagesPage() {
                                 {m.content ? <p>{m.content}</p> : null}
                                 {m.attachment_url ? (
                                   <a
-                                    href={m.attachment_url}
+                                    href={getPreviewUrl(m.attachment_url, m.attachment_name)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className={`mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl ${mine ? 'bg-white/15 hover:bg-white/20' : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'} transition-colors`}

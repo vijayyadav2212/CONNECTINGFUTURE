@@ -1,11 +1,13 @@
 "use client";
 
 import { useUser, withPageAuthRequired } from "@auth0/nextjs-auth0/client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProfilePhotoModal from "@/components/ProfilePhotoModal";
 import {
   Mail,
   MapPin,
@@ -15,10 +17,20 @@ import {
   ArrowLeft,
   Github,
   Globe,
+  Camera,
 } from "lucide-react";
 
 function ProfilePage() {
   const { user, error, isLoading } = useUser();
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState(user?.picture || "/placeholder-user.jpg");
+
+  // Update avatar when user data loads
+  useEffect(() => {
+    if (user?.picture) {
+      setProfileAvatar(user.picture);
+    }
+  }, [user?.picture]);
 
   if (isLoading) {
     return (
@@ -92,14 +104,36 @@ function ProfilePage() {
           <CardContent className="p-8">
             <div className="flex flex-col md:flex-row gap-6">
 
-              <Avatar className="w-28 h-28">
-                <AvatarImage
-                  src={user.picture || "/placeholder-user.jpg"}
-                />
-                <AvatarFallback className="text-2xl font-bold">
-                  {user.name?.[0]}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <div 
+                  className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-blue-100 cursor-pointer hover:ring-blue-300 transition-all bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center"
+                  onClick={() => {
+                    console.log('Avatar clicked'); 
+                    setIsAvatarModalOpen(true);
+                  }}
+                >
+                  <Avatar className="w-full h-full">
+                    <AvatarImage
+                      src={profileAvatar}
+                      alt={user.name || 'Profile'}
+                    />
+                    <AvatarFallback className="text-2xl font-bold text-blue-600">
+                      {user.name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <button
+                  onClick={() => {
+                    console.log('Camera button clicked');
+                    setIsAvatarModalOpen(true);
+                  }}
+                  className="absolute bottom-0 right-0 bg-blue-600 text-white p-3 rounded-full shadow-xl hover:bg-blue-700 transition-all hover:scale-110 active:scale-95"
+                  title="Change Profile Photo"
+                  type="button"
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+              </div>
 
               <div className="flex-1">
 
@@ -224,6 +258,14 @@ function ProfilePage() {
         </Card>
 
       </div>
+
+      {/* Profile Photo Modal - Outside main container */}
+      <ProfilePhotoModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+        onSelect={(url) => setProfileAvatar(url)}
+        currentPhoto={profileAvatar}
+      />
     </div>
   );
 }

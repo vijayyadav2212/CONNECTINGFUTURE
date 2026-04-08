@@ -3,6 +3,8 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { useState, useEffect } from 'react';
 import tokenManager from '../lib/auth/tokenManager';
 
+const SESSION_TTL_SECONDS = 3 * 60 * 60;
+
 export function useAuth0Token() {
   const { user, isLoading } = useUser();
   const [token, setToken] = useState(null);
@@ -31,7 +33,7 @@ export function useAuth0Token() {
           const accessToken = data.accessToken;
           
           // Store token using tokenManager
-          tokenManager.setToken(accessToken, data.expiresIn || 3600);
+          tokenManager.setToken(accessToken, data.expiresIn || SESSION_TTL_SECONDS);
           setToken(accessToken);
         } else {
           console.error('Failed to fetch token');
@@ -56,7 +58,7 @@ export function useAuth0Token() {
       if (response.ok) {
         const data = await response.json();
         const accessToken = data.accessToken;
-        tokenManager.setToken(accessToken, data.expiresIn || 3600);
+        tokenManager.setToken(accessToken, data.expiresIn || SESSION_TTL_SECONDS);
         setToken(accessToken);
       }
     } catch (error) {

@@ -5,6 +5,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import tokenManager from '../lib/auth/tokenManager';
 
+const SESSION_TTL_SECONDS = 3 * 60 * 60;
+
 const AuthTokenContext = createContext();
 
 export function AuthTokenProvider({ children }) {
@@ -42,7 +44,7 @@ export function AuthTokenProvider({ children }) {
         } else if (response.ok) {
           const data = await response.json();
           if (data?.accessToken) {
-            tokenManager.setToken(data.accessToken, data.expiresIn);
+            tokenManager.setToken(data.accessToken, data.expiresIn || SESSION_TTL_SECONDS);
             setToken(data.accessToken);
             // Trigger a background profile fetch to ensure user is saved in DB
             try { fetch('/api/user/profile', { cache: 'no-store' }).catch(() => {}); } catch {}
@@ -81,7 +83,7 @@ export function AuthTokenProvider({ children }) {
       }
       if (response.ok) {
         const data = await response.json();
-        tokenManager.setToken(data.accessToken, data.expiresIn);
+        tokenManager.setToken(data.accessToken, data.expiresIn || SESSION_TTL_SECONDS);
         setToken(data.accessToken);
         // Trigger background profile fetch to ensure DB save
         try { fetch('/api/user/profile', { cache: 'no-store' }).catch(() => {}); } catch {}

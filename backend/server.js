@@ -1,5 +1,3 @@
-
-
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -10,6 +8,7 @@ const multer = require('multer');
 const nodemailer = require('nodemailer'); // For sending emails
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
+const jsonwebtoken = require('jsonwebtoken');
 const crypto = require('crypto');
 // Use global fetch if available (Node >= 18); otherwise lazy-load node-fetch
 const fetchFn = (global.fetch ? global.fetch : ((...args) => import('node-fetch').then(({ default: f }) => f(...args))));
@@ -33,6 +32,19 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 dotenv.config({ path: __dirname + '/.env' });
 
+// Cloudinary upload service (must be imported AFTER dotenv.config())
+const {
+  uploadEventImage,
+  uploadResume,
+  uploadReviewResume,
+  uploadMessageFile,
+  uploadOtherFile,
+  uploadMemoryImage,
+  getViewUrl,
+  getDownloadUrl,
+  resolveViewUrl,
+} = require('./services/cloudinaryService');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -49,34 +61,146 @@ try {
 } catch { }
 app.use('/uploads', express.static(uploadsRoot));
 
+function getProxyDownloadUrl(fileUrl, filename = '') {
+  if (!fileUrl) return '';
+  const params = new URLSearchParams({
+    url: fileUrl,
+    filename: filename || 'download',
+  });
+  return `/api/files/download?${params.toString()}`;
+}
+
+function inferContentTypeFromFilename(filename = '') {
+  const ext = String(filename || '').toLowerCase().split('.').pop();
+  switch (ext) {
+    case 'pdf': return 'application/pdf';
+    case 'doc': return 'application/msword';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'webp': return 'image/webp';
+    case 'gif': return 'image/gif';
+    case 'txt': return 'text/plain; charset=utf-8';
+    default: return '';
+  }
+}
+
+async function sendAlumniApprovalEmail({ to, name, status, reason }) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !to) return;
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const safeName = name || 'Alumni';
+  const normalizedStatus = String(status || '').toLowerCase();
+  const isApproved = normalizedStatus === 'approved';
+  const subject = isApproved
+    ? 'Your alumni profile has been approved'
+    : 'Your alumni profile needs an update';
+
+  const html = isApproved
+    ? `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+        <div style="background: #4F46E5; color: #fff; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Profile Approved</h1>
+        </div>
+        <div style="padding: 28px; background: #ffffff; color: #111827;">
+          <p style="font-size: 16px; margin: 0 0 14px;">Hi ${safeName},</p>
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 14px;">Your alumni profile has been approved. You can now access the alumni dashboard and community features.</p>
+          <p style="font-size: 14px; color: #6b7280; margin: 0;">Thank you for keeping your profile updated.</p>
+        </div>
+      </div>
+    `
+    : `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; border: 1px solid #fee2e2; border-radius: 12px; overflow: hidden;">
+        <div style="background: #DC2626; color: #fff; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Profile Review Feedback</h1>
+        </div>
+        <div style="padding: 28px; background: #ffffff; color: #111827;">
+          <p style="font-size: 16px; margin: 0 0 14px;">Hi ${safeName},</p>
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Your alumni profile was reviewed and needs a few updates before approval.</p>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 16px; margin: 0 0 18px;">
+            <p style="margin: 0 0 8px; font-size: 13px; font-weight: bold; color: #b91c1c; text-transform: uppercase; letter-spacing: .08em;">Admin Feedback</p>
+            <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #7f1d1d;">${reason ? String(reason) : 'Please update your profile information and reapply.'}</p>
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; margin: 0; color: #6b7280;">Please update your profile from the alumni settings page and submit it again for review.</p>
+        </div>
+      </div>
+    `;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to,
+    subject,
+    html,
+  });
+}
+
 const MESSAGE_EDIT_WINDOW_MINUTES = Number(process.env.MESSAGE_EDIT_WINDOW_MINUTES || 15);
 
-// Event image upload configuration
-const eventImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(uploadsRoot, 'events');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '';
-    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-    cb(null, `${base}_${Date.now()}${ext}`);
-  }
-});
+// --- File Uploads (Event Image) ---
+const allowedEventImageTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif'
+]);
 const eventImageUpload = multer({
-  storage: eventImageStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (/^image\//.test(file.mimetype)) return cb(null, true);
-    return cb(new Error('Only image files allowed'));
-  }
+    if (allowedEventImageTypes.has(file.mimetype)) return cb(null, true);
+    return cb(new Error('Invalid image type. Only JPG, PNG, WEBP, GIF are allowed.'));
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB for events
 });
 
-app.post('/api/uploads/event-image', eventImageUpload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Image file is required' });
-  const url = `${req.protocol}://${req.get('host')}/uploads/events/${req.file.filename}`;
-  return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+// Event image upload to Cloudinary
+app.post('/api/uploads/event-image', eventImageUpload.single('image'), async (req, res) => {
+  try {
+    console.log('[EVENT IMAGE UPLOAD] Received request');
+    
+    if (!req.file) {
+      console.error('[EVENT IMAGE UPLOAD] No file in request');
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+    
+    console.log('[EVENT IMAGE UPLOAD] File details:', {
+      filename: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      bufferlength: req.file.buffer.length
+    });
+    
+    const result = await uploadEventImage(req.file.buffer, req.file.originalname);
+    const viewUrl = getViewUrl(result, req.file.originalname);
+    const downloadUrl = getDownloadUrl(viewUrl, req.file.originalname);
+    
+    console.log('[EVENT IMAGE UPLOAD] Success:', {
+      url: viewUrl,
+      publicId: result.public_id
+    });
+    
+    return res.json({
+      url: viewUrl,
+      downloadUrl,
+      filename: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      publicId: result.public_id,
+    });
+  } catch (error) {
+    console.error('[EVENT IMAGE UPLOAD] Error:', error.message || error);
+    return res.status(500).json({ 
+      error: error.message || 'Failed to upload image',
+      details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+    });
+  }
 });
 
 // NOTE: Removed duplicate simple GET handler. The main GET /api/events route
@@ -190,6 +314,72 @@ async function isAdminRequest(req) {
     console.warn('Admin verification failed:', error && error.message ? error.message : error);
   }
   return false;
+}
+
+function getRequestIdentity(req) {
+  const email = req.auth && (req.auth['https://schemas.quickstart/email'] || req.auth.email);
+  const auth0Id = req.auth && req.auth.sub;
+  return {
+    email: email ? String(email).trim().toLowerCase() : null,
+    auth0Id: auth0Id ? String(auth0Id).trim() : null,
+  };
+}
+
+// Async version that fetches email from Auth0 if missing from JWT
+async function getRequestIdentityWithAuth0Fallback(req) {
+  const identity = getRequestIdentity(req);
+  
+  // If email is already in the token, return it
+  if (identity.email) {
+    return identity;
+  }
+
+  // If we have Auth0 ID but no email, fetch from Auth0 Management API
+  if (identity.auth0Id) {
+    try {
+      const auth0User = await fetchAuth0User(identity.auth0Id);
+      if (auth0User && auth0User.email) {
+        identity.email = String(auth0User.email).trim().toLowerCase();
+      }
+    } catch (error) {
+      console.error('Failed to fetch email from Auth0:', error.message);
+      // Continue without email - the route will fail gracefully
+    }
+  }
+
+  return identity;
+}
+
+const QUIZ_TOKEN_SECRET = process.env.QUIZ_TOKEN_SECRET || process.env.AUTH0_SECRET || 'connectingfuture-quiz-secret';
+
+function base64UrlEncode(value) {
+  return Buffer.from(value, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlDecode(value) {
+  const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '==='.slice((normalized.length + 3) % 4);
+  return Buffer.from(padded, 'base64').toString('utf8');
+}
+
+function signQuizPayload(payload) {
+  const data = base64UrlEncode(JSON.stringify(payload));
+  const sig = crypto.createHmac('sha256', QUIZ_TOKEN_SECRET).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+
+function verifyQuizPayload(token) {
+  const [data, sig] = String(token || '').split('.');
+  if (!data || !sig) return null;
+  const expected = crypto.createHmac('sha256', QUIZ_TOKEN_SECRET).update(data).digest('base64url');
+  if (sig !== expected) return null;
+  try {
+    const parsed = JSON.parse(base64UrlDecode(data));
+    if (!parsed || !parsed.exp || Date.now() > Number(parsed.exp)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeJobSearchText(value) {
@@ -555,6 +745,7 @@ async function initializeTables() {
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS year_of_study VARCHAR(50)');
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(255)');
       await dbQuery('ALTER TABLE users ADD COLUMN IF NOT EXISTS cgpa NUMERIC(4,2)');
+      await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS other_files JSONB DEFAULT '[]'::jsonb");
     } catch (e) { console.log('User schema migration note:', e.message); }
 
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_auth0_id ON users(auth0_id)');
@@ -639,7 +830,7 @@ async function initializeTables() {
 
 // Legacy MySQL-era migration helpers removed; schema is managed via modularized creators above.
 
-// Auth0 JWT middleware
+// Auth0 JWT middleware - Strict (with audience validation)
 const checkJwt = jwt({
   secret: jwksRsa.expressJwtSecret({
     cache: true,
@@ -647,10 +838,66 @@ const checkJwt = jwt({
     jwksRequestsPerMinute: 5,
     jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
   }),
-  audience: process.env.AUTH0_AUDIENCE,
+  audience: process.env.AUTH0_AUDIENCE || undefined,
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ['RS256'],
 });
+
+// Create JWKS client once (reused for all tokens)
+const jwksClient = jwksRsa({
+  cache: true,
+  rateLimit: true,
+  jwksRequestsPerMinute: 5,
+  jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
+});
+
+// Custom JWT validator with better error handling - more flexible for roadmap endpoints
+const verifyAuth0Token = async (token) => {
+  if (!token) return null;
+
+  try {
+    // Decode without verification first to get the kid
+    const decoded = jsonwebtoken.decode(token, { complete: true });
+    if (!decoded) return null;
+
+    const key = await jwksClient.getSigningKey(decoded.header.kid);
+    const signingKey = key.getPublicKey();
+
+    // Verify the token
+    const verified = jsonwebtoken.verify(token, signingKey, {
+      algorithms: ['RS256'],
+      issuer: `https://${process.env.AUTH0_DOMAIN}/`,
+    });
+
+    return verified;
+  } catch (error) {
+    console.error('Token verification error:', error.message);
+    return null;
+  }
+};
+
+// Flexible middleware for roadmap - validates JWT but skips audience
+const checkJwtFlexible = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
+
+    const token = authHeader.substring(7);
+    const verified = await verifyAuth0Token(token);
+
+    if (!verified) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.auth = verified;
+    next();
+  } catch (error) {
+    console.error('JWT middleware error:', error);
+    return res.status(401).json({ error: 'Authentication failed' });
+  }
+};
 
 // 3. API Routes
 
@@ -778,36 +1025,242 @@ app.get('/api/protected', checkJwt, (req, res) => {
   res.json({ message: 'You are authenticated', user: req.auth });
 });
 
-// --- File Uploads (Resume) ---
+// --- Centralized Cloudinary Uploads ---
+const pdfOnlyTypes = new Set(['application/pdf']);
 const allowedResumeTypes = new Set([
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, resumesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '';
-      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-      const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`;
-      cb(null, fname);
-    },
-  }),
+const allowedMessageTypes = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+]);
+
+const createMemoryUpload = ({ fileSize, mimeCheck, invalidMessage }) => multer({
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (allowedResumeTypes.has(file.mimetype)) return cb(null, true);
-    return cb(new Error('Invalid file type. Only PDF, DOC, and DOCX are allowed.'));
+    if (mimeCheck(file.mimetype || '')) return cb(null, true);
+    return cb(new Error(invalidMessage));
   },
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize },
 });
 
-app.post('/api/uploads/resume', upload.single('resume'), (req, res) => {
+const jobResumeUpload = createMemoryUpload({
+  fileSize: 10 * 1024 * 1024,
+  mimeCheck: (mime) => pdfOnlyTypes.has(mime),
+  invalidMessage: 'Invalid file type. Only PDF resumes are allowed.',
+});
+
+const reviewResumeUpload = createMemoryUpload({
+  fileSize: 10 * 1024 * 1024,
+  mimeCheck: (mime) => pdfOnlyTypes.has(mime),
+  invalidMessage: 'Invalid file type. Only PDF resumes are allowed.',
+});
+
+const legacyResumeUpload = createMemoryUpload({
+  fileSize: 10 * 1024 * 1024,
+  mimeCheck: (mime) => allowedResumeTypes.has(mime),
+  invalidMessage: 'Invalid file type. Only PDF, DOC, and DOCX are allowed.',
+});
+
+const messageAttachmentUpload = createMemoryUpload({
+  fileSize: 25 * 1024 * 1024,
+  mimeCheck: (mime) => mime.startsWith('image/') || allowedMessageTypes.has(mime),
+  invalidMessage: 'Invalid attachment type. Allowed: PDF, docs, sheets, slides, text, zip, and images.',
+});
+
+const otherFileUpload = createMemoryUpload({
+  fileSize: 25 * 1024 * 1024,
+  mimeCheck: (mime) => mime.startsWith('image/') || allowedMessageTypes.has(mime),
+  invalidMessage: 'Invalid file type for general upload.',
+});
+
+async function buildUploadPayload(file, uploadResult) {
+  const viewUrl = await resolveViewUrl(uploadResult, file.originalname);
+  return {
+    url: viewUrl,
+    downloadUrl: getDownloadUrl(viewUrl, file.originalname),
+    filename: file.originalname,
+    size: file.size,
+    mimetype: file.mimetype,
+    publicId: uploadResult.public_id,
+  };
+}
+
+function registerUploadRoutes(paths, middleware, handler) {
+  paths.forEach((route) => app.post(route, middleware, handler));
+}
+
+const jobResumeUploadHandler = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Resume file is required' });
-    const url = `${req.protocol}://${req.get('host')}/uploads/resumes/${req.file.filename}`;
-    return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+    const result = await uploadResume(req.file.buffer, req.file.originalname);
+    return res.json(await buildUploadPayload(req.file, result));
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message || 'Failed to upload resume' });
+  }
+};
+
+const reviewResumeUploadHandler = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Resume file is required' });
+    const result = await uploadReviewResume(req.file.buffer, req.file.originalname);
+    return res.json(await buildUploadPayload(req.file, result));
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'Failed to upload review resume' });
+  }
+};
+
+const eventImageUploadHandler = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Image file is required' });
+    const result = await uploadEventImage(req.file.buffer, req.file.originalname);
+    return res.json(await buildUploadPayload(req.file, result));
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'Failed to upload image' });
+  }
+};
+
+const messageAttachmentUploadHandler = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Attachment file is required' });
+    const result = await uploadMessageFile(req.file.buffer, req.file.originalname);
+    return res.json(await buildUploadPayload(req.file, result));
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'Failed to upload attachment' });
+  }
+};
+
+const otherFileUploadHandler = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File is required' });
+    const result = await uploadOtherFile(req.file.buffer, req.file.originalname);
+    const payload = await buildUploadPayload(req.file, result);
+
+    const userEmail = String(req.body && req.body.user_email ? req.body.user_email : '').trim().toLowerCase();
+    if (userEmail) {
+      const record = {
+        url: payload.url,
+        filename: payload.filename,
+        mimetype: payload.mimetype,
+        size: payload.size,
+        publicId: payload.publicId,
+        uploaded_at: new Date().toISOString(),
+      };
+      await dbQuery(
+        `UPDATE users
+         SET other_files = COALESCE(other_files, '[]'::jsonb) || $1::jsonb,
+             updated_at = NOW()
+         WHERE LOWER(email) = LOWER($2)`,
+        [JSON.stringify([record]), userEmail]
+      );
+    }
+
+    return res.json(payload);
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'Failed to upload file' });
+  }
+};
+
+registerUploadRoutes(['/api/upload/job-resume', '/upload/job-resume'], jobResumeUpload.single('file'), jobResumeUploadHandler);
+registerUploadRoutes(['/api/upload/review-resume', '/upload/review-resume'], reviewResumeUpload.single('file'), reviewResumeUploadHandler);
+registerUploadRoutes(['/api/upload/event-image', '/upload/event-image'], eventImageUpload.single('file'), eventImageUploadHandler);
+registerUploadRoutes(['/api/upload/message-attachment', '/upload/message-attachment'], messageAttachmentUpload.single('file'), messageAttachmentUploadHandler);
+registerUploadRoutes(['/api/upload/other', '/upload/other'], otherFileUpload.single('file'), otherFileUploadHandler);
+
+// Legacy endpoint kept for compatibility with existing frontend screens.
+app.post('/api/uploads/resume', legacyResumeUpload.single('resume'), jobResumeUploadHandler);
+
+// Download a remote file as an attachment through the backend proxy
+app.get('/api/files/download', async (req, res) => {
+  try {
+    const fileUrl = String(req.query.url || '').trim();
+    const filename = String(req.query.filename || 'download').trim() || 'download';
+
+    if (!fileUrl) {
+      return res.status(400).json({ error: 'url is required' });
+    }
+
+    let parsed;
+    try {
+      parsed = new URL(fileUrl);
+    } catch {
+      return res.status(400).json({ error: 'Invalid file url' });
+    }
+
+    if (!['res.cloudinary.com', 'localhost', '127.0.0.1'].includes(parsed.hostname)) {
+      return res.status(400).json({ error: 'Unsupported download source' });
+    }
+
+    const upstream = await fetch(fileUrl);
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: `Failed to fetch file (${upstream.status})` });
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    const contentBuffer = Buffer.from(await upstream.arrayBuffer());
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/"/g, '')}"`);
+    res.setHeader('Content-Length', String(contentBuffer.length));
+    return res.send(contentBuffer);
+  } catch (error) {
+    console.error('[FILE DOWNLOAD] Error:', error.message || error);
+    return res.status(500).json({ error: error.message || 'Failed to download file' });
+  }
+});
+
+// Preview a remote file inline through backend (helps raw Cloudinary files render in browser)
+app.get('/api/files/preview', async (req, res) => {
+  try {
+    const fileUrl = String(req.query.url || '').trim();
+    const filename = String(req.query.filename || 'preview').trim() || 'preview';
+
+    if (!fileUrl) {
+      return res.status(400).json({ error: 'url is required' });
+    }
+
+    let parsed;
+    try {
+      parsed = new URL(fileUrl);
+    } catch {
+      return res.status(400).json({ error: 'Invalid file url' });
+    }
+
+    if (!['res.cloudinary.com', 'localhost', '127.0.0.1'].includes(parsed.hostname)) {
+      return res.status(400).json({ error: 'Unsupported preview source' });
+    }
+
+    const upstream = await fetch(fileUrl);
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: `Failed to fetch file (${upstream.status})` });
+    }
+
+    const upstreamType = upstream.headers.get('content-type') || 'application/octet-stream';
+    const inferredType = inferContentTypeFromFilename(filename);
+    const contentType = (!upstreamType || upstreamType.includes('application/octet-stream')) && inferredType
+      ? inferredType
+      : upstreamType;
+
+    const contentBuffer = Buffer.from(await upstream.arrayBuffer());
+
+    res.setHeader('Content-Type', contentType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${filename.replace(/"/g, '')}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Length', String(contentBuffer.length));
+    return res.send(contentBuffer);
+  } catch (error) {
+    console.error('[FILE PREVIEW] Error:', error.message || error);
+    return res.status(500).json({ error: error.message || 'Failed to preview file' });
   }
 });
 
@@ -888,6 +1341,31 @@ app.get('/api/users/profile', checkJwt, (req, res) => {
     }
 
     const u = rows[0];
+    try {
+      const normalizedEmail = String(u.email || email || '').trim().toLowerCase();
+      if (normalizedEmail) {
+        const [jobsRes, roadmapsRes, mentorshipRes] = await Promise.all([
+          dbQuery('SELECT COUNT(*)::int AS count FROM jobs WHERE LOWER(posted_by) = LOWER(?)', [normalizedEmail]),
+          dbQuery('SELECT COUNT(*)::int AS count FROM roadmaps WHERE LOWER(owner_email) = LOWER(?)', [normalizedEmail]),
+          dbQuery("SELECT COUNT(*)::int AS count FROM mentorship_sessions WHERE LOWER(mentor_email) = LOWER(?) AND status = 'completed'", [normalizedEmail]),
+        ]);
+
+        const jobs = Number(jobsRes.rows && jobsRes.rows[0] ? jobsRes.rows[0].count || 0 : 0);
+        const roadmaps = Number(roadmapsRes.rows && roadmapsRes.rows[0] ? roadmapsRes.rows[0].count || 0 : 0);
+        const mentorships = Number(mentorshipRes.rows && mentorshipRes.rows[0] ? mentorshipRes.rows[0].count || 0 : 0);
+
+        u.impact_score = jobs + roadmaps + mentorships;
+        u.impact_breakdown = { jobs, roadmaps, mentorships, sessions_completed: mentorships };
+      } else {
+        u.impact_score = 0;
+        u.impact_breakdown = { jobs: 0, roadmaps: 0, mentorships: 0, sessions_completed: 0 };
+      }
+    } catch (impactErr) {
+      console.warn('Failed to compute profile impact score:', impactErr.message);
+      u.impact_score = Number(u.impact_score || 0);
+      u.impact_breakdown = u.impact_breakdown || { jobs: 0, roadmaps: 0, mentorships: 0, sessions_completed: 0 };
+    }
+
     // Backfill role if missing
     if (!u.user_type && email) {
       const role = deriveRole(email);
@@ -996,6 +1474,8 @@ app.put('/api/users/profile', checkJwt, (req, res) => {
       skills = EXCLUDED.skills,
       is_mentor = EXCLUDED.is_mentor,
       picture = COALESCE(EXCLUDED.picture, users.picture),
+      approval_status = CASE WHEN users.approval_status = 'rejected' THEN 'pending' ELSE users.approval_status END,
+      approval_reason = CASE WHEN users.approval_status = 'rejected' THEN NULL ELSE users.approval_reason END,
       registration_completed = EXCLUDED.registration_completed,
       roll_number = EXCLUDED.roll_number,
       year_of_study = EXCLUDED.year_of_study,
@@ -1559,6 +2039,358 @@ app.delete('/api/roadmaps/:id', async (req, res) => {
   }
 });
 
+async function generateMilestoneQuizWithGemini({ roadmap, milestone, questionCount = 5 }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Gemini API key not configured');
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+  const prompt = `
+Generate a technical quiz for a student milestone.
+
+Return STRICT JSON only in this shape:
+{
+  "pass_score": 70,
+  "questions": [
+    {
+      "question": "...",
+      "options": ["A", "B", "C", "D"],
+      "correct_option_index": 0,
+      "explanation": "why"
+    }
+  ]
+}
+
+Rules:
+1. Create exactly ${Math.max(3, Math.min(8, Number(questionCount) || 5))} MCQ questions.
+2. questions[].options must always contain exactly 4 options.
+3. correct_option_index must be 0..3.
+4. Questions must align to the milestone concepts and learning steps.
+5. Difficulty should match milestone level and should test practical understanding.
+6. Return only JSON, no markdown.
+
+Roadmap title: ${roadmap.title}
+Roadmap level: ${roadmap.level}
+Milestone order: ${milestone.order || ''}
+Milestone title: ${milestone.title || ''}
+Milestone description: ${milestone.description || ''}
+Subtopics: ${JSON.stringify((milestone.subtopics || []).map(s => s.title || s))}
+Learning steps: ${JSON.stringify(milestone.learning_steps || [])}
+  `;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+  const cleaned = String(text || '').replace(/```json/g, '').replace(/```/g, '').trim();
+  const parsed = JSON.parse(cleaned);
+
+  const questions = Array.isArray(parsed?.questions) ? parsed.questions : [];
+  const normalizedQuestions = questions
+    .map((q) => ({
+      question: String(q?.question || '').trim(),
+      options: Array.isArray(q?.options) ? q.options.slice(0, 4).map((o) => String(o || '').trim()) : [],
+      correct_option_index: Number.isInteger(q?.correct_option_index) ? q.correct_option_index : -1,
+      explanation: String(q?.explanation || '').trim(),
+    }))
+    .filter((q) => q.question && q.options.length === 4 && q.correct_option_index >= 0 && q.correct_option_index <= 3);
+
+  if (!normalizedQuestions.length) {
+    throw new Error('Gemini returned invalid quiz format');
+  }
+
+  return {
+    pass_score: Number(parsed?.pass_score) > 0 ? Number(parsed.pass_score) : 70,
+    questions: normalizedQuestions,
+  };
+}
+
+function pickRoadmapMilestone(roadmap, milestoneOrder) {
+  const milestones = Array.isArray(roadmap?.milestones_json)
+    ? roadmap.milestones_json
+    : (Array.isArray(roadmap?.milestones) ? roadmap.milestones : []);
+  const target = Number(milestoneOrder);
+  const direct = milestones.find((m) => Number(m?.order) === target);
+  if (direct) return direct;
+  return milestones[target - 1] || null;
+}
+
+async function getOrCreateRoadmapProgress(roadmapId, userEmail) {
+  const lookup = await dbQuery('SELECT * FROM roadmap_student_progress WHERE roadmap_id = ? AND LOWER(user_email) = LOWER(?) LIMIT 1', [roadmapId, userEmail]);
+  if (lookup.rows && lookup.rows[0]) return lookup.rows[0];
+  const inserted = await dbQuery(`
+    INSERT INTO roadmap_student_progress (roadmap_id, user_email, unlocked_milestone_order, completed_milestones_json)
+    VALUES (?, ?, 1, '[]'::jsonb)
+    RETURNING *
+  `, [roadmapId, userEmail]);
+  return inserted.rows && inserted.rows[0];
+}
+
+app.get('/api/roadmaps/:id/progress', checkJwtFlexible, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const identity = await getRequestIdentityWithAuth0Fallback(req);
+    if (!identity.email) return res.status(401).json({ error: 'Authenticated email is required' });
+
+    const roadmapRes = await dbQuery('SELECT id, title, milestones_json FROM roadmaps WHERE id = ? LIMIT 1', [id]);
+    if (!roadmapRes.rows || !roadmapRes.rows[0]) return res.status(404).json({ error: 'Roadmap not found' });
+    const roadmap = roadmapRes.rows[0];
+    const progress = await getOrCreateRoadmapProgress(id, identity.email);
+
+    const followRes = await dbQuery('SELECT id FROM roadmap_resource_follows WHERE roadmap_id = ? AND LOWER(user_email) = LOWER(?) LIMIT 1', [id, identity.email]);
+    const followerCountRes = await dbQuery('SELECT COUNT(*)::int AS cnt FROM roadmap_resource_follows WHERE roadmap_id = ?', [id]);
+
+    return res.json({
+      roadmap_id: Number(id),
+      total_milestones: Array.isArray(roadmap.milestones_json) ? roadmap.milestones_json.length : 0,
+      unlocked_milestone_order: Number(progress.unlocked_milestone_order || 1),
+      completed_milestones: Array.isArray(progress.completed_milestones_json) ? progress.completed_milestones_json : [],
+      last_quiz_score: progress.last_quiz_score !== null ? Number(progress.last_quiz_score) : null,
+      followed: !!(followRes.rows && followRes.rows[0]),
+      followers: Number(followerCountRes.rows?.[0]?.cnt || 0),
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/roadmaps/:id/milestones/:milestoneOrder/complete', checkJwtFlexible, async (req, res) => {
+  try {
+    const { id, milestoneOrder } = req.params;
+    const identity = await getRequestIdentityWithAuth0Fallback(req);
+    if (!identity.email) return res.status(401).json({ error: 'Authenticated email is required' });
+
+    const roadmapRes = await dbQuery('SELECT id, milestones_json FROM roadmaps WHERE id = ? LIMIT 1', [id]);
+    if (!roadmapRes.rows || !roadmapRes.rows[0]) return res.status(404).json({ error: 'Roadmap not found' });
+    const roadmap = roadmapRes.rows[0];
+    const targetOrder = Number(milestoneOrder);
+    const milestone = pickRoadmapMilestone(roadmap, targetOrder);
+    if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
+
+    const progress = await getOrCreateRoadmapProgress(id, identity.email);
+    const completed = Array.isArray(progress.completed_milestones_json)
+      ? progress.completed_milestones_json.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    if (!completed.includes(targetOrder)) completed.push(targetOrder);
+    completed.sort((a, b) => a - b);
+
+    const updated = await dbQuery(`
+      UPDATE roadmap_student_progress
+      SET completed_milestones_json = ?, updated_at = NOW()
+      WHERE roadmap_id = ? AND LOWER(user_email) = LOWER(?)
+      RETURNING *
+    `, [JSON.stringify(completed), id, identity.email]);
+
+    return res.json({
+      completed_milestones: updated.rows?.[0]?.completed_milestones_json || completed,
+      unlocked_milestone_order: Number(updated.rows?.[0]?.unlocked_milestone_order || 1),
+      requires_quiz: true,
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/roadmaps/:id/milestones/:milestoneOrder/quiz/generate', checkJwtFlexible, async (req, res) => {
+  try {
+    const { id, milestoneOrder } = req.params;
+    const identity = await getRequestIdentityWithAuth0Fallback(req);
+    if (!identity.email) return res.status(401).json({ error: 'Authenticated email is required' });
+
+    const roadmapRes = await dbQuery('SELECT id, title, level, milestones_json FROM roadmaps WHERE id = ? LIMIT 1', [id]);
+    if (!roadmapRes.rows || !roadmapRes.rows[0]) return res.status(404).json({ error: 'Roadmap not found' });
+    const roadmap = roadmapRes.rows[0];
+    const targetOrder = Number(milestoneOrder);
+    const milestone = pickRoadmapMilestone(roadmap, targetOrder);
+    if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
+
+    const progress = await getOrCreateRoadmapProgress(id, identity.email);
+    if (targetOrder > Number(progress.unlocked_milestone_order || 1)) {
+      return res.status(403).json({ error: 'Milestone is locked. Pass previous milestone quiz first.' });
+    }
+
+    const quiz = await generateMilestoneQuizWithGemini({ roadmap, milestone, questionCount: 5 });
+    const answerKey = quiz.questions.map((q) => q.correct_option_index);
+    const tokenPayload = {
+      roadmap_id: Number(id),
+      milestone_order: targetOrder,
+      pass_score: Number(quiz.pass_score || 70),
+      answer_key: answerKey,
+      exp: Date.now() + 1000 * 60 * 20,
+    };
+    const quizToken = signQuizPayload(tokenPayload);
+
+    const questionsForClient = quiz.questions.map((q) => ({
+      question: q.question,
+      options: q.options,
+      explanation_hint: q.explanation,
+    }));
+
+    return res.json({
+      roadmap_id: Number(id),
+      milestone_order: targetOrder,
+      pass_score: Number(quiz.pass_score || 70),
+      quiz_token: quizToken,
+      questions: questionsForClient,
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/roadmaps/:id/milestones/:milestoneOrder/quiz/submit', checkJwtFlexible, async (req, res) => {
+  try {
+    const { id, milestoneOrder } = req.params;
+    const identity = await getRequestIdentityWithAuth0Fallback(req);
+    if (!identity.email) return res.status(401).json({ error: 'Authenticated email is required' });
+
+    const { quiz_token, answers } = req.body || {};
+    if (!quiz_token || !Array.isArray(answers)) {
+      return res.status(400).json({ error: 'quiz_token and answers[] are required' });
+    }
+
+    const tokenPayload = verifyQuizPayload(quiz_token);
+    if (!tokenPayload) return res.status(400).json({ error: 'Invalid or expired quiz token' });
+    if (Number(tokenPayload.roadmap_id) !== Number(id) || Number(tokenPayload.milestone_order) !== Number(milestoneOrder)) {
+      return res.status(400).json({ error: 'Quiz token does not match roadmap milestone' });
+    }
+
+    const answerKey = Array.isArray(tokenPayload.answer_key) ? tokenPayload.answer_key : [];
+    const total = answerKey.length;
+    if (!total) return res.status(400).json({ error: 'Quiz token has no answer key' });
+
+    let correct = 0;
+    for (let i = 0; i < total; i += 1) {
+      if (Number(answers[i]) === Number(answerKey[i])) correct += 1;
+    }
+    const score = Number(((correct / total) * 100).toFixed(2));
+    const passScore = Number(tokenPayload.pass_score || 70);
+    const passed = score >= passScore;
+
+    await dbQuery(`
+      INSERT INTO roadmap_quiz_attempts (roadmap_id, milestone_order, user_email, score, question_count, passed)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [id, milestoneOrder, identity.email, score, total, passed]);
+
+    const progress = await getOrCreateRoadmapProgress(id, identity.email);
+    const completed = Array.isArray(progress.completed_milestones_json)
+      ? progress.completed_milestones_json.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    const currentOrder = Number(milestoneOrder);
+    if (!completed.includes(currentOrder)) completed.push(currentOrder);
+    completed.sort((a, b) => a - b);
+
+    const nextUnlocked = passed
+      ? Math.max(Number(progress.unlocked_milestone_order || 1), currentOrder + 1)
+      : Number(progress.unlocked_milestone_order || 1);
+
+    const updated = await dbQuery(`
+      UPDATE roadmap_student_progress
+      SET completed_milestones_json = ?, unlocked_milestone_order = ?, last_quiz_score = ?, updated_at = NOW()
+      WHERE roadmap_id = ? AND LOWER(user_email) = LOWER(?)
+      RETURNING *
+    `, [JSON.stringify(completed), nextUnlocked, score, id, identity.email]);
+
+    return res.json({
+      score,
+      pass_score: passScore,
+      passed,
+      unlocked_milestone_order: Number(updated.rows?.[0]?.unlocked_milestone_order || nextUnlocked),
+      completed_milestones: updated.rows?.[0]?.completed_milestones_json || completed,
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/roadmaps/:id/follow', checkJwtFlexible, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { follow = true } = req.body || {};
+    const identity = await getRequestIdentityWithAuth0Fallback(req);
+    if (!identity.email) return res.status(401).json({ error: 'Authenticated email is required' });
+
+    if (follow) {
+      await dbQuery(`
+        INSERT INTO roadmap_resource_follows (roadmap_id, user_email)
+        VALUES (?, ?)
+        ON CONFLICT (roadmap_id, user_email) DO NOTHING
+      `, [id, identity.email]);
+    } else {
+      await dbQuery('DELETE FROM roadmap_resource_follows WHERE roadmap_id = ? AND LOWER(user_email) = LOWER(?)', [id, identity.email]);
+    }
+
+    await dbQuery(`
+      UPDATE roadmaps
+      SET followers = (
+        SELECT COUNT(*)::int FROM roadmap_resource_follows WHERE roadmap_id = ?
+      )
+      WHERE id = ?
+    `, [id, id]);
+
+    const countRes = await dbQuery('SELECT followers FROM roadmaps WHERE id = ? LIMIT 1', [id]);
+    return res.json({ followed: !!follow, followers: Number(countRes.rows?.[0]?.followers || 0) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/roadmaps/:id/follow-status', checkJwtFlexible, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const identity = await getRequestIdentityWithAuth0Fallback(req);
+    if (!identity.email) return res.status(401).json({ error: 'Authenticated email is required' });
+
+    const followRes = await dbQuery('SELECT id FROM roadmap_resource_follows WHERE roadmap_id = ? AND LOWER(user_email) = LOWER(?) LIMIT 1', [id, identity.email]);
+    const countRes = await dbQuery('SELECT COUNT(*)::int AS cnt FROM roadmap_resource_follows WHERE roadmap_id = ?', [id]);
+    return res.json({ followed: !!(followRes.rows && followRes.rows[0]), followers: Number(countRes.rows?.[0]?.cnt || 0) });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/leaderboard/students/resources', async (req, res) => {
+  try {
+    const sql = `
+      SELECT
+        u.id,
+        u.email,
+        COALESCE(NULLIF(u.name, ''), u.email) AS name,
+        u.picture AS profile_pic,
+        COALESCE(f.follow_count, 0) AS follow_count,
+        COALESCE(q.passed_count, 0) AS passed_count,
+        COALESCE(q.avg_score, 0) AS avg_quiz_score,
+        (
+          COALESCE(f.follow_count, 0) * 20 +
+          COALESCE(q.passed_count, 0) * 15 +
+          COALESCE(q.avg_score, 0) * 0.5
+        )::numeric(10,2) AS total_points
+      FROM users u
+      LEFT JOIN (
+        SELECT LOWER(user_email) AS email, COUNT(*)::int AS follow_count
+        FROM roadmap_resource_follows
+        GROUP BY LOWER(user_email)
+      ) f ON LOWER(u.email) = f.email
+      LEFT JOIN (
+        SELECT
+          LOWER(user_email) AS email,
+          COUNT(*) FILTER (WHERE passed = TRUE)::int AS passed_count,
+          AVG(score)::numeric(10,2) AS avg_score
+        FROM roadmap_quiz_attempts
+        GROUP BY LOWER(user_email)
+      ) q ON LOWER(u.email) = q.email
+      WHERE LOWER(COALESCE(u.user_type, '')) = 'student'
+      ORDER BY total_points DESC, name ASC
+      LIMIT 500
+    `;
+
+    const { rows } = await dbQuery(sql);
+    return res.json({ leaders: rows || [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 /**
  * Jobs & Internships CRUD
  */
@@ -2033,7 +2865,16 @@ app.put('/api/admin/alumni/:auth0_id/approval', checkJwt, async (req, res) => {
     }
     await dbQuery('UPDATE users SET approval_status = ?, approval_reason = ? WHERE auth0_id = ?', [String(status).toLowerCase(), reason || null, auth0_id]);
     const { rows } = await dbQuery('SELECT id, auth0_id, email, name, registration_completed, approval_status, approval_reason FROM users WHERE auth0_id = ? LIMIT 1', [auth0_id]);
-    return res.json({ user: rows && rows[0] });
+    const updatedUser = rows && rows[0] ? rows[0] : null;
+    if (updatedUser) {
+      sendAlumniApprovalEmail({
+        to: updatedUser.email,
+        name: updatedUser.name,
+        status: updatedUser.approval_status,
+        reason: updatedUser.approval_reason,
+      }).catch((emailErr) => console.warn('Failed to send alumni approval email:', emailErr && emailErr.message ? emailErr.message : emailErr));
+    }
+    return res.json({ user: updatedUser });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2067,7 +2908,16 @@ app.put('/api/admin/users/:id/approval', checkJwt, async (req, res) => {
     }
     await dbQuery('UPDATE users SET approval_status = ?, approval_reason = ? WHERE id = ?', [String(approval_status).toLowerCase(), reason || null, id]);
     const { rows } = await dbQuery('SELECT id, auth0_id, email, name, registration_completed, approval_status, approval_reason FROM users WHERE id = ? LIMIT 1', [id]);
-    return res.json({ user: rows && rows[0] });
+    const updatedUser = rows && rows[0] ? rows[0] : null;
+    if (updatedUser) {
+      sendAlumniApprovalEmail({
+        to: updatedUser.email,
+        name: updatedUser.name,
+        status: updatedUser.approval_status,
+        reason: updatedUser.approval_reason,
+      }).catch((emailErr) => console.warn('Failed to send alumni approval email:', emailErr && emailErr.message ? emailErr.message : emailErr));
+    }
+    return res.json({ user: updatedUser });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2137,9 +2987,21 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
           WHERE id = ? RETURNING *
         `, [resume_url || null, cover_letter || null, existing[0].id]);
         await dbQuery('UPDATE jobs SET applied = COALESCE(applied,0) + 1 WHERE id = ?', [id]);
-        return res.status(200).json({ application: rows[0] });
+        return res.status(200).json({
+          application: rows[0]
+            ? {
+                ...rows[0],
+                resume_url: rows[0].resume_url ? await resolveViewUrl(rows[0].resume_url, rows[0].filename || '') : rows[0].resume_url,
+              }
+            : rows[0],
+        });
       }
-      return res.status(200).json({ application: existing[0] });
+      return res.status(200).json({
+        application: {
+          ...existing[0],
+          resume_url: existing[0].resume_url ? await resolveViewUrl(existing[0].resume_url, existing[0].filename || '') : existing[0].resume_url,
+        },
+      });
     }
 
     const { rows } = await dbQuery(`
@@ -2148,7 +3010,14 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
       RETURNING *
     `, [id, applicant_email, resume_url || null, cover_letter || null]);
     await dbQuery('UPDATE jobs SET applied = COALESCE(applied,0) + 1 WHERE id = ?', [id]);
-    return res.status(201).json({ application: rows[0] });
+    return res.status(201).json({
+      application: rows[0]
+        ? {
+            ...rows[0],
+            resume_url: rows[0].resume_url ? await resolveViewUrl(rows[0].resume_url, rows[0].filename || '') : rows[0].resume_url,
+          }
+        : rows[0],
+    });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2171,7 +3040,11 @@ app.get('/api/applications', async (req, res) => {
       ORDER BY a.updated_at DESC
       LIMIT ? OFFSET ?
     `, [applicant_email, l, offset]);
-    return res.json({ applications: rows, page: p, limit: l });
+    const applications = await Promise.all((rows || []).map(async (row) => ({
+      ...row,
+      resume_url: row.resume_url ? await resolveViewUrl(row.resume_url, row.filename || '') : row.resume_url,
+    })));
+    return res.json({ applications, page: p, limit: l });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2183,7 +3056,11 @@ app.get('/api/applications/by-job', async (req, res) => {
     const { job_id } = req.query || {};
     if (!job_id) return res.status(400).json({ error: 'job_id required' });
     const { rows } = await dbQuery('SELECT * FROM applications WHERE job_id = ? ORDER BY updated_at DESC LIMIT 500', [job_id]);
-    return res.json({ applications: rows });
+    const applications = await Promise.all((rows || []).map(async (row) => ({
+      ...row,
+      resume_url: row.resume_url ? await resolveViewUrl(row.resume_url, row.filename || '') : row.resume_url,
+    })));
+    return res.json({ applications });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2204,7 +3081,14 @@ app.put('/api/applications/:id', async (req, res) => {
       }
     }
     const { rows } = await dbQuery('UPDATE applications SET status = ?, updated_at = NOW() WHERE id = ? RETURNING *', [status, id]);
-    return res.json({ application: rows && rows[0] });
+    return res.json({
+      application: rows && rows[0]
+        ? {
+            ...rows[0],
+            resume_url: rows[0].resume_url ? await resolveViewUrl(rows[0].resume_url, rows[0].filename || '') : rows[0].resume_url,
+          }
+        : rows && rows[0],
+    });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
@@ -2612,34 +3496,8 @@ function toBuffer(val) {
   return Buffer.from([]);
 }
 
-// Message file upload (documents, images, videos, archives)
-const messageFileUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, messagesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '';
-      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_').slice(0, 80);
-      cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`);
-    },
-  }),
-  limits: { fileSize: 25 * 1024 * 1024 },
-});
-
-app.post('/api/uploads/message-file', messageFileUpload.single('file'), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'File is required' });
-    const url = `${req.protocol}://${req.get('host')}/uploads/messages/${req.file.filename}`;
-    return res.json({
-      url,
-      filename: req.file.originalname,
-      storedName: req.file.filename,
-      size: req.file.size,
-      mimetype: req.file.mimetype || 'application/octet-stream',
-    });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+// Legacy message upload endpoint kept for compatibility.
+app.post('/api/uploads/message-file', messageAttachmentUpload.single('file'), messageAttachmentUploadHandler);
 
 // Create/send a message
 app.post('/api/messages', async (req, res) => {
@@ -2739,7 +3597,7 @@ app.get('/api/messages', async (req, res) => {
         read_at: r.read_at,
         edited_at: r.edited_at,
         deleted_at: r.deleted_at,
-        attachment_url: r.attachment_url || null,
+        attachment_url: r.attachment_url ? getViewUrl(r.attachment_url, r.attachment_name || '') : null,
         attachment_name: r.attachment_name || null,
         attachment_mime: r.attachment_mime || null,
         attachment_size: r.attachment_size || null,
@@ -4036,16 +4894,8 @@ const allowedImageTypes = new Set([
   'image/webp',
   'image/gif'
 ]);
-const imageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, memoriesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '';
-      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9-_]+/gi, '_');
-      const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`;
-      cb(null, fname);
-    },
-  }),
+const memoryImageUpload = multer({
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (allowedImageTypes.has(file.mimetype)) return cb(null, true);
     return cb(new Error('Invalid image type. Only JPG, PNG, WEBP, GIF are allowed.'));
@@ -4053,13 +4903,46 @@ const imageUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-app.post('/api/uploads/memory-image', imageUpload.single('image'), (req, res) => {
+// Memory image upload to Cloudinary
+app.post('/api/uploads/memory-image', memoryImageUpload.single('image'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Image file is required' });
-    const url = `${req.protocol}://${req.get('host')}/uploads/memories/${req.file.filename}`;
-    return res.json({ url, filename: req.file.filename, size: req.file.size, mimetype: req.file.mimetype });
+    console.log('[MEMORY IMAGE UPLOAD] Received request');
+    
+    if (!req.file) {
+      console.error('[MEMORY IMAGE UPLOAD] No file in request');
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+    
+    console.log('[MEMORY IMAGE UPLOAD] File details:', {
+      filename: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      bufferlength: req.file.buffer.length
+    });
+    
+    const result = await uploadMemoryImage(req.file.buffer, req.file.originalname);
+    const viewUrl = getViewUrl(result, req.file.originalname);
+    const downloadUrl = getDownloadUrl(viewUrl, req.file.originalname);
+    
+    console.log('[MEMORY IMAGE UPLOAD] Success:', {
+      url: viewUrl,
+      publicId: result.public_id
+    });
+    
+    return res.json({
+      url: viewUrl,
+      downloadUrl,
+      filename: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      publicId: result.public_id,
+    });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('[MEMORY IMAGE UPLOAD] Error:', e.message || e);
+    return res.status(500).json({ 
+      error: e.message || 'Failed to upload image',
+      details: process.env.NODE_ENV === 'development' ? e.toString() : undefined
+    });
   }
 });
 
@@ -4456,7 +5339,13 @@ app.get('/api/resume-reviews/student/:email', async (req, res) => {
       ORDER BY requested_at DESC
     `, [decodedEmail]);
 
-    return res.json({ reviews: result.rows });
+    const normalizedReviews = (result.rows || []).map((row) => ({
+      ...row,
+      resume_url: row.resume_url ? getViewUrl(row.resume_url, row.filename || '') : row.resume_url,
+      download_url: row.resume_url ? getProxyDownloadUrl(getViewUrl(row.resume_url, row.filename || ''), row.filename || '') : null,
+    }));
+
+    return res.json({ reviews: normalizedReviews });
   } catch (e) {
     console.error('Error fetching student reviews:', e.message);
     return res.status(500).json({ error: e.message });
@@ -4490,6 +5379,8 @@ app.get('/api/resume-reviews/alumni/:email', async (req, res) => {
     // Transform data to ensure clean response
     const transformedReviews = result.rows.map(row => ({
       ...row,
+      resume_url: row.resume_url ? getViewUrl(row.resume_url, row.filename || '') : row.resume_url,
+      download_url: row.resume_url ? getProxyDownloadUrl(getViewUrl(row.resume_url, row.filename || ''), row.filename || '') : null,
       student_name: row.student_name || null,
       alumini_feedback: row.alumni_feedback || null
     }));

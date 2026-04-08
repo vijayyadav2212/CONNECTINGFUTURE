@@ -57,6 +57,11 @@ function EventsContent() {
   const [lastRegisterLog, setLastRegisterLog] = useState<string | null>(null);
   const { user } = useUser();
 
+  const getPreviewUrl = (url?: string | null, fileName?: string) => {
+    if (!url) return '';
+    return `/api/files/preview?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(fileName || 'event-image.jpg')}`;
+  };
+
   const handleRegister = async (eventId: string, eventTitle: string) => {
     if (!user) {
       console.log('handleRegister: no user', user);
@@ -443,13 +448,20 @@ function EventsContent() {
               <div key={event.id} className="group relative overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(15,23,42,0.12)]">
                 <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${getTypeAccent(event.eventType ?? '')}`} />
                 <div className="relative aspect-video overflow-hidden bg-slate-100">
-                  <Image
-                    src={event.image_url || event.image || "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=2070&auto=format&fit=crop"}
-                    alt={event.title}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
-                    unoptimized={true} // Using unoptimized as backend domains vary
-                  />
+                  <a
+                    href={getPreviewUrl(event.image_url || event.image || '', `${event.title || 'event'}.jpg`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 block"
+                  >
+                    <Image
+                      src={event.image_url || event.image || "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=2070&auto=format&fit=crop"}
+                      alt={event.title}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
+                      unoptimized={true} // Using unoptimized as backend domains vary
+                    />
+                  </a>
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/25 to-transparent opacity-85 transition-opacity group-hover:opacity-90" />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
 

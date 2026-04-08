@@ -12,6 +12,7 @@ interface ResumeRequest {
   alumni_email: string;
   student_name: string;
   resume_url: string;
+  download_url?: string | null;
   filename: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
   student_message?: string;
@@ -39,6 +40,12 @@ function AlumniResumeReviewsContent() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const userEmail = user?.email as string || '';
+
+  const getPreviewUrl = (resumeUrl?: string, filename?: string) => {
+    if (!resumeUrl) return '';
+    const safeName = filename && filename.trim() ? filename.trim() : 'resume.pdf';
+    return `/api/files/preview?url=${encodeURIComponent(resumeUrl)}&filename=${encodeURIComponent(safeName)}`;
+  };
 
   // Helper function to get display name - prioritize student_name field
   const getStudentDisplayName = (req: ResumeRequest) => {
@@ -257,17 +264,31 @@ function AlumniResumeReviewsContent() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3 mb-4">
-                      <a
-                        href={req.resume_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition"
-                      >
-                        <Download className="w-4 h-4" />
-                        {req.filename}
-                      </a>
-                    </div>
+                    {req.resume_url ? (
+                      <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <a
+                          href={getPreviewUrl(req.resume_url, req.filename)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Open Resume
+                        </a>
+                        <a
+                          href={req.download_url || req.resume_url}
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
+                        >
+                          <Download className="w-4 h-4" />
+                          {req.filename || 'Download Resume'}
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="bg-red-50 border border-red-200 rounded-[12px] p-3 mb-4">
+                        <p className="text-xs font-bold text-red-700">⚠️ Resume not available</p>
+                      </div>
+                    )}
 
                     <div className="flex gap-3">
                       <button
@@ -310,17 +331,31 @@ function AlumniResumeReviewsContent() {
                       <span className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full">In Review</span>
                     </div>
 
-                    <div className="flex items-center gap-3 mb-4">
-                      <a
-                        href={req.resume_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition"
-                      >
-                        <Download className="w-4 h-4" />
-                        {req.filename}
-                      </a>
-                    </div>
+                    {req.resume_url ? (
+                      <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <a
+                          href={getPreviewUrl(req.resume_url, req.filename)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Open Resume
+                        </a>
+                        <a
+                          href={req.download_url || req.resume_url}
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
+                        >
+                          <Download className="w-4 h-4" />
+                          {req.filename || 'Download Resume'}
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="bg-red-50 border border-red-200 rounded-[12px] p-3 mb-4">
+                        <p className="text-xs font-bold text-red-700">⚠️ Resume not available</p>
+                      </div>
+                    )}
 
                     <button
                       onClick={() => handleOpenFeedback(req.id)}
@@ -366,15 +401,29 @@ function AlumniResumeReviewsContent() {
                       </div>
                     )}
 
-                    <a
-                      href={req.resume_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold text-sm transition"
-                    >
-                      <Download className="w-4 h-4" />
-                      {req.filename}
-                    </a>
+                    {req.resume_url ? (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <a
+                          href={getPreviewUrl(req.resume_url, req.filename)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold text-sm transition"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Open Resume
+                        </a>
+                        <a
+                          href={req.download_url || req.resume_url}
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
+                        >
+                          <Download className="w-4 h-4" />
+                          {req.filename || 'Download Resume'}
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center text-xs font-bold text-red-600\">⚠️ Resume not available</span>
+                    )}
                   </div>
                 ))}
               </div>

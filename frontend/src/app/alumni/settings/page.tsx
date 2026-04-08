@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
+import ProfilePhotoModal from '@/components/ProfilePhotoModal';
 import {
   User, Bell, Lock, Shield, Smartphone, Mail, Globe, Moon, LogOut,
   Camera, Save, Briefcase, Linkedin, FileText, MapPin, ChevronRight
@@ -26,6 +27,8 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  const [approvalReason, setApprovalReason] = useState('');
   const [profileData, setProfileData] = useState({
     fullName: 'Ved Prakash', graduationYear: '2026', course: 'Information technology',
     email: 'ved.prakash@example.com', phone: '+91 98765 43210', currentCompany: 'MotorCorp',
@@ -51,6 +54,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   React.useEffect(() => {
     if (!authLoading && token) fetchProfile();
@@ -80,6 +84,7 @@ export default function SettingsPage() {
       const res = await fetch('http://localhost:4000/api/users/profile', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (res.ok && data.user) {
+        const nextStatus = (data.user.approval_status || 'pending').toLowerCase() as 'pending' | 'approved' | 'rejected';
         setProfileData({
           fullName: data.user.name || '', graduationYear: String(data.user.graduation_year || ''),
           course: data.user.major || '', email: data.user.email || '', phone: data.user.phone || '',
@@ -89,6 +94,8 @@ export default function SettingsPage() {
           isMentor: !!data.user.is_mentor,
           profileImage: data.user.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
         });
+        setApprovalStatus(nextStatus);
+        setApprovalReason(data.user.approval_reason || '');
         if (data.user.notification_preferences) setNotifications(p => ({ ...p, ...data.user.notification_preferences }));
         if (data.user.privacy_settings) setPrivacy(p => ({ ...p, ...data.user.privacy_settings }));
       }
@@ -113,7 +120,11 @@ export default function SettingsPage() {
           notification_preferences: notifications, privacy_settings: privacy
         })
       });
-      if (res.ok) { setMessage({ type: 'success', text: 'Profile updated successfully!' }); setTimeout(() => setMessage(null), 3000); }
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        setTimeout(() => setMessage(null), 3000);
+        await fetchProfile();
+      }
       else { const d = await res.json(); throw new Error(d.error || 'Failed to save'); }
     } catch (e) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save profile.' }); }
     finally { setSaving(false); }
@@ -170,6 +181,11 @@ export default function SettingsPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) { const r = new FileReader(); r.onloadend = () => setProfileData(p => ({ ...p, profileImage: r.result as string })); r.readAsDataURL(file); }
+  };
+
+  const handlePhotoSelect = (photoUrl: string) => {
+    setProfileData(p => ({ ...p, profileImage: photoUrl }));
+    setIsAvatarModalOpen(false);
   };
 
   const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all";
@@ -253,19 +269,31 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {approvalStatus === 'rejected' && (
+                  <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-red-700 mb-1">Profile rejected</p>
+                    <p className="text-sm font-medium text-red-900/90 leading-relaxed">
+                      {approvalReason || 'Update the flagged profile details and save changes to resubmit your profile for review.'}
+                    </p>
+                  </div>
+                )}
+
                 <div className={`flex flex-col md:flex-row ${isCompact ? 'gap-4' : 'gap-6'}`}>
                   {/* Avatar */}
                   <div className="shrink-0 flex flex-col items-center gap-2">
-                    <div className="relative group cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => setIsAvatarModalOpen(true)}
+                      className="relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-full"
+                    >
                       <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-slate-100 bg-slate-100">
                         <img src={profileData.profileImage} alt="Profile" className="w-full h-full object-cover" />
                       </div>
-                      <label className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                         <Camera className="w-6 h-6 text-white" />
-                        <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                      </label>
-                    </div>
-                    <p className="text-[10px] text-slate-400 text-center">*.jpeg, *.jpg, *.png<br />max 3 MB</p>
+                      </div>
+                    </button>
+                    <p className="text-[10px] text-slate-400 text-center">Click to change photo</p>
                   </div>
 
                   {/* Form */}
@@ -478,6 +506,13 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+
+        <ProfilePhotoModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => setIsAvatarModalOpen(false)}
+          onSelect={handlePhotoSelect}
+          currentPhoto={profileData.profileImage}
+        />
       </div>
     </AlumniNavigation>
   );

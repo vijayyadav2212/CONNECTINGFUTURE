@@ -292,8 +292,8 @@ export default function AlumniJobBoard() {
     setUploading(true)
     try {
       const fd = new FormData()
-      fd.append("resume", file)
-      const res = await fetch(`${API_BASE}/uploads/resume`, { method: "POST", body: fd })
+      fd.append("file", file)
+      const res = await fetch(`${API_BASE}/upload/job-resume`, { method: "POST", body: fd })
       if (!res.ok) {
         const text = await res.text().catch(() => "")
         throw new Error(`Upload failed (${res.status}) ${text}`)
@@ -1512,14 +1512,22 @@ export default function AlumniJobBoard() {
                        <div className="flex items-center gap-3">
                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'applied' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}`}>{app.status}</span>
                          {app.resume_url && (
+                          (() => {
+                            const targetUrl = app.resume_url.startsWith('http')
+                              ? app.resume_url
+                              : `${API_BASE.replace('/api', '')}${app.resume_url.startsWith('/') ? '' : '/'}${app.resume_url}`;
+                            const previewHref = `${API_BASE}/files/preview?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent('resume.pdf')}`;
+                            return (
                            <a 
-                             href={app.resume_url.startsWith('http') ? app.resume_url : `${API_BASE.replace('/api', '')}${app.resume_url.startsWith('/') ? '' : '/'}${app.resume_url}`} 
+                             href={previewHref}
                              target="_blank" 
                              rel="noreferrer" 
                              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 text-sm hover:scale-105 transition-all"
                            >
-                             Resume
+                             Open Resume
                            </a>
+                            );
+                          })()
                          )}
                        </div>
                     </div>

@@ -503,8 +503,8 @@ const JobOpportunitiesPage = () => {
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append('resume', file);
-      const res = await fetch(`${API_BASE}/uploads/resume`, { method: 'POST', body: fd });
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/upload/job-resume`, { method: 'POST', body: fd });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Upload failed (${res.status}) ${text}`);

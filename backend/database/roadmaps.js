@@ -48,6 +48,49 @@ async function createRoadmapsSchema(dbQuery) {
   // Indexes
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_roadmaps_owner_email ON roadmaps(owner_email)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_roadmaps_created_at ON roadmaps(created_at)');
+
+  // Per-student roadmap progress (milestone completion and unlock state)
+  await dbQuery(`
+    CREATE TABLE IF NOT EXISTS roadmap_student_progress (
+      id SERIAL PRIMARY KEY,
+      roadmap_id INT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+      user_email VARCHAR(255) NOT NULL,
+      unlocked_milestone_order INT DEFAULT 1,
+      completed_milestones_json JSONB DEFAULT '[]'::jsonb,
+      last_quiz_score NUMERIC(5,2),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(roadmap_id, user_email)
+    )
+  `);
+
+  // Keep each milestone quiz attempt for analytics and leaderboard scoring
+  await dbQuery(`
+    CREATE TABLE IF NOT EXISTS roadmap_quiz_attempts (
+      id SERIAL PRIMARY KEY,
+      roadmap_id INT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+      milestone_order INT NOT NULL,
+      user_email VARCHAR(255) NOT NULL,
+      score NUMERIC(5,2) NOT NULL,
+      question_count INT NOT NULL,
+      passed BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // Track students following roadmap resources
+  await dbQuery(`
+    CREATE TABLE IF NOT EXISTS roadmap_resource_follows (
+      id SERIAL PRIMARY KEY,
+      roadmap_id INT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+      user_email VARCHAR(255) NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(roadmap_id, user_email)
+    )
+  `);
+
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_rsp_roadmap_email ON roadmap_student_progress(roadmap_id, user_email)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_rqa_roadmap_email ON roadmap_quiz_attempts(roadmap_id, user_email)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_rrf_email ON roadmap_resource_follows(user_email)');
 }
 
 module.exports = { createRoadmapsSchema };

@@ -44,7 +44,7 @@ class ApiClient {
       if (!response.ok) {
         if (response.status === 401) {
           // Token might be expired, clear it
-          tokenManager.clearToken();
+          tokenManager.clearToken({ redirectToLogin: true });
           throw new Error('Authentication required');
         }
         // Allow callers to opt-in to return null on 404

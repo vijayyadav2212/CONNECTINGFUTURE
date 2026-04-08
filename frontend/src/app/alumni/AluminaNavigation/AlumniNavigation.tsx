@@ -132,8 +132,16 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     return <StatusOverlay icon={<Clock className="text-yellow-600" size={48} />} title="Application Under Review" message="Thank you for registering! Your alumni application is currently being reviewed by our admin team." color="yellow" />;
   }
 
-  if (approvalStatus === 'rejected') {
-    return <StatusOverlay icon={<XCircle className="text-red-600" size={48} />} title="Application Not Approved" message="Unfortunately, your alumni application was not approved at this time." color="red" isError />;
+  if (approvalStatus === 'rejected' && pathname !== '/alumni/settings') {
+    return (
+      <StatusOverlay
+        icon={<XCircle className="text-red-600" size={48} />}
+        title="Application Not Approved"
+        message={profile?.approval_reason || 'Unfortunately, your alumni application was not approved at this time.'}
+        color="red"
+        isError
+      />
+    );
   }
 
   return (
@@ -282,7 +290,13 @@ function StatusOverlay({ icon, title, message, color, isError }: any) {
           {icon}
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-4">{title}</h1>
-        <p className="text-lg text-gray-600 mb-8">{message}</p>
+        <p className="text-lg text-gray-600 mb-6">{message}</p>
+        {isError && (
+          <div className="mb-8 rounded-xl border border-red-100 bg-red-50 px-5 py-4 text-left">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-red-700 mb-1">Profile update needed</p>
+            <p className="text-sm text-red-900/90 leading-relaxed">Update the flagged fields in Settings, then resubmit your alumni profile for review.</p>
+          </div>
+        )}
         <div className={`bg-${color === 'yellow' ? 'blue' : 'red'}-50 border border-${color === 'yellow' ? 'blue' : 'red'}-100 rounded-xl p-6 mb-8 text-left`}>
            <h3 className={`font-semibold ${color === 'yellow' ? 'text-blue-900' : 'text-red-900'} mb-3`}>What happens next?</h3>
            <ul className={`${color === 'yellow' ? 'text-blue-800' : 'text-red-800'} space-y-2`}>

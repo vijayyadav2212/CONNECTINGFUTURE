@@ -87,21 +87,36 @@ function StudentResumeReviewContent() {
     if (!file) return;
     
     const formData = new FormData();
-    formData.append('resume', file);
+    formData.append('file', file);
 
     try {
       setLoading(true);
-      const response = await fetch('/api/uploads/resume', {
+      console.log('[RESUME UPLOAD] Starting upload for:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
+      const response = await fetch('/api/upload/review-resume', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
       const data = await response.json();
+      console.log('[RESUME UPLOAD] Response:', data);
+      
+      if (!response.ok) {
+        const errorMsg = data.error || `Upload failed with status ${response.status}`;
+        console.error('[RESUME UPLOAD] Error response:', errorMsg);
+        throw new Error(errorMsg);
+      }
+      
+      if (!data.url) {
+        throw new Error('No upload URL returned from server');
+      }
+      
       setResume(data);
+      console.log('[RESUME UPLOAD] Success! URL:', data.url);
     } catch (error) {
-      console.error('Resume upload error:', error);
-      alert('Failed to upload resume');
+      console.error('[RESUME UPLOAD] Error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to upload resume';
+      alert(`Upload failed: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -259,7 +274,7 @@ function StudentResumeReviewContent() {
             <div className="border-2 border-dashed border-slate-300 rounded-[14px] p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer">
               <input
                 type="file"
-                accept=".pdf,.doc,.docx,.txt"
+                accept=".pdf"
                 onChange={(e) => handleResumeUpload(e.target.files?.[0])}
                 className="hidden"
                 id="resume-input"
