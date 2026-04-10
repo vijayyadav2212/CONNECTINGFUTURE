@@ -57,6 +57,15 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+    height: auto;
   }
 }
 
@@ -199,6 +208,14 @@
 
   .mobile-full {
     width: 100%;
+  }
+
+  .section-padding {
+    @apply p-4;
+  }
+
+  .card-padding {
+    @apply p-4;
   }
 }
 

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award, AlertTriangle } from 'lucide-react';
+import { User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award, AlertTriangle, X } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Interfaces
@@ -33,6 +33,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const { user } = useUser();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [messageUnread, setMessageUnread] = useState<number>(0);
   const [jobNewBadge, setJobNewBadge] = useState<number>(0);
   const prevJobIdsRef = React.useRef<Set<number>>(new Set());
@@ -163,10 +164,42 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
     }
   }, [pathname]);
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+      <div className="lg:hidden sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden shrink-0">
+            <img
+              src="/NEWCNLOGO.png"
+              className="w-8 h-8 object-contain"
+              alt="Connecting Future Logo"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff';
+              }}
+            />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-gray-900 truncate">Connecting Future</h1>
+            <p className="text-[11px] text-gray-500 truncate">Student</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700"
+          aria-label="Open student menu"
+        >
+          <BookOpen className="w-5 h-5" />
+        </button>
+      </div>
+
       {/* Navigation Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef]">
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef]">
         <div className="h-full flex flex-col">
           {/* Logo & Branding */}
           <div className="px-6 py-5 bg-white border-b border-[#eaecf0]">
@@ -294,8 +327,148 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
         </div>
       </aside>
 
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close student menu"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-2xl border-r border-gray-200 overflow-y-auto">
+            <div className="px-4 py-4 bg-white border-b border-[#eaecf0] flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden shrink-0">
+                  <img
+                    src="/NEWCNLOGO.png"
+                    className="w-8 h-8 object-contain"
+                    alt="Connecting Future Logo"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff';
+                    }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-bold text-gray-900 truncate">Connecting Future</h1>
+                  <p className="text-[11px] text-gray-500 truncate">VPPCOE & VA</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700"
+                aria-label="Close student menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-4 py-5 bg-white border-b border-[#eaecf0]">
+              <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
+                <div className="flex items-start gap-3.5">
+                  <div className="relative">
+                    <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                      {studentData.avatar && !imgError ? (
+                        <img
+                          src={studentData.avatar}
+                          alt={studentData.name}
+                          className="w-full h-full object-cover"
+                          onError={() => setImgError(true)}
+                        />
+                      ) : (
+                        <span className="text-white font-semibold text-lg">
+                          {studentData.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'S'}
+                        </span>
+                      )}
+                    </div>
+                    {studentData.verified && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                        <span className="text-white text-[10px]">✓</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-[16px] text-gray-900 truncate">
+                      {studentData.name}
+                    </h3>
+
+                    {profileLoaded && studentData.name === 'Student' && (
+                      <button
+                        onClick={() => router.push('/student/settings')}
+                        className="text-xs text-amber-600 hover:text-amber-700 underline mt-0.5"
+                      >
+                        ⚠ Set your name in Settings
+                      </button>
+                    )}
+
+                    {studentData.name !== 'Student' && (
+                      <>
+                        <p className="text-sm text-gray-600 mt-0.5 truncate">{studentData.department || 'Department not set'}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {studentData.year || 'Year not set'}
+                          {studentData.rollNumber ? ` • ${studentData.rollNumber}` : ''}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3.5 flex justify-center">
+                  <span className="text-[12px] bg-[#e9efff] text-[#2563eb] px-3.5 py-1.5 rounded-full font-semibold inline-block">
+                    Verified Student
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2.5">
+                  <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 rounded-[10px] border border-green-100 hover:bg-green-100 transition-colors">
+                    <BookOpen className="w-4 h-4 text-green-600" />
+                    <span className="text-xs font-semibold text-green-700">Study</span>
+                  </button>
+                  <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-50 rounded-[10px] border border-blue-100 hover:bg-blue-100 transition-colors">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-semibold text-blue-700">Connect</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <nav className="px-4 py-5">
+              <ul className="space-y-2.5">
+                {navigationItems.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={item.route}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 ${isActiveRoute(item.route)
+                        ? 'bg-[#e8f5ee] text-[#14532d] border-[#b7e4c7] shadow-[0_1px_3px_rgba(22,101,52,0.12)]'
+                        : 'text-gray-700 border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <span className={`h-6 w-1.5 rounded-full ${isActiveRoute(item.route) ? 'bg-green-500' : 'bg-transparent'}`} />
+                        <span className={`${isActiveRoute(item.route) ? 'text-green-700' : 'text-gray-500'}`}>
+                          {item.icon}
+                        </span>
+                        <span className="font-medium text-[15px] truncate">{item.label}</span>
+                      </div>
+                      {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
+                        <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-1 rounded-full min-w-[22px] text-center">
+                          {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <main className="ml-[300px] min-h-screen">
+      <main className="lg:ml-[300px] min-h-screen">
         {/* Incomplete Profile Alert — hidden on the profile page itself */}
         {
           (() => {
@@ -330,7 +503,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
         }
 
         {/* Page Content */}
-        <div className="flex-1">
+        <div className="flex-1 px-4 sm:px-6 lg:px-0">
           {children}
         </div>
       </main >

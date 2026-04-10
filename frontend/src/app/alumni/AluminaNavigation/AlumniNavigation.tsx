@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Users, Building2, MessageSquare,
   Trophy, Settings, Heart, Calendar, Map, Camera,
-  Zap, Clock, XCircle, LayoutDashboard, LogOut, FileText, TrendingUp
+  Zap, Clock, XCircle, LayoutDashboard, LogOut, FileText, TrendingUp, Menu, X
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
@@ -32,6 +32,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const prevJobIdsRef = useRef<Set<number>>(new Set());
 
   const API_ROOT = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
@@ -117,6 +118,10 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
     return pathname === route || (pathname?.startsWith(route + "/") ?? false);
   };
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   if (profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -145,8 +150,36 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <aside className="fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef] flex flex-col">
+    <div className="min-h-screen bg-gray-50 font-sans overflow-x-hidden">
+      <div className="lg:hidden sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+            <img
+              src="/NEWCNLOGO.png"
+              className="w-8 h-8 object-contain"
+              alt="CF Logo"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = "https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff";
+              }}
+            />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-gray-900 truncate">Connecting Future</h1>
+            <p className="text-[11px] text-gray-500 truncate">Alumni</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700"
+          aria-label="Open alumni menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
+
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef] flex-col">
         {/* Logo & Branding */}
         <div className="px-6 py-5 bg-white border-b border-[#eaecf0] shrink-0">
           <div className="flex items-center space-x-3">
@@ -261,8 +294,118 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
         </nav>
       </aside>
 
-      <main className="ml-[300px] min-h-screen">
-        <div className="p-8">
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close alumni menu"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-2xl border-r border-gray-200 overflow-y-auto">
+            <div className="px-4 py-4 bg-[#f4f5f7] border-b border-[#e6e9ef] flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+                  <img
+                    src="/NEWCNLOGO.png"
+                    className="w-8 h-8 object-contain"
+                    alt="CF Logo"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff";
+                    }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-bold text-gray-900 truncate">Connecting Future</h1>
+                  <p className="text-[11px] text-gray-500 truncate">VPPCOE & VA</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700"
+                aria-label="Close alumni menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-4 py-4 bg-white border-b border-[#eaecf0]">
+              <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
+                <div className="flex items-start space-x-3.5">
+                  <div className="relative mt-0.5">
+                    {alumniData.avatar ? (
+                      <img
+                        src={alumniData.avatar}
+                        alt={alumniData.name}
+                        className="w-[56px] h-[56px] rounded-full object-cover shadow-sm bg-gray-50"
+                      />
+                    ) : (
+                      <div className="w-[56px] h-[56px] bg-[#F19B86] rounded-full flex items-center justify-center shadow-sm">
+                        <span className="text-white font-medium text-lg tracking-wider">
+                          {String(alumniData.name).split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#2563eb] rounded-full flex items-center justify-center border-[2.5px] border-white shadow-sm">
+                      <span className="text-white text-[10px] font-bold leading-none">✓</span>
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-gray-900 text-[16px] truncate">{alumniData.name}</h3>
+                    <p className="text-[14px] text-gray-600 mt-0.5">Class of {alumniData.graduationYear}</p>
+                    {!profileLoading && alumniData.position !== 'Not specified' ? (
+                      <p className="text-[14px] text-gray-500 mt-0.5 truncate">{alumniData.position} {alumniData.company !== 'Not specified' && `at ${alumniData.company}`}</p>
+                    ) : (
+                      <p className="text-[14px] text-gray-500 mt-0.5">Not specified</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <nav className="px-4 py-4">
+              <ul className="space-y-2.5">
+                {navigationItems.map((item) => {
+                  const isActive = isActiveRoute(item.route);
+                  return (
+                    <li key={item.id}>
+                      <Link
+                        href={item.route}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 group ${
+                          isActive
+                            ? 'bg-[#e8efff] text-[#1e3a8a] border-[#bfdbfe] shadow-[0_1px_3px_rgba(37,99,235,0.18)]'
+                            : 'text-[#344054] border-transparent hover:bg-gray-50 hover:border-[#e5e7eb] hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-transparent'}`} />
+                          <span className={`shrink-0 ${isActive ? 'text-blue-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
+                            {item.icon}
+                          </span>
+                          <span className={`text-[15px] truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                            {item.label}
+                          </span>
+                        </div>
+                        {item.badge ? (
+                          <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold bg-[#ef4444] text-white shadow-sm">
+                            {item.badge}
+                          </div>
+                        ) : null}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          </div>
+        </div>
+      )}
+
+      <main className="lg:ml-[300px] min-h-screen">
+        <div className="p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>
