@@ -8,7 +8,12 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000/api';
+const API_BASE = (() => {
+  const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+  const base = raw.replace(/\/$/, '');
+  if (base.endsWith('/api')) return base;
+  return `${base}/api`;
+})();
 
 interface JobOpportunity {
   id: number;

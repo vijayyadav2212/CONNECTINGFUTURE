@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
 import ProfilePhotoModal from '@/components/ProfilePhotoModal';
 import {
@@ -50,16 +49,14 @@ export default function SettingsPage() {
     reduceMotion: false,
   });
 
-  const { token, tokenLoading: authLoading } = useAuthToken();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   React.useEffect(() => {
-    if (!authLoading && token) fetchProfile();
-    else if (!authLoading && !token) setLoading(false);
-  }, [authLoading, token]);
+    fetchProfile();
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -80,8 +77,7 @@ export default function SettingsPage() {
 
   const fetchProfile = async () => {
     try {
-      if (!token) return;
-      const res = await fetch('http://localhost:4000/api/users/profile', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/user/profile', { cache: 'no-store' });
       const data = await res.json();
       if (res.ok && data.user) {
         const nextStatus = (data.user.approval_status || 'pending').toLowerCase() as 'pending' | 'approved' | 'rejected';
@@ -106,10 +102,9 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setSaving(true); setMessage(null);
     try {
-      if (!token) throw new Error('Not authenticated');
-      const res = await fetch('http://localhost:4000/api/users/profile', {
+      const res = await fetch('/api/user/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: profileData.fullName, phone: profileData.phone, email: profileData.email,
           location: profileData.location, graduationYear: profileData.graduationYear,
@@ -133,10 +128,9 @@ export default function SettingsPage() {
   const savePreferencesOnly = async (contextLabel: string) => {
     setSaving(true); setMessage(null);
     try {
-      if (!token) throw new Error('Not authenticated');
-      const res = await fetch('http://localhost:4000/api/users/profile', {
+      const res = await fetch('/api/user/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: profileData.fullName,
           email: profileData.email,

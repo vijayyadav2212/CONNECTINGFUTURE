@@ -5,7 +5,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, MessageCircle, Calendar, MapPin, Camera, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen, UserPlus, Bell } from 'lucide-react';
+import { Heart, MessageCircle, Calendar, MapPin, Camera, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen, UserPlus } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -99,28 +99,7 @@ export default function MemoriesPage() {
   const [tagProfileConnectionStatus, setTagProfileConnectionStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected' | 'removed'>('none');
   const [tagProfileIsRequester, setTagProfileIsRequester] = useState(false);
   const [tagActionBusy, setTagActionBusy] = useState(false);
-  const [tagNotifications, setTagNotifications] = useState<any[]>([]);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-
   const normalizeEmail = (value: string) => String(value || '').trim().toLowerCase();
-  const unreadTagNotifications = useMemo(
-    () => (tagNotifications || []).filter((n: any) => !n?.is_read).length,
-    [tagNotifications]
-  );
-
-  const loadTagNotifications = async () => {
-    if (!user?.email) return;
-    try {
-      setNotificationsLoading(true);
-      const resp = await apiClient.get(`/memories/tag-notifications?email=${encodeURIComponent(user.email)}`);
-      setTagNotifications(resp?.notifications || []);
-    } catch {
-      setTagNotifications([]);
-    } finally {
-      setNotificationsLoading(false);
-    }
-  };
 
   const openNotificationMemory = async (memoryId: number) => {
     const memoryFromList = (memories || []).find((m: any) => Number(m.id) === Number(memoryId));
@@ -137,20 +116,6 @@ export default function MemoriesPage() {
       }
     } catch {
       toast({ title: 'Memory unavailable', description: 'This memory could not be opened.', variant: 'destructive' });
-    }
-  };
-
-  const markTagNotificationRead = async (notification: any) => {
-    if (!notification?.id) return;
-    try {
-      await apiClient.post(`/memories/tag-notifications/${notification.id}/read`, {});
-      setTagNotifications((prev) => (prev || []).map((n: any) => n.id === notification.id ? { ...n, is_read: true } : n));
-      if (notification.memory_id) {
-        await openNotificationMemory(Number(notification.memory_id));
-      }
-      setNotificationsOpen(false);
-    } catch {
-      toast({ title: 'Unable to update notification', description: 'Please try again.', variant: 'destructive' });
     }
   };
 
@@ -369,15 +334,6 @@ export default function MemoriesPage() {
   }, [user?.email]);
 
   useEffect(() => {
-    if (!user?.email) {
-      setTagNotifications([]);
-      return;
-    }
-    loadTagNotifications();
-    const interval = window.setInterval(() => {
-      loadTagNotifications();
-    }, 20000);
-    return () => window.clearInterval(interval);
   }, [user?.email]);
 
   useEffect(() => {
@@ -741,51 +697,7 @@ export default function MemoriesPage() {
                 {t.icon}{t.label}
               </button>
             ))}
-            <div className="ml-auto relative">
-              <button
-                onClick={() => setNotificationsOpen(v => !v)}
-                className="relative flex items-center gap-2 px-4 py-2.5 rounded-[14px] bg-white border border-slate-200 text-[12px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all"
-              >
-                <Bell className="w-4 h-4" />
-                Alerts
-                {unreadTagNotifications > 0 && (
-                  <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
-                    {unreadTagNotifications > 9 ? '9+' : unreadTagNotifications}
-                  </span>
-                )}
-              </button>
-
-              {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-[360px] max-w-[92vw] rounded-2xl border border-slate-200 bg-white shadow-2xl z-40 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Tag Notifications</p>
-                    <button
-                      onClick={loadTagNotifications}
-                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700"
-                    >
-                      Refresh
-                    </button>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {notificationsLoading ? (
-                      <p className="px-4 py-4 text-[13px] text-slate-500">Loading notifications…</p>
-                    ) : tagNotifications.length === 0 ? (
-                      <p className="px-4 py-4 text-[13px] text-slate-500">No notifications yet.</p>
-                    ) : tagNotifications.map((n: any) => (
-                      <button
-                        key={n.id}
-                        onClick={() => markTagNotificationRead(n)}
-                        className={`w-full text-left px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-indigo-50 transition-colors ${n.is_read ? 'bg-white' : 'bg-indigo-50/40'}`}
-                      >
-                        <p className="text-[13px] font-semibold text-slate-800">{n.message || 'You were tagged in a memory'}</p>
-                        <p className="text-[11px] text-slate-500 mt-1">{n.actor_email ? `By ${n.actor_email}` : 'By another user'}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <div className="ml-auto" />
           </div>
         </div>
 

@@ -4,18 +4,25 @@ import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
+function isAdminEmail(email: string | null | undefined): boolean {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return false;
+  const admins = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  return admins.includes(normalized);
+}
+
 function deriveRole(user: any): 'admin' | 'student' | 'alumni' {
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (isAdminEmail(email)) return 'admin';
+
   const claimed = String(user?.user_type || '').toLowerCase();
-  if (claimed === 'admin' || claimed === 'student' || claimed === 'alumni') {
+  if (claimed === 'student' || claimed === 'alumni') {
     return claimed as 'admin' | 'student' | 'alumni';
   }
 
-  const email = String(user?.email || '').trim().toLowerCase();
-  const admins = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
   const studentDomains = (process.env.STUDENT_EMAIL_DOMAINS || 'pvppcoe.ac.in').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
   const students = (process.env.STUDENT_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 
-  if (email && admins.includes(email)) return 'admin';
   const domain = email.includes('@') ? email.split('@')[1] : '';
   if (email && (students.includes(email) || studentDomains.includes(domain))) return 'student';
   return 'alumni';
@@ -38,8 +45,13 @@ export default async function PostLogin() {
   const host = forwardedHostRaw.split(',')[0].trim();
   const proto = (forwardedProtoRaw.split(',')[0].trim() || (host.includes('localhost') ? 'http' : 'https'));
   const origin = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const adminEmail = isAdminEmail(sessionUser?.email);
 
-  let role: string | null = typeof sessionUser.user_type === 'string' ? String(sessionUser.user_type).toLowerCase() : null;
+  let role: string | null = null;
+  const claimedRole = typeof sessionUser.user_type === 'string' ? String(sessionUser.user_type).toLowerCase() : null;
+  if (claimedRole === 'admin' && adminEmail) role = 'admin';
+  else if (claimedRole === 'student' || claimedRole === 'alumni') role = claimedRole;
+
   let isRegistered: boolean | null = typeof sessionUser.registration_completed === 'boolean'
     ? sessionUser.registration_completed
     : null;
@@ -54,9 +66,8 @@ export default async function PostLogin() {
       const profileData = await profileResp.json();
       const profileUser = profileData?.user || {};
       const profRole = String(profileUser.user_type || profileUser.userType || '').toLowerCase();
-      if (profRole === 'admin' || profRole === 'student' || profRole === 'alumni') {
-        role = profRole;
-      }
+      if (profRole === 'admin' && adminEmail) role = 'admin';
+      else if (profRole === 'student' || profRole === 'alumni') role = profRole;
       if (typeof profileUser.registration_completed === 'boolean') {
         isRegistered = profileUser.registration_completed;
       }

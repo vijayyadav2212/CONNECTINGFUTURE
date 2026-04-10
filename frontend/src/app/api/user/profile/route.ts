@@ -65,3 +65,66 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const origin = new URL(request.url).origin;
+    const tokenResp = await fetch(`${origin}/api/auth/token`, {
+      headers: { cookie: request.headers.get('cookie') || '' },
+      cache: 'no-store'
+    });
+    if (tokenResp.status === 204) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    if (!tokenResp.ok) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const { accessToken } = await tokenResp.json();
+
+    const payload = await request.json();
+
+    const candidates = [
+      process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '',
+      'http://127.0.0.1:4000',
+      'http://localhost:4000',
+    ].filter(Boolean) as string[];
+
+    let lastErr: unknown = null;
+    for (const c of candidates) {
+      const raw = c.endsWith('/api') ? c : `${c.replace(/\/$/, '')}/api`;
+      const url = `${raw}/users/profile`;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const resp = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
+        if (!resp.ok) {
+          const status = resp.status;
+          const text = await resp.text();
+          return NextResponse.json({ error: 'Upstream error', details: text }, { status });
+        }
+        const data = await resp.json();
+        return NextResponse.json(data);
+      } catch (e) {
+        lastErr = e;
+        console.warn('Profile update proxy: backend unreachable at', c, e);
+      }
+    }
+
+    console.error('Profile update proxy: all backends unreachable', lastErr);
+    return NextResponse.json({ error: 'Service Unavailable' }, { status: 503 });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

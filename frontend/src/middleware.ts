@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0/edge';
 
+function isAdminEmail(email: string | null | undefined): boolean {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return false;
+  const admins = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  return admins.includes(normalized);
+}
+
 function deriveRoleFromSessionUser(user: any): 'admin' | 'student' | 'alumni' {
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (isAdminEmail(email)) return 'admin';
+
   const claimedRole = String(user?.user_type || '').toLowerCase();
-  if (claimedRole === 'admin' || claimedRole === 'student' || claimedRole === 'alumni') {
+  if (claimedRole === 'student' || claimedRole === 'alumni') {
     return claimedRole as 'admin' | 'student' | 'alumni';
   }
 
-  const email = String(user?.email || '').trim().toLowerCase();
-  const admins = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
   const studentDomains = (process.env.STUDENT_EMAIL_DOMAINS || 'pvppcoe.ac.in').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
   const students = (process.env.STUDENT_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 
-  if (email && admins.includes(email)) return 'admin';
   const domain = email.includes('@') ? email.split('@')[1] : '';
   if (email && (students.includes(email) || studentDomains.includes(domain))) return 'student';
   return 'alumni';
@@ -71,8 +78,9 @@ export async function middleware(request: NextRequest) {
     }
     const userType = deriveRoleFromSessionUser(session.user);
     const completed = !!session.user.registration_completed;
+    const adminAllowed = isAdminEmail(session.user?.email);
 
-    if (request.nextUrl.pathname.startsWith('/admin') && userType !== 'admin') {
+    if (request.nextUrl.pathname.startsWith('/admin') && (!adminAllowed || userType !== 'admin')) {
       return NextResponse.redirect(new URL(userType === 'student' ? (completed ? '/student/dashboard' : '/student-registration') : (completed ? '/alumni/dashboard' : '/registration'), request.url));
     }
 

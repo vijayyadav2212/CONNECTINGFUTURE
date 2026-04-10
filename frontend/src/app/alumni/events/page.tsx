@@ -6,7 +6,25 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
 import { Share2, Calendar, MapPin, Clock, Plus, Users, X, Sparkles } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000/api';
+const API_BASE = (() => {
+  const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+  const base = raw.replace(/\/$/, '');
+  if (base.endsWith('/api')) return base;
+  return `${base}/api`;
+})();
+
+const API_ORIGIN = API_BASE.replace(/\/api$/, '');
+
+async function readJsonResponse(res: Response) {
+  const body = await res.text().catch(() => '');
+  if (!body) return {};
+  try {
+    return JSON.parse(body);
+  } catch {
+    const compact = body.replace(/\s+/g, ' ').trim().slice(0, 120);
+    throw new Error(`Invalid JSON response (${res.status}): ${compact}`);
+  }
+}
 
 interface Event {
   id: number;
@@ -44,7 +62,7 @@ export default function EventsPage() {
     try {
       const res = await fetch(`${API_BASE}/events`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         const mapped = data.map((e: any) => ({
           id: e.id,
           title: e.title,
@@ -54,7 +72,7 @@ export default function EventsPage() {
           type: e.event_type || 'Social',
           description: e.description,
           location: e.location,
-          image_url: e.image_url && !e.image_url.startsWith('http') ? `${API_BASE.replace('/api', '')}${e.image_url.startsWith('/') ? '' : '/'}${e.image_url}` : e.image_url,
+          image_url: e.image_url && !e.image_url.startsWith('http') ? `${API_ORIGIN}${e.image_url.startsWith('/') ? '' : '/'}${e.image_url}` : e.image_url,
           organizer: e.organizer,
           is_virtual: !!e.is_virtual,
         }));
@@ -107,7 +125,7 @@ export default function EventsPage() {
       try {
         const uploadRes = await fetch(`${API_BASE}/uploads/event-image`, { method: 'POST', body: imgData });
         if (uploadRes.ok) {
-          const uploadJson = await uploadRes.json();
+          const uploadJson = await readJsonResponse(uploadRes);
           imageUrl = uploadJson.url;
         } else {
           toast.error('Image upload failed');
@@ -145,7 +163,7 @@ export default function EventsPage() {
         setShowSuccessModal(true);
         fetchEvents();
       } else {
-        const errData = await res.json();
+        const errData = await readJsonResponse(res).catch(() => ({}));
         toast.error(`Failed: ${errData.error || 'Unknown error'}`);
       }
     } catch (err) {

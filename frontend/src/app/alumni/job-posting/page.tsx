@@ -13,7 +13,23 @@ import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@auth0/nextjs-auth0/client"
 import AlumniNavigation from "../AluminaNavigation/AlumniNavigation"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000/api"
+const API_BASE = (() => {
+  const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
+  const base = raw.replace(/\/$/, "")
+  if (base.endsWith("/api")) return base
+  return `${base}/api`
+})()
+
+async function readJsonResponse(res: Response) {
+  const body = await res.text().catch(() => "")
+  if (!body) return {}
+  try {
+    return JSON.parse(body)
+  } catch {
+    const compact = body.replace(/\s+/g, " ").trim().slice(0, 120)
+    throw new Error(`Invalid JSON response (${res.status}): ${compact}`)
+  }
+}
 
 type JobItem = {
   id: number; title: string; company: string; location: string;
@@ -151,7 +167,7 @@ export default function AlumniJobBoard() {
   const fetchJobs = async () => {
     try {
       const res = await fetch(`${API_BASE}/jobs?status=Approved`)
-      const data = await res.json()
+      const data = await readJsonResponse(res)
       setJobs((data.jobs || []).map(mapJobData))
     } catch (e) { console.error("Fetch Error:", e) }
   }
@@ -160,7 +176,7 @@ export default function AlumniJobBoard() {
     if (!user?.email) return
     try {
       const res = await fetch(`${API_BASE}/jobs?posted_by=${user.email}`)
-      const data = await res.json()
+      const data = await readJsonResponse(res)
       setMyJobs((data.jobs || []).map(mapJobData))
     } catch (e) { console.error("MyPosts Error:", e) }
   }
@@ -169,7 +185,7 @@ export default function AlumniJobBoard() {
     if (!user?.email) return
     try {
       const res = await fetch(`${API_BASE}/applications?applicant_email=${encodeURIComponent(user.email)}`)
-      const data = await res.json()
+      const data = await readJsonResponse(res)
       const ids = new Set<number>()
       ;(data.applications || []).forEach((a: any) => ids.add(Number(a.job_id)))
       setAppliedPortalJobIds(ids)
@@ -181,7 +197,7 @@ export default function AlumniJobBoard() {
   const fetchExternalAnalytics = async () => {
     try {
       const res = await fetch(`${API_BASE}/jobs/external/analytics/summary`, { cache: "no-store" })
-      const data = await res.json().catch(() => ({}))
+      const data = await readJsonResponse(res).catch(() => ({}))
       if (res.ok && Array.isArray(data.jobs)) setAnalyticsJobs(data.jobs)
       else setAnalyticsJobs([])
     } catch {
@@ -194,7 +210,7 @@ export default function AlumniJobBoard() {
       refresh ? setExternalRefreshing(true) : setExternalLoading(true)
       setExternalError(null)
       const res = await fetch(buildExternalJobsUrl(next, refresh), { cache: "no-store" })
-      const data = await res.json().catch(() => ({}))
+      const data = await readJsonResponse(res).catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Failed to fetch external jobs")
       setExternalJobs(Array.isArray(data.jobs) ? data.jobs : [])
       void fetchExternalAnalytics()
@@ -219,7 +235,7 @@ export default function AlumniJobBoard() {
     try {
       const res = await fetch(`${API_BASE}/applications/by-job?job_id=${job.id}`)
       if (res.ok) {
-        const data = await res.json()
+        const data = await readJsonResponse(res)
         setApplicants(data.applications || [])
       } else {
         setApplicants([])
@@ -260,7 +276,7 @@ export default function AlumniJobBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ applicant_email: user.email, resume_url: resumeUrl || null, cover_letter: coverLetter || null }),
       })
-      const data = await res.json().catch(() => ({}))
+      const data = await readJsonResponse(res).catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Apply failed")
       setAppliedPortalJobIds(prev => new Set(prev).add(applyJob.id))
       setJobs(prev => prev.map(j => j.id === applyJob.id ? { ...j, applied: Number(j.applied || 0) + 1 } : j))
@@ -298,7 +314,7 @@ export default function AlumniJobBoard() {
         const text = await res.text().catch(() => "")
         throw new Error(`Upload failed (${res.status}) ${text}`)
       }
-      const data = await res.json()
+      const data = await readJsonResponse(res)
       setResumeUrl(data.url)
       setUploadedFileName(file.name)
       toast({ title: "Resume uploaded", description: file.name })
@@ -505,7 +521,7 @@ export default function AlumniJobBoard() {
         body: JSON.stringify(payload)
       })
 
-      const data = await res.json().catch(() => ({}))
+      const data = await readJsonResponse(res).catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Failed to update job")
 
       toast({ title: "Job updated", description: "Your changes were saved successfully." })

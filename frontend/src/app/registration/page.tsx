@@ -187,9 +187,9 @@ export default function RegistrationPage() {
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Personal Information */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg shadow-md">
+                  <div className="bg-white text-gray-900 px-6 py-3 rounded-lg shadow-sm border border-gray-200">
                     <h3 className="text-sm font-bold uppercase tracking-wide flex items-center">
-                      <User className="w-5 h-5 mr-3" />
+                      <User className="w-5 h-5 mr-3 text-gray-700" />
                       Personal Information
                     </h3>
                   </div>
@@ -252,9 +252,9 @@ export default function RegistrationPage() {
 
                 {/* Professional Information */}
                 <div className="border-t border-gray-200 pt-8">
-                  <div className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg shadow-md mb-6">
+                  <div className="bg-white text-gray-900 px-6 py-3 rounded-lg shadow-sm border border-gray-200 mb-6">
                     <h3 className="text-sm font-bold uppercase tracking-wide flex items-center">
-                      <Building className="w-5 h-5 mr-3" />
+                      <Building className="w-5 h-5 mr-3 text-gray-700" />
                       Professional Information
                     </h3>
                   </div>
@@ -328,9 +328,9 @@ export default function RegistrationPage() {
 
                 {/* Additional Information */}
                 <div className="border-t border-gray-200 pt-8">
-                  <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-lg shadow-md mb-6">
+                  <div className="bg-white text-gray-900 px-6 py-3 rounded-lg shadow-sm border border-gray-200 mb-6">
                     <h3 className="text-sm font-bold uppercase tracking-wide flex items-center">
-                      <FileText className="w-5 h-5 mr-3" />
+                      <FileText className="w-5 h-5 mr-3 text-gray-700" />
                       Additional Information
                     </h3>
                   </div>
@@ -365,16 +365,16 @@ export default function RegistrationPage() {
                   </div>
 
                   <div className="mt-6">
-                    <label className="flex items-center space-x-3 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md">
+                    <label className="flex items-center space-x-3 p-5 bg-white rounded-xl border-2 border-gray-200 hover:bg-gray-50 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md">
                       <input
                         type="checkbox"
                         name="isOpenToMentoring"
                         checked={formData.isOpenToMentoring}
                         onChange={handleInputChange}
-                        className="w-6 h-6 text-blue-600 bg-white border-2 border-blue-300 rounded-md focus:ring-3 focus:ring-blue-200 transition-all duration-150"
+                        className="w-6 h-6 text-blue-600 bg-white border-2 border-gray-300 rounded-md focus:ring-3 focus:ring-blue-200 transition-all duration-150"
                       />
                       <div className="flex items-center space-x-3">
-                        <Users className="w-6 h-6 text-blue-600" />
+                        <Users className="w-6 h-6 text-gray-700" />
                         <span className="text-gray-900 font-bold text-base">
                           I'm open to mentoring students and junior alumni
                         </span>
