@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminNavigation from '../AdminNavigation/AdminNavigation';
+import { Switch } from '@/components/ui/switch';
 import {
   UserCheck, UserX, Search, Filter, CheckCircle,
   XCircle, Clock, Eye, Mail, Phone, Linkedin,
@@ -45,6 +46,9 @@ export default function AlumniApprovalsPage() {
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [alumniList, setAlumniList] = useState<AlumniApproval[]>([]);
   const [loading, setLoading] = useState(false);
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
+  const [autoApproveLoading, setAutoApproveLoading] = useState(false);
+  const [autoApproveSaving, setAutoApproveSaving] = useState(false);
 
   const fetchAlumni = async () => {
     setLoading(true);
@@ -77,7 +81,48 @@ export default function AlumniApprovalsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchAlumni(); }, []);
+  const fetchAutoApproveSetting = async () => {
+    setAutoApproveLoading(true);
+    try {
+      const resp = await fetch('/api/admin/settings/alumni-auto-approve', { cache: 'no-store' });
+      if (!resp.ok) throw new Error('Failed to fetch setting');
+      const data = await resp.json();
+      setAutoApproveEnabled(!!data?.enabled);
+    } catch (e) {
+      console.error('Failed to load alumni auto-approve setting', e);
+    } finally {
+      setAutoApproveLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAlumni();
+    fetchAutoApproveSetting();
+  }, []);
+
+  const handleAutoApproveToggle = async (enabled: boolean) => {
+    const previous = autoApproveEnabled;
+    setAutoApproveEnabled(enabled);
+    setAutoApproveSaving(true);
+    try {
+      const resp = await fetch('/api/admin/settings/alumni-auto-approve', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!resp.ok) {
+        let details = 'unknown error';
+        try { const d = await resp.json(); details = d?.details || d?.error || JSON.stringify(d); } catch { try { details = await resp.text(); } catch {} }
+        throw new Error(details);
+      }
+      setAutoApproveEnabled(enabled);
+    } catch (e: any) {
+      setAutoApproveEnabled(previous);
+      alert(`Failed to update auto-approve setting: ${e?.message || 'unknown error'}`);
+    } finally {
+      setAutoApproveSaving(false);
+    }
+  };
 
   const handleApprove = async (alumniIdOrAuth0: number | string) => {
     if (!confirm('Approve this alumni?')) return;
@@ -137,6 +182,28 @@ export default function AlumniApprovalsPage() {
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2 flex items-center gap-2">Alumni Approvals</h1>
             <p className="text-gray-600 text-[15px] sm:text-base">Review and approve alumni registration requests</p>
+            <div className={`mt-4 inline-flex items-center gap-3 rounded-2xl px-3.5 py-2.5 border shadow-sm transition-colors ${autoApproveEnabled ? 'bg-emerald-50 border-emerald-200' : 'bg-white/80 border-purple-100'}`}>
+              <Switch
+                checked={autoApproveEnabled}
+                onCheckedChange={handleAutoApproveToggle}
+                disabled={autoApproveLoading || autoApproveSaving}
+                className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-slate-300"
+                aria-label="Auto approve alumni registrations"
+              />
+              <div>
+                <p className={`text-xs font-extrabold tracking-wide ${autoApproveEnabled ? 'text-emerald-800' : 'text-gray-900'}`}>Auto Approve Alumni</p>
+                <p className={`text-[11px] ${autoApproveEnabled ? 'text-emerald-700' : 'text-gray-500'}`}>
+                  {autoApproveEnabled ? 'ON: New alumni registrations are approved automatically.' : 'OFF: Alumni registrations require manual review.'}
+                </p>
+              </div>
+              {(autoApproveLoading || autoApproveSaving) ? (
+                <span className="text-[11px] font-semibold text-slate-500">Saving...</span>
+              ) : (
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${autoApproveEnabled ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                  {autoApproveEnabled ? 'Auto-Approve On' : 'Auto-Approve Off'}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-3 shrink-0">
             {[

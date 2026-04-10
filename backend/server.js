@@ -471,6 +471,51 @@ async function writeJobSearchDefaults(payload) {
   return normalized;
 }
 
+const ALUMNI_AUTO_APPROVE_KEY = 'alumni_auto_approve';
+
+function normalizeBooleanInput(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const lowered = value.trim().toLowerCase();
+    return lowered === 'true' || lowered === '1' || lowered === 'yes' || lowered === 'on';
+  }
+  return false;
+}
+
+async function readAlumniAutoApproveSetting() {
+  const { rows } = await dbQuery('SELECT setting_value FROM site_settings WHERE setting_key = ? LIMIT 1', [ALUMNI_AUTO_APPROVE_KEY]);
+  const value = rows && rows[0] ? rows[0].setting_value : null;
+  if (!value) return false;
+  if (typeof value === 'object') {
+    if (Object.prototype.hasOwnProperty.call(value, 'enabled')) return !!value.enabled;
+    return false;
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object' && Object.prototype.hasOwnProperty.call(parsed, 'enabled')) {
+        return !!parsed.enabled;
+      }
+      return normalizeBooleanInput(parsed);
+    } catch {
+      return normalizeBooleanInput(value);
+    }
+  }
+  return normalizeBooleanInput(value);
+}
+
+async function writeAlumniAutoApproveSetting(enabled) {
+  const normalized = { enabled: !!enabled };
+  await dbQuery(`
+    INSERT INTO site_settings (setting_key, setting_value, updated_at)
+    VALUES (?, ?, NOW())
+    ON CONFLICT (setting_key)
+    DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()
+  `, [ALUMNI_AUTO_APPROVE_KEY, JSON.stringify(normalized)]);
+  return normalized;
+}
+
 async function getCachedExternalJobs(cacheKey) {
   const { rows } = await dbQuery(
     `SELECT results_json, fetched_at, expires_at
@@ -1398,121 +1443,143 @@ app.use((err, req, res, next) => {
 });
 
 // Create or update current user's profile
-app.put('/api/users/profile', checkJwt, (req, res) => {
-  const auth0Id = req.auth && req.auth.sub;
-  const email = req.body.email || (req.auth && (req.auth["https://schemas.quickstart/email"] || req.auth.email));
-  if (!auth0Id || !email) return res.status(400).json({ error: 'Missing auth0_id or email' });
+app.put('/api/users/profile', checkJwt, async (req, res) => {
+  try {
+    const auth0Id = req.auth && req.auth.sub;
+    const email = req.body.email || (req.auth && (req.auth["https://schemas.quickstart/email"] || req.auth.email));
+    if (!auth0Id || !email) return res.status(400).json({ error: 'Missing auth0_id or email' });
 
-  const {
-    name,
-    phone,
-    university,
-    graduationYear,
-    course,
-    currentCompany,
-    jobTitle,
-    location,
-    linkedIn,
-    gitHub,
-    portfolio,
-    bio,
-    skills,
-    isOpenToMentoring,
-    picture,
-    // Student-specific fields
-    rollNumber,
-    yearOfStudy,
-    department,
-    cgpa
-  } = req.body;
+    const {
+      name,
+      phone,
+      university,
+      graduationYear,
+      course,
+      currentCompany,
+      jobTitle,
+      location,
+      linkedIn,
+      gitHub,
+      portfolio,
+      bio,
+      skills,
+      isOpenToMentoring,
+      picture,
+      // Student-specific fields
+      rollNumber,
+      yearOfStudy,
+      department,
+      cgpa
+    } = req.body;
 
-  const values = {
-    auth0_id: auth0Id,
-    email,
-    name: name || null,
-    phone: phone || null,
-    university: university || null,
-    graduation_year: graduationYear ? parseInt(graduationYear, 10) : null,
-    major: course || null,
-    current_job: jobTitle || null,
-    company: currentCompany || null,
-    job_title: jobTitle || null,
-    location: location || null,
-    linkedin_url: linkedIn || null,
-    github_url: gitHub || null,
-    website_url: portfolio || null,
-    bio: bio || null,
-    skills: Array.isArray(skills) ? skills.join(',') : (skills || null),
-    is_mentor: !!isOpenToMentoring,
-    picture: picture || null,
-    registration_completed: true,
-    // Student-specific
-    roll_number: rollNumber || null,
-    year_of_study: yearOfStudy || null,
-    department: department || course || null,
-    cgpa: cgpa ? parseFloat(cgpa) : null,
-  };
+    const derivedRole = deriveRole(email);
+    const isAlumni = derivedRole === 'alumni';
+    let shouldAutoApproveAlumni = false;
+    try {
+      shouldAutoApproveAlumni = isAlumni ? await readAlumniAutoApproveSetting() : false;
+    } catch (settingErr) {
+      console.warn('Failed to read alumni auto-approve setting:', settingErr && settingErr.message ? settingErr.message : settingErr);
+    }
+    const incomingApprovalStatus = shouldAutoApproveAlumni ? 'approved' : null;
 
-  const sql = `
-    INSERT INTO users (auth0_id, email, name, phone, university, graduation_year, major, current_job, company, job_title, location, linkedin_url, github_url, website_url, bio, skills, is_mentor, picture, registration_completed, roll_number, year_of_study, department, cgpa)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (auth0_id) DO UPDATE SET
-      email = EXCLUDED.email,
-      name = EXCLUDED.name,
-      phone = EXCLUDED.phone,
-      university = EXCLUDED.university,
-      graduation_year = EXCLUDED.graduation_year,
-      major = EXCLUDED.major,
-      current_job = EXCLUDED.current_job,
-      company = EXCLUDED.company,
-      job_title = EXCLUDED.job_title,
-      location = EXCLUDED.location,
-      linkedin_url = EXCLUDED.linkedin_url,
-      github_url = EXCLUDED.github_url,
-      website_url = EXCLUDED.website_url,
-      bio = EXCLUDED.bio,
-      skills = EXCLUDED.skills,
-      is_mentor = EXCLUDED.is_mentor,
-      picture = COALESCE(EXCLUDED.picture, users.picture),
-      approval_status = CASE WHEN users.approval_status = 'rejected' THEN 'pending' ELSE users.approval_status END,
-      approval_reason = CASE WHEN users.approval_status = 'rejected' THEN NULL ELSE users.approval_reason END,
-      registration_completed = EXCLUDED.registration_completed,
-      roll_number = EXCLUDED.roll_number,
-      year_of_study = EXCLUDED.year_of_study,
-      department = EXCLUDED.department,
-      cgpa = EXCLUDED.cgpa
-  `;
+    const values = {
+      auth0_id: auth0Id,
+      email,
+      name: name || null,
+      phone: phone || null,
+      university: university || null,
+      graduation_year: graduationYear ? parseInt(graduationYear, 10) : null,
+      major: course || null,
+      current_job: jobTitle || null,
+      company: currentCompany || null,
+      job_title: jobTitle || null,
+      location: location || null,
+      linkedin_url: linkedIn || null,
+      github_url: gitHub || null,
+      website_url: portfolio || null,
+      bio: bio || null,
+      skills: Array.isArray(skills) ? skills.join(',') : (skills || null),
+      is_mentor: !!isOpenToMentoring,
+      picture: picture || null,
+      registration_completed: true,
+      // Student-specific
+      roll_number: rollNumber || null,
+      year_of_study: yearOfStudy || null,
+      department: department || course || null,
+      cgpa: cgpa ? parseFloat(cgpa) : null,
+    };
 
-  const params = [
-    values.auth0_id,
-    values.email,
-    values.name,
-    values.phone,
-    values.university,
-    values.graduation_year,
-    values.major,
-    values.current_job,
-    values.company,
-    values.job_title,
-    values.location,
-    values.linkedin_url,
-    values.github_url,
-    values.website_url,
-    values.bio,
-    values.skills,
-    values.is_mentor,
-    values.picture,
-    values.registration_completed,
-    values.roll_number,
-    values.year_of_study,
-    values.department,
-    values.cgpa
-  ];
+    const sql = `
+      INSERT INTO users (auth0_id, email, name, phone, university, graduation_year, major, current_job, company, job_title, location, linkedin_url, github_url, website_url, bio, skills, is_mentor, picture, registration_completed, roll_number, year_of_study, department, cgpa, approval_status, approval_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'pending'), NULL)
+      ON CONFLICT (auth0_id) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        phone = EXCLUDED.phone,
+        university = EXCLUDED.university,
+        graduation_year = EXCLUDED.graduation_year,
+        major = EXCLUDED.major,
+        current_job = EXCLUDED.current_job,
+        company = EXCLUDED.company,
+        job_title = EXCLUDED.job_title,
+        location = EXCLUDED.location,
+        linkedin_url = EXCLUDED.linkedin_url,
+        github_url = EXCLUDED.github_url,
+        website_url = EXCLUDED.website_url,
+        bio = EXCLUDED.bio,
+        skills = EXCLUDED.skills,
+        is_mentor = EXCLUDED.is_mentor,
+        picture = COALESCE(EXCLUDED.picture, users.picture),
+        approval_status = CASE
+          WHEN EXCLUDED.approval_status = 'approved' THEN 'approved'
+          WHEN users.approval_status = 'rejected' THEN 'pending'
+          ELSE users.approval_status
+        END,
+        approval_reason = CASE
+          WHEN EXCLUDED.approval_status = 'approved' THEN NULL
+          WHEN users.approval_status = 'rejected' THEN NULL
+          ELSE users.approval_reason
+        END,
+        registration_completed = EXCLUDED.registration_completed,
+        roll_number = EXCLUDED.roll_number,
+        year_of_study = EXCLUDED.year_of_study,
+        department = EXCLUDED.department,
+        cgpa = EXCLUDED.cgpa
+    `;
 
-  dbQuery(sql, params)
-    .then(() => dbQuery('SELECT * FROM users WHERE auth0_id = ? LIMIT 1', [auth0Id]))
-    .then(r => res.json({ message: 'Profile saved', user: r.rows && r.rows[0] }))
-    .catch(err => res.status(500).json({ error: err.message }));
+    const params = [
+      values.auth0_id,
+      values.email,
+      values.name,
+      values.phone,
+      values.university,
+      values.graduation_year,
+      values.major,
+      values.current_job,
+      values.company,
+      values.job_title,
+      values.location,
+      values.linkedin_url,
+      values.github_url,
+      values.website_url,
+      values.bio,
+      values.skills,
+      values.is_mentor,
+      values.picture,
+      values.registration_completed,
+      values.roll_number,
+      values.year_of_study,
+      values.department,
+      values.cgpa,
+      incomingApprovalStatus
+    ];
+
+    await dbQuery(sql, params);
+    const r = await dbQuery('SELECT * FROM users WHERE auth0_id = ? LIMIT 1', [auth0Id]);
+    return res.json({ message: 'Profile saved', user: r.rows && r.rows[0] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // Manual sync: fetch the authenticated user's profile from Auth0 and upsert into local DB
@@ -2770,6 +2837,29 @@ app.put('/api/admin/settings/jobs', checkJwt, async (req, res) => {
     const isAdmin = await isAdminRequest(req);
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
     const updated = await writeJobSearchDefaults(req.body || {});
+    return res.json(updated);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/settings/alumni-auto-approve', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    const enabled = await readAlumniAutoApproveSetting();
+    return res.json({ enabled });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/admin/settings/alumni-auto-approve', checkJwt, async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    const enabled = normalizeBooleanInput(req.body && req.body.enabled);
+    const updated = await writeAlumniAutoApproveSetting(enabled);
     return res.json(updated);
   } catch (error) {
     return res.status(500).json({ error: error.message });

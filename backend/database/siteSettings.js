@@ -20,6 +20,14 @@ async function createSiteSettingsSchema(dbQuery) {
         VALUES ('job_search_defaults', '{"role": "software developer", "location": "India"}')
       `);
     }
+
+    const autoApprove = await dbQuery("SELECT * FROM site_settings WHERE setting_key = 'alumni_auto_approve' LIMIT 1");
+    if (!autoApprove.rows || autoApprove.rows.length === 0) {
+      await dbQuery(`
+        INSERT INTO site_settings (setting_key, setting_value)
+        VALUES ('alumni_auto_approve', '{"enabled": false}')
+      `);
+    }
   } catch (e) {
     console.error('Error initializing site settings:', e.message);
   }
