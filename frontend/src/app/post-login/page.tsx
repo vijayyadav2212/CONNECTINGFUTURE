@@ -1,8 +1,25 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { getSession } from '@auth0/nextjs-auth0';
 import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
+
+function deriveRole(user: any): 'admin' | 'student' | 'alumni' {
+  const claimed = String(user?.user_type || '').toLowerCase();
+  if (claimed === 'admin' || claimed === 'student' || claimed === 'alumni') {
+    return claimed as 'admin' | 'student' | 'alumni';
+  }
+
+  const email = String(user?.email || '').trim().toLowerCase();
+  const admins = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  const studentDomains = (process.env.STUDENT_EMAIL_DOMAINS || 'pvppcoe.ac.in').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  const students = (process.env.STUDENT_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+
+  if (email && admins.includes(email)) return 'admin';
+  const domain = email.includes('@') ? email.split('@')[1] : '';
+  if (email && (students.includes(email) || studentDomains.includes(domain))) return 'student';
+  return 'alumni';
+}
 
 export default async function PostLogin() {
   const session = await getSession();
@@ -22,7 +39,7 @@ export default async function PostLogin() {
   const proto = (forwardedProtoRaw.split(',')[0].trim() || (host.includes('localhost') ? 'http' : 'https'));
   const origin = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  let role: string | null = typeof sessionUser.user_type === 'string' ? sessionUser.user_type : null;
+  let role: string | null = typeof sessionUser.user_type === 'string' ? String(sessionUser.user_type).toLowerCase() : null;
   let isRegistered: boolean | null = typeof sessionUser.registration_completed === 'boolean'
     ? sessionUser.registration_completed
     : null;
@@ -36,7 +53,10 @@ export default async function PostLogin() {
     if (profileResp.ok) {
       const profileData = await profileResp.json();
       const profileUser = profileData?.user || {};
-      role = profileUser.user_type || profileUser.userType || role;
+      const profRole = String(profileUser.user_type || profileUser.userType || '').toLowerCase();
+      if (profRole === 'admin' || profRole === 'student' || profRole === 'alumni') {
+        role = profRole;
+      }
       if (typeof profileUser.registration_completed === 'boolean') {
         isRegistered = profileUser.registration_completed;
       }
@@ -45,12 +65,10 @@ export default async function PostLogin() {
     // Keep session-based fallback.
   }
 
-  if (!role && typeof sessionUser.email === 'string') {
-    const email = sessionUser.email.toLowerCase();
-    role = email.endsWith('@pvppcoe.ac.in') ? 'student' : 'alumni';
+  if (!role || (role !== 'admin' && role !== 'student' && role !== 'alumni')) {
+    role = deriveRole(sessionUser);
   }
 
-  if (!role) role = 'alumni';
   if (typeof isRegistered !== 'boolean') isRegistered = false;
 
   if (role === 'admin') {
