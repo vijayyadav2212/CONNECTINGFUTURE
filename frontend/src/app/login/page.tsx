@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push("/alumni/dashboard");
+      router.replace("/post-login");
     }
   }, [user, router]);
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Sign In redirects to dashboard; middleware will gate to registration if needed */}
-            <a href="/api/auth/login?returnTo=/alumni/dashboard" className="w-full">
+            <a href="/api/auth/login?returnTo=/post-login" className="w-full">
               <Button className="w-full" size="lg">
                 Sign In with Auth0
               </Button>

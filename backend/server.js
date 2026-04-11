@@ -100,9 +100,12 @@ async function sendAlumniApprovalEmail({ to, name, status, reason }) {
   const safeName = name || 'Alumni';
   const normalizedStatus = String(status || '').toLowerCase();
   const isApproved = normalizedStatus === 'approved';
+  const isRejected = normalizedStatus === 'rejected';
   const subject = isApproved
     ? 'Your alumni profile has been approved'
-    : 'Your alumni profile needs an update';
+    : isRejected
+      ? 'Your alumni profile was rejected'
+      : 'Your alumni profile needs an update';
 
   const html = isApproved
     ? `
@@ -114,6 +117,23 @@ async function sendAlumniApprovalEmail({ to, name, status, reason }) {
           <p style="font-size: 16px; margin: 0 0 14px;">Hi ${safeName},</p>
           <p style="font-size: 16px; line-height: 1.6; margin: 0 0 14px;">Your alumni profile has been approved. You can now access the alumni dashboard and community features.</p>
           <p style="font-size: 14px; color: #6b7280; margin: 0;">Thank you for keeping your profile updated.</p>
+        </div>
+      </div>
+    `
+    : isRejected
+    ? `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; border: 1px solid #fee2e2; border-radius: 12px; overflow: hidden;">
+        <div style="background: #991B1B; color: #fff; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Profile Rejected</h1>
+        </div>
+        <div style="padding: 28px; background: #ffffff; color: #111827;">
+          <p style="font-size: 16px; margin: 0 0 14px;">Hi ${safeName},</p>
+          <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Your alumni profile was reviewed and was not approved at this time.</p>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 16px; margin: 0 0 18px;">
+            <p style="margin: 0 0 8px; font-size: 13px; font-weight: bold; color: #b91c1c; text-transform: uppercase; letter-spacing: .08em;">Admin Feedback</p>
+            <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #7f1d1d;">${reason ? String(reason) : 'Please review your profile details and submit an updated application.'}</p>
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; margin: 0; color: #6b7280;">You can update your profile and try again after making the requested changes.</p>
         </div>
       </div>
     `
@@ -1481,6 +1501,15 @@ app.put('/api/users/profile', checkJwt, async (req, res) => {
       console.warn('Failed to read alumni auto-approve setting:', settingErr && settingErr.message ? settingErr.message : settingErr);
     }
     const incomingApprovalStatus = shouldAutoApproveAlumni ? 'approved' : null;
+    let previousApprovalStatus = null;
+    try {
+      const existing = await dbQuery('SELECT approval_status FROM users WHERE auth0_id = ? LIMIT 1', [auth0Id]);
+      previousApprovalStatus = existing.rows && existing.rows[0] && existing.rows[0].approval_status
+        ? String(existing.rows[0].approval_status).toLowerCase()
+        : null;
+    } catch (lookupErr) {
+      console.warn('Failed to read previous alumni approval status:', lookupErr && lookupErr.message ? lookupErr.message : lookupErr);
+    }
 
     const values = {
       auth0_id: auth0Id,
@@ -1576,7 +1605,16 @@ app.put('/api/users/profile', checkJwt, async (req, res) => {
 
     await dbQuery(sql, params);
     const r = await dbQuery('SELECT * FROM users WHERE auth0_id = ? LIMIT 1', [auth0Id]);
-    return res.json({ message: 'Profile saved', user: r.rows && r.rows[0] });
+    const savedUser = r.rows && r.rows[0] ? r.rows[0] : null;
+    if (savedUser && isAlumni && shouldAutoApproveAlumni && String(savedUser.approval_status || '').toLowerCase() === 'approved' && previousApprovalStatus !== 'approved') {
+      sendAlumniApprovalEmail({
+        to: savedUser.email,
+        name: savedUser.name,
+        status: savedUser.approval_status,
+        reason: savedUser.approval_reason,
+      }).catch((emailErr) => console.warn('Failed to send auto-approval email:', emailErr && emailErr.message ? emailErr.message : emailErr));
+    }
+    return res.json({ message: 'Profile saved', user: savedUser });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

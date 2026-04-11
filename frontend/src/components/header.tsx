@@ -75,7 +75,7 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <Button asChild>
-              <Link href="/api/auth/login">Login</Link>
+              <Link href="/login">Login</Link>
             </Button>
           )}
         </div>

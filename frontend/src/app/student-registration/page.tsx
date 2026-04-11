@@ -216,7 +216,7 @@ export default function StudentRegistrationPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <a href="/api/auth/login" className="w-full">
+                        <a href="/login" className="w-full">
                             <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-xl font-semibold shadow-lg">
                                 <User className="w-5 h-5 mr-2" />
                                 Sign In

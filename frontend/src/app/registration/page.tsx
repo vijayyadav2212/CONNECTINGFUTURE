@@ -144,7 +144,7 @@ export default function RegistrationPage() {
             
             <div className="text-center">
               <span className="text-sm text-gray-500">Already have an account? </span>
-              <a href="/api/auth/login" className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium">
+              <a href="/login" className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium">
                 Sign In
               </a>
             </div>

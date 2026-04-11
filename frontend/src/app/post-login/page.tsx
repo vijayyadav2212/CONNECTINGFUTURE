@@ -80,6 +80,10 @@ export default async function PostLogin() {
     role = deriveRole(sessionUser);
   }
 
+  if (adminEmail) {
+    role = 'admin';
+  }
+
   if (typeof isRegistered !== 'boolean') isRegistered = false;
 
   if (role === 'admin') {
