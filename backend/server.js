@@ -1606,13 +1606,14 @@ app.put('/api/users/profile', checkJwt, async (req, res) => {
     await dbQuery(sql, params);
     const r = await dbQuery('SELECT * FROM users WHERE auth0_id = ? LIMIT 1', [auth0Id]);
     const savedUser = r.rows && r.rows[0] ? r.rows[0] : null;
-    if (savedUser && isAlumni && shouldAutoApproveAlumni && String(savedUser.approval_status || '').toLowerCase() === 'approved' && previousApprovalStatus !== 'approved') {
+    const currentStatus = String(savedUser?.approval_status || '').toLowerCase();
+    if (savedUser && isAlumni && (currentStatus === 'approved' || currentStatus === 'rejected') && previousApprovalStatus !== currentStatus) {
       sendAlumniApprovalEmail({
         to: savedUser.email,
         name: savedUser.name,
         status: savedUser.approval_status,
         reason: savedUser.approval_reason,
-      }).catch((emailErr) => console.warn('Failed to send auto-approval email:', emailErr && emailErr.message ? emailErr.message : emailErr));
+      }).catch((emailErr) => console.warn('Failed to send approval/rejection email:', emailErr && emailErr.message ? emailErr.message : emailErr));
     }
     return res.json({ message: 'Profile saved', user: savedUser });
   } catch (err) {
@@ -2994,7 +2995,8 @@ app.put('/api/admin/alumni/:auth0_id/approval', checkJwt, async (req, res) => {
     await dbQuery('UPDATE users SET approval_status = ?, approval_reason = ? WHERE auth0_id = ?', [String(status).toLowerCase(), reason || null, auth0_id]);
     const { rows } = await dbQuery('SELECT id, auth0_id, email, name, registration_completed, approval_status, approval_reason FROM users WHERE auth0_id = ? LIMIT 1', [auth0_id]);
     const updatedUser = rows && rows[0] ? rows[0] : null;
-    if (updatedUser) {
+    const updatedStatus = String(updatedUser?.approval_status || '').toLowerCase();
+    if (updatedUser && (updatedStatus === 'approved' || updatedStatus === 'rejected')) {
       sendAlumniApprovalEmail({
         to: updatedUser.email,
         name: updatedUser.name,
@@ -3037,7 +3039,8 @@ app.put('/api/admin/users/:id/approval', checkJwt, async (req, res) => {
     await dbQuery('UPDATE users SET approval_status = ?, approval_reason = ? WHERE id = ?', [String(approval_status).toLowerCase(), reason || null, id]);
     const { rows } = await dbQuery('SELECT id, auth0_id, email, name, registration_completed, approval_status, approval_reason FROM users WHERE id = ? LIMIT 1', [id]);
     const updatedUser = rows && rows[0] ? rows[0] : null;
-    if (updatedUser) {
+    const updatedStatus = String(updatedUser?.approval_status || '').toLowerCase();
+    if (updatedUser && (updatedStatus === 'approved' || updatedStatus === 'rejected')) {
       sendAlumniApprovalEmail({
         to: updatedUser.email,
         name: updatedUser.name,
