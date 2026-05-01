@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import {Shield, LayoutDashboard, UserCheck, Briefcase, Calendar, Users, Bell, Settings, FileText, BarChart3, CheckCircle, XCircle, Search, Sparkles, Menu, X} from 'lucide-react';
+import {Shield, LayoutDashboard, UserCheck, Briefcase, Calendar, Users, Bell, Settings, FileText, BarChart3, CheckCircle, XCircle, Search, Sparkles, Menu, X, LogOut} from 'lucide-react';
 
 // Interfaces
 interface NavItem {
@@ -20,7 +20,6 @@ interface AdminNavigationProps {
 }
 
 export default function AdminNavigation({ children }: AdminNavigationProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const [pendingApprovals, setPendingApprovals] = useState<number>(12); // Mock data
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -99,6 +98,11 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
 
   const isActiveRoute = (route: string): any => {
     return pathname === route || pathname?.startsWith(route + '/');
+  };
+
+  const handleLogout = () => {
+    // Use direct navigation so Auth0 can complete its redirect/cookie flow.
+    window.location.href = '/api/auth/logout';
   };
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
@@ -218,6 +222,17 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
               <span className="text-xs text-gray-500">System Status</span>
             </div>
           </div>
+
+          {/* Logout Button */}
+          <div className="p-4 border-t border-gray-200 mt-auto">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-50 text-red-700 rounded-lg font-medium hover:bg-red-100 transition-all duration-200 border border-red-200"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -275,6 +290,20 @@ export default function AdminNavigation({ children }: AdminNavigationProps) {
                 </Link>
               ))}
             </nav>
+
+            {/* Mobile Logout Button */}
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  closeMobileMenu();
+                  handleLogout();
+                }}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-50 text-red-700 rounded-lg font-medium hover:bg-red-100 transition-all duration-200 border border-red-200"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

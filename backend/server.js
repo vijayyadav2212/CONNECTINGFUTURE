@@ -2877,6 +2877,22 @@ app.put('/api/admin/settings/jobs', checkJwt, async (req, res) => {
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
     const updated = await writeJobSearchDefaults(req.body || {});
     return res.json(updated);
+
+  // Get all users for admin panel
+  app.get('/api/admin/users', checkJwt, async (req, res) => {
+    try {
+      const isAdmin = await isAdminRequest(req);
+      if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    
+      const query = 'SELECT * FROM users ORDER BY created_at DESC';
+      const result = await pool.query(query);
+      const users = result.rows || [];
+    
+      return res.json({ users, alumni: users.filter(u => String(u.user_type || '').toLowerCase() === 'alumni') });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

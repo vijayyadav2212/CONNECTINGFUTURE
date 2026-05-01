@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import StudentNavigation from '../StudentNavigation/StudentNavigation';
 import ProfilePhotoModal from '../../../components/ProfilePhotoModal';
-import Link from 'next/link';
 import {
   User,
   Bell,
@@ -231,6 +230,12 @@ export default function Settings() {
     setPrivacy(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userType');
+    window.location.href = '/api/auth/logout';
+  };
+
   const menuItems = [
     { id: 'profile', label: 'Edit Profile', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -322,13 +327,14 @@ export default function Settings() {
 
                 <div className="mt-8">
                   <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Support</h2>
-                  <Link
-                    href="/api/auth/logout"
+                  <button
+                    type="button"
+                    onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-sm sm:text-[15px] font-medium"
                   >
                     <LogOut className="w-5 h-5" />
                     <span>Sign Out</span>
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>

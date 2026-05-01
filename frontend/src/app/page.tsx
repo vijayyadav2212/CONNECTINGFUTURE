@@ -305,7 +305,7 @@ export default function HomePage() {
                     </div>
                     <span className="text-gray-700 font-medium">Welcome, {user.name}</span>
                   </div>
-                  <Link href="/post-login">
+                  <Link href="/api/auth/login?returnTo=/post-login">
                     <Button className="bg-blue-600 hover:bg-blue-700">
                       Dashboard
                     </Button>
