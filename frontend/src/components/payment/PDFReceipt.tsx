@@ -171,10 +171,10 @@ export const generatePDFReceipt = async (receiptData: ReceiptData) => {
         <!-- Contact Details -->
         <div style="padding: 0 20px;">
           <p style="margin: 15px 0; font-size: 16px; color: #333;">
-            <strong>Website:</strong> <span style="color: #667eea;">https://connectingfuture.com</span>
+            <strong>Website:</strong> <span style="color: #667eea;">https://alumnex.com</span>
           </p>
           <p style="margin: 15px 0; font-size: 16px; color: #333;">
-            <strong>Email:</strong> <span style="color: #667eea;">support@connectingfuture.com</span>
+            <strong>Email:</strong> <span style="color: #667eea;">support@alumnex.com</span>
           </p>
           <p style="margin: 15px 0; font-size: 16px; color: #333;">
             <strong>Phone:</strong> +91-XXXXXXXXXX

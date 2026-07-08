@@ -370,7 +370,7 @@ async function getRequestIdentityWithAuth0Fallback(req) {
   return identity;
 }
 
-const QUIZ_TOKEN_SECRET = process.env.QUIZ_TOKEN_SECRET || process.env.AUTH0_SECRET || 'connectingfuture-quiz-secret';
+const QUIZ_TOKEN_SECRET = process.env.QUIZ_TOKEN_SECRET || process.env.AUTH0_SECRET || 'alumnex-quiz-secret';
 
 function base64UrlEncode(value) {
   return Buffer.from(value, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
@@ -5540,7 +5540,7 @@ app.post('/api/events/:id/register', async (req, res) => {
               <p style="font-size: 14px; color: #666;">We look forward to seeing you there!</p>
             </div>
             <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #999;">
-              ConnectingFuture Alumni Portal
+              AlumNex Alumni Portal
             </div>
           </div>
         `

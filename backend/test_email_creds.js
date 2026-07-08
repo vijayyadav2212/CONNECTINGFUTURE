@@ -22,7 +22,7 @@ async function val() {
     const options = {
         from: process.env.EMAIL_USER,
         to: process.env.EMAIL_USER, // Send to self
-        subject: 'Test Email from ConnectingFuture Debugger',
+        subject: 'Test Email from AlumNex Debugger',
         text: 'If you see this, the email credentials are working!'
     };
 
