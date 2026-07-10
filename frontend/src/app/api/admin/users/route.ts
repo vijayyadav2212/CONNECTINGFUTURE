@@ -4,14 +4,24 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 async function getAccessTokenFromApi(request: NextRequest) {
-  const origin = new URL(request.url).origin;
-  const tokenResp = await fetch(`${origin}/api/auth/token`, {
-    headers: { cookie: request.headers.get('cookie') || '' },
-    cache: 'no-store'
-  });
-  if (!tokenResp.ok) return null;
-  const data = await tokenResp.json();
-  return data.accessToken;
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = cookieHeader.split(';').reduce((acc, c) => {
+    const [name, ...val] = c.trim().split('=');
+    if (name) acc[name] = val.join('=');
+    return acc;
+  }, {} as Record<string, string>);
+  return cookies['cf_token'] || null;
+}
+
+function normalizeApiUrl(candidate: string): string {
+  let raw = candidate.replace(/\/+$/, '');
+  if (!raw.includes('/api/v2') && !raw.includes('/api')) {
+    return `${raw}/api/v2`;
+  }
+  if (raw.endsWith('/api')) {
+    return `${raw}/v2`;
+  }
+  return raw;
 }
 
 export async function GET(request: NextRequest) {
@@ -19,16 +29,15 @@ export async function GET(request: NextRequest) {
     const accessToken = await getAccessTokenFromApi(request);
     if (!accessToken) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const origin = new URL(request.url).origin;
     const candidates = [
       process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '',
-      'http://127.0.0.1:4000',
-      'http://localhost:4000'
+      'http://127.0.0.1:4000/api/v2',
+      'http://localhost:4000/api/v2'
     ].filter(Boolean) as string[];
 
     const urlSearch = new URL(request.url).search;
     for (const c of candidates) {
-      const raw = c.endsWith('/api') ? c : `${c.replace(/\/$/, '')}/api`;
+      const raw = normalizeApiUrl(c);
       const url = `${raw}/users${urlSearch}`;
       try {
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
@@ -39,7 +48,6 @@ export async function GET(request: NextRequest) {
         const data = await resp.json();
         return NextResponse.json(data);
       } catch (e) {
-        // try next
         console.warn('Admin users proxy: backend unreachable at', c, e);
       }
     }
@@ -60,16 +68,14 @@ export async function POST(request: NextRequest) {
     const resolvedStatus = (approval_status || status) ? String(approval_status || status).toLowerCase() : null;
     if ((!id && !auth0_id) || !resolvedStatus) return NextResponse.json({ error: 'id/auth0_id and approval_status/status required' }, { status: 400 });
 
-    const origin = new URL(request.url).origin;
     const candidates = [
       process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '',
-      'http://127.0.0.1:4000',
-      'http://localhost:4000'
+      'http://127.0.0.1:4000/api/v2',
+      'http://localhost:4000/api/v2'
     ].filter(Boolean) as string[];
 
     for (const c of candidates) {
-      const raw = c.endsWith('/api') ? c : `${c.replace(/\/$/, '')}/api`;
-      // If auth0_id is provided, call the alumni auth0 route which expects { status }
+      const raw = normalizeApiUrl(c);
       const url = auth0_id ? `${raw}/admin/alumni/${auth0_id}/approval` : `${raw}/admin/users/${id}/approval`;
       try {
         const bodyToSend = auth0_id ? JSON.stringify({ status: resolvedStatus, reason }) : JSON.stringify({ approval_status: resolvedStatus, reason });

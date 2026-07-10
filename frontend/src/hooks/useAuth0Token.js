@@ -1,56 +1,28 @@
 // hooks/useAuth0Token.js
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useMockAuth } from '../lib/mockAuth0';
 import { useState, useEffect } from 'react';
 
 export function useAuth0Token() {
-  const { user, isLoading } = useUser();
-  const [token, setToken] = useState(null);
+  const { token, isLoading } = useMockAuth();
+  const [localToken, setLocalToken] = useState<string | null>(null);
   const [tokenLoading, setTokenLoading] = useState(true);
 
   useEffect(() => {
-    const fetchToken = async () => {
-      if (!user || isLoading) {
-        setTokenLoading(false);
-        return;
-      }
+    setLocalToken(token);
+    setTokenLoading(isLoading);
+  }, [token, isLoading]);
 
-      try {
-        // Fetch token from Auth0
-        const response = await fetch('/api/auth/token');
-        if (response.ok) {
-          const data = await response.json();
-          const accessToken = data.accessToken;
-          setToken(accessToken);
-        } else {
-          console.error('Failed to fetch token');
-        }
-      } catch (error) {
-        console.error('Error fetching token:', error);
-      } finally {
-        setTokenLoading(false);
-      }
-    };
-
-    fetchToken();
-  }, [user, isLoading]);
-
-  // Function to manually refresh token
   const refreshToken = async () => {
-    try {
-      const response = await fetch('/api/auth/token');
-      if (response.ok) {
-        const data = await response.json();
-        setToken(data.accessToken);
-        return data.accessToken;
-      }
-    } catch (error) {
-      console.error('Error refreshing token:', error);
+    if (typeof window !== 'undefined') {
+      const t = localStorage.getItem('auth_token');
+      setLocalToken(t);
+      return t;
     }
     return null;
   };
 
   return {
-    token,
+    token: localToken,
     tokenLoading,
     refreshToken,
   };

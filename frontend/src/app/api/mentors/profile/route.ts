@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccessToken } from '@auth0/nextjs-auth0';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+
+function getCookieToken(request: NextRequest): string | null {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = cookieHeader.split(';').reduce((acc, c) => {
+    const [name, ...val] = c.trim().split('=');
+    if (name) acc[name] = val.join('=');
+    return acc;
+  }, {} as Record<string, string>);
+  return cookies['cf_token'] || null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +27,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { accessToken } = await getAccessToken();
+    const accessToken = getCookieToken(req);
     if (!accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const res = await fetch(`${API_BASE}/api/mentors/profile`, {

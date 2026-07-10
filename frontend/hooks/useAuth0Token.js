@@ -1,77 +1,32 @@
 // hooks/useAuth0Token.js
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useMockAuth } from '../src/lib/mockAuth0';
 import { useState, useEffect } from 'react';
-import tokenManager from '../lib/auth/tokenManager';
-
-const SESSION_TTL_SECONDS = 3 * 60 * 60;
 
 export function useAuth0Token() {
-  const { user, isLoading } = useUser();
-  const [token, setToken] = useState(null);
+  const { token, isLoading } = useMockAuth();
+  const [localToken, setLocalToken] = useState<string | null>(null);
   const [tokenLoading, setTokenLoading] = useState(true);
 
   useEffect(() => {
-    const fetchToken = async () => {
-      if (!user || isLoading) {
-        setTokenLoading(false);
-        return;
-      }
+    setLocalToken(token);
+    setTokenLoading(isLoading);
+  }, [token, isLoading]);
 
-      try {
-        // Try to get existing token first
-        const existingToken = tokenManager.getToken();
-        if (existingToken) {
-          setToken(existingToken);
-          setTokenLoading(false);
-          return;
-        }
-
-        // Fetch new token from Auth0
-        const response = await fetch('/api/auth/token');
-        if (response.ok) {
-          const data = await response.json();
-          const accessToken = data.accessToken;
-          
-          // Store token using tokenManager
-          tokenManager.setToken(accessToken, data.expiresIn || SESSION_TTL_SECONDS);
-          setToken(accessToken);
-        } else {
-          console.error('Failed to fetch token');
-        }
-      } catch (error) {
-        console.error('Error fetching token:', error);
-      } finally {
-        setTokenLoading(false);
-      }
-    };
-
-    fetchToken();
-  }, [user, isLoading]);
-
-  // Function to manually refresh token
   const refreshToken = async () => {
-    setTokenLoading(true);
-    tokenManager.clearToken();
-    
-    try {
-      const response = await fetch('/api/auth/token');
-      if (response.ok) {
-        const data = await response.json();
-        const accessToken = data.accessToken;
-        tokenManager.setToken(accessToken, data.expiresIn || SESSION_TTL_SECONDS);
-        setToken(accessToken);
-      }
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-    } finally {
-      setTokenLoading(false);
+    if (typeof window !== 'undefined') {
+      const t = localStorage.getItem('auth_token');
+      setLocalToken(t);
+      return t;
     }
+    return null;
   };
 
   return {
-    token,
+    token: localToken,
     tokenLoading,
     refreshToken,
-    isAuthenticated: !!user && !!token
+    isAuthenticated: !!token
   };
 }
+
+export default useAuth0Token;

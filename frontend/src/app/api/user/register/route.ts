@@ -1,25 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Avoid direct getAccessToken to prevent Next 15 cookies() warnings; fetch Pages API token instead.
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
 
+function getCookieToken(request: NextRequest): string | null {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = cookieHeader.split(';').reduce((acc, c) => {
+    const [name, ...val] = c.trim().split('=');
+    if (name) acc[name] = val.join('=');
+    return acc;
+  }, {} as Record<string, string>);
+  return cookies['cf_token'] || null;
+}
+
+function normalizeApiUrl(candidate: string): string {
+  let raw = candidate.replace(/\/+$/, '');
+  if (!raw.includes('/api/v2') && !raw.includes('/api')) {
+    return `${raw}/api/v2`;
+  }
+  if (raw.endsWith('/api')) {
+    return `${raw}/v2`;
+  }
+  return raw;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const origin = new URL(request.url).origin;
-    const tokenResp = await fetch(`${origin}/api/auth/token`, {
-      headers: { cookie: request.headers.get('cookie') || '' },
-      cache: 'no-store'
-    });
-    if (!tokenResp.ok) {
+    const accessToken = getCookieToken(request);
+    if (!accessToken) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    const { accessToken } = await tokenResp.json();
 
-  const formData = await request.json();
-  const rawBase = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
-  const base = rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/$/, '')}/api`;
-  const resp = await fetch(`${base}/users/profile`, {
+    const formData = await request.json();
+    const rawBase = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api/v2';
+    const base = normalizeApiUrl(rawBase);
+    
+    const resp = await fetch(`${base}/users/profile`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

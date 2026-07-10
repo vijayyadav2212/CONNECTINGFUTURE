@@ -139,12 +139,9 @@ export default function StudentRegistrationPage() {
         setIsSubmitting(true);
         setError(null);
         try {
-            const origin = window.location.origin;
-            const tokenResp = await fetch(`${origin}/api/auth/token`, {
-                cache: "no-store",
-            });
-            if (!tokenResp.ok) throw new Error("Not authenticated");
-            const { accessToken } = await tokenResp.json();
+            const tokenManager = require("../../../lib/auth/tokenManager").default;
+            const accessToken = tokenManager.getToken();
+            if (!accessToken) throw new Error("Not authenticated");
 
             const rawBase =
                 process.env.NEXT_PUBLIC_API_BASE ||

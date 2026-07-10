@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useRouter } from 'next/navigation';
@@ -105,20 +105,23 @@ export default function PostLogin() {
     };
   }, [user, isLoading, router]);
 
-  // Show loading state while determining route
+  // Show loading state while determining route (light mode styled)
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100 flex items-center justify-center px-6">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.2),_transparent_40%),radial-gradient(circle_at_bottom,_rgba(99,102,241,0.2),_transparent_45%)]" />
-      <div className="relative w-full max-w-md rounded-3xl border border-blue-400/20 bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl shadow-blue-900/30">
-        <div className="mx-auto mb-6 h-20 w-20 rounded-full border-2 border-blue-400/40 border-t-blue-400 animate-spin" />
-        <h1 className="text-center text-2xl font-bold tracking-tight">Preparing your dashboard</h1>
-        <p className="mt-2 text-center text-sm text-slate-300">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center px-6 overflow-hidden">
+      {/* Decorative blurred circles matching portal style */}
+      <div className="absolute top-10 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+      <div className="absolute bottom-10 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+
+      <div className="relative w-full max-w-md rounded-3xl border border-gray-200 bg-white/90 backdrop-blur-md p-8 shadow-xl text-gray-900 z-10">
+        <div className="mx-auto mb-6 h-20 w-20 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
+        <h1 className="text-center text-2xl font-bold tracking-tight text-gray-900">Preparing your dashboard</h1>
+        <p className="mt-2 text-center text-sm text-gray-650 font-medium">
           Verifying your profile and routing you to the right space.
         </p>
         <div className="mt-6 flex items-center justify-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-400 animate-bounce [animation-delay:-0.2s]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.1s]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-bounce" />
+          <span className="h-2.5 w-2.5 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.2s]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.1s]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-blue-400 animate-bounce" />
         </div>
       </div>
     </div>

@@ -1,37 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Avoid direct getAccessToken to prevent Next 15 cookies() warnings; fetch Pages API token instead.
 
 export const dynamic = 'force-dynamic';
-// Use Node.js runtime for reliable localhost networking
 export const runtime = 'nodejs';
+
+function getCookieToken(request: NextRequest): string | null {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = cookieHeader.split(';').reduce((acc, c) => {
+    const [name, ...val] = c.trim().split('=');
+    if (name) acc[name] = val.join('=');
+    return acc;
+  }, {} as Record<string, string>);
+  return cookies['cf_token'] || null;
+}
+
+function normalizeApiUrl(candidate: string): string {
+  let raw = candidate.replace(/\/+$/, '');
+  if (!raw.includes('/api/v2') && !raw.includes('/api')) {
+    return `${raw}/api/v2`;
+  }
+  if (raw.endsWith('/api')) {
+    return `${raw}/v2`;
+  }
+  return raw;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Obtain token from Pages API using incoming cookies
-    const origin = new URL(request.url).origin;
-    const tokenResp = await fetch(`${origin}/api/auth/token`, {
-      headers: { cookie: request.headers.get('cookie') || '' },
-      cache: 'no-store'
-    });
-    // Treat 204 (no session) as unauthenticated
-    if (tokenResp.status === 204) {
+    const accessToken = getCookieToken(request);
+    if (!accessToken) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    if (!tokenResp.ok) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    const { accessToken } = await tokenResp.json();
 
-    // Prefer frontend env; try multiple hosts to avoid loopback quirks
     const candidates = [
       process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '',
-      'http://127.0.0.1:4000',
-      'http://localhost:4000',
+      'http://127.0.0.1:4000/api/v2',
+      'http://localhost:4000/api/v2',
     ].filter(Boolean) as string[];
 
     let lastErr: unknown = null;
     for (const c of candidates) {
-      const raw = c.endsWith('/api') ? c : `${c.replace(/\/$/, '')}/api`;
+      const raw = normalizeApiUrl(c);
       const url = `${raw}/users/profile`;
       try {
         const controller = new AbortController();
@@ -46,7 +54,6 @@ export async function GET(request: NextRequest) {
         if (!resp.ok) {
           const status = resp.status;
           const text = await resp.text();
-          // Upstream reachable but returned an error; bubble it
           return NextResponse.json({ error: 'Upstream error', details: text }, { status });
         }
         const data = await resp.json();
@@ -55,7 +62,6 @@ export async function GET(request: NextRequest) {
       } catch (e) {
         lastErr = e;
         console.warn('Profile proxy: backend unreachable at', c, e);
-        // try next candidate
       }
     }
     console.error('Profile proxy: all backends unreachable', lastErr);
@@ -68,30 +74,22 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const origin = new URL(request.url).origin;
-    const tokenResp = await fetch(`${origin}/api/auth/token`, {
-      headers: { cookie: request.headers.get('cookie') || '' },
-      cache: 'no-store'
-    });
-    if (tokenResp.status === 204) {
+    const accessToken = getCookieToken(request);
+    if (!accessToken) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    if (!tokenResp.ok) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    const { accessToken } = await tokenResp.json();
 
     const payload = await request.json();
 
     const candidates = [
       process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '',
-      'http://127.0.0.1:4000',
-      'http://localhost:4000',
+      'http://127.0.0.1:4000/api/v2',
+      'http://localhost:4000/api/v2',
     ].filter(Boolean) as string[];
 
     let lastErr: unknown = null;
     for (const c of candidates) {
-      const raw = c.endsWith('/api') ? c : `${c.replace(/\/$/, '')}/api`;
+      const raw = normalizeApiUrl(c);
       const url = `${raw}/users/profile`;
       try {
         const controller = new AbortController();
