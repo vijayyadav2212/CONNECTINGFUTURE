@@ -108,7 +108,7 @@ export default function LoginPage() {
               : `Account created successfully as a Student. Redirecting...`),
         action: () => {
           if (!isAlumniPending) {
-            login(data.token, data.user);
+            login(data.token, data.refreshToken, data.user);
             router.push('/post-login');
           } else {
             setIsLogin(true); // Switch to login view

@@ -4,6 +4,7 @@ const { dbQuery } = require('../config/db');
 const { sendAlumniUnderReviewEmail, readAlumniAutoApproveSetting } = require('../services/userService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret-connecting-future-key-change-me-in-production';
+const REFRESH_JWT_SECRET = process.env.REFRESH_JWT_SECRET || 'supersecret-connecting-future-refresh-key-change-me';
 
 async function register(req, res) {
   try {
@@ -64,8 +65,9 @@ async function register(req, res) {
       });
     }
 
-    // Generate JWT only if approved
+    // Generate JWT and Refresh Token only if approved
     let token = null;
+    let refreshToken = null;
     if (approval_status === 'approved') {
       token = jwt.sign(
         {
@@ -76,12 +78,21 @@ async function register(req, res) {
           registration_completed: false
         },
         JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      refreshToken = jwt.sign(
+        { sub: user.auth0_id },
+        REFRESH_JWT_SECRET,
         { expiresIn: '7d' }
       );
+
+      await dbQuery('UPDATE users SET refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
     }
 
     return res.status(201).json({
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -171,11 +182,20 @@ async function login(req, res) {
         registration_completed: user.registration_completed
       },
       JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const refreshToken = jwt.sign(
+      { sub: user.auth0_id },
+      REFRESH_JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    await dbQuery('UPDATE users SET refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
+
     return res.json({
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -191,7 +211,61 @@ async function login(req, res) {
   }
 }
 
+async function refresh(req, res) {
+  try {
+    const { refreshToken } = req.body || {};
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, REFRESH_JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    const auth0Id = decoded.sub;
+
+    const { rows } = await dbQuery('SELECT * FROM users WHERE auth0_id = ? AND refresh_token = ? LIMIT 1', [auth0Id, refreshToken]);
+    if (!rows || rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid refresh token or session revoked' });
+    }
+
+    const user = rows[0];
+
+    const token = jwt.sign(
+      {
+        sub: user.auth0_id,
+        email: user.email,
+        'https://schemas.quickstart/email': user.email,
+        user_type: user.user_type,
+        registration_completed: user.registration_completed
+      },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const newRefreshToken = jwt.sign(
+      { sub: user.auth0_id },
+      REFRESH_JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    await dbQuery('UPDATE users SET refresh_token = ? WHERE id = ?', [newRefreshToken, user.id]);
+
+    return res.json({
+      token,
+      refreshToken: newRefreshToken
+    });
+  } catch (e) {
+    console.error('Refresh token request failed:', e);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
 module.exports = {
   register,
-  login
+  login,
+  refresh
 };

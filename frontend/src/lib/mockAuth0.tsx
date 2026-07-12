@@ -16,7 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: Error | null;
   token: string | null;
-  login: (token: string, userData: any) => void;
+  login: (token: string, refreshToken: string, userData: any) => void;
   logout: () => void;
 }
 
@@ -53,7 +53,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = (jwtToken: string, userData: any) => {
+  const login = (jwtToken: string, refreshToken: string, userData: any) => {
     setToken(jwtToken);
     
     const mappedUser = {
@@ -66,18 +66,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUser(mappedUser);
     
     localStorage.setItem('auth_token', jwtToken);
-    localStorage.setItem('auth_token_expiry', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+    localStorage.setItem('auth_token_expiry', new Date(Date.now() + 15 * 60 * 1000).toISOString());
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    }
     localStorage.setItem('cf_user', JSON.stringify(mappedUser));
-
+    
     // Also set standard cookie so Edge Middleware can inspect it
-    document.cookie = `cf_token=${jwtToken}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `cf_token=${jwtToken}; path=/; max-age=900; SameSite=Lax`;
+    if (refreshToken) {
+      document.cookie = `cf_refresh_token=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+    }
   };
-
+  
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_token_expiry');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('cf_user');
     document.cookie = "cf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "cf_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     setToken(null);
     setUser(null);
     router.push('/login');

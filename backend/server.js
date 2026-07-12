@@ -147,6 +147,7 @@ async function initializeTables() {
     await dbQuery("ALTER TABLE users ALTER COLUMN approval_status SET DEFAULT 'pending'");
     await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_reason TEXT");
     await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ DEFAULT NULL");
+    await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token TEXT DEFAULT NULL");
 
     // Initialize modularized schemas 
     await createMessagesSchema(dbQuery);
