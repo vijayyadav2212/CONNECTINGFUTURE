@@ -66,11 +66,11 @@ export default function SettingsPage() {
   const dirty = () => setUnsaved(true);
 
   // State blobs
-  const [gen, setGen] = useState({ siteName:'ConnectingFuture', siteDescription:'Alumni and Student Connection Platform', adminEmail:'admin@connectingfuture.com', timezone:'Asia/Kolkata', dateFormat:'DD/MM/YYYY', language:'en' });
+  const [gen, setGen] = useState({ siteName:'AlumNex', siteDescription:'Alumni and Student Connection Platform', adminEmail:'admin@alumnex.com', timezone:'Asia/Kolkata', dateFormat:'DD/MM/YYYY', language:'en' });
   const [notif, setNotif] = useState({ emailNotifications:true, pushNotifications:true, approvalNotifications:true, newUserNotifications:true, jobPostingNotifications:true, eventNotifications:true, messageNotifications:false, weeklyDigest:true, notificationSound:true });
   const [sec, setSec] = useState({ twoFactorAuth:false, sessionTimeout:'30', passwordExpiry:'90', loginAttempts:'5', requireStrongPassword:true, allowMultipleSessions:false, ipWhitelist:'', maintenanceMode:false });
   const [usr, setUsr] = useState({ autoApproveAlumni:false, autoApproveStudents:false, requireEmailVerification:true, allowSelfRegistration:true, defaultUserRole:'user', profileVisibility:'public', maxProfileSize:'5' });
-  const [email, setEmail] = useState({ smtpHost:'smtp.gmail.com', smtpPort:'587', smtpUsername:'', smtpPassword:'', smtpEncryption:'tls', fromEmail:'noreply@connectingfuture.com', fromName:'ConnectingFuture' });
+  const [email, setEmail] = useState({ smtpHost:'smtp.gmail.com', smtpPort:'587', smtpUsername:'', smtpPassword:'', smtpEncryption:'tls', fromEmail:'noreply@alumnex.com', fromName:'AlumNex' });
   const [appear, setAppear] = useState({ primaryColor:'#16a34a', secondaryColor:'#8B5CF6', darkMode:false, compactMode:false, animationsEnabled:true });
 
   const handleSave = () => { setSaved(true); setUnsaved(false); setTimeout(() => setSaved(false), 3000); };
@@ -230,7 +230,7 @@ export default function SettingsPage() {
                   </div>
                   <SelectField label="Encryption" value={email.smtpEncryption} onChange={(v:string)=>{setEmail(e=>({...e,smtpEncryption:v}));dirty();}} options={[{label:'TLS',value:'tls'},{label:'SSL',value:'ssl'},{label:'None',value:'none'}]} />
                   <InputField label="From Email" value={email.fromEmail} onChange={(v:string)=>{setEmail(e=>({...e,fromEmail:v}));dirty();}} type="email" placeholder="noreply@example.com" icon={<Mail className="w-4 h-4" />} />
-                  <InputField label="From Name"  value={email.fromName}  onChange={(v:string)=>{setEmail(e=>({...e,fromName:v}));dirty();}}  placeholder="ConnectingFuture"             icon={<FileText className="w-4 h-4" />} />
+                  <InputField label="From Name"  value={email.fromName}  onChange={(v:string)=>{setEmail(e=>({...e,fromName:v}));dirty();}}  placeholder="AlumNex"             icon={<FileText className="w-4 h-4" />} />
                 </div>
                 <div className="pt-3 border-t border-gray-100"><button className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors"><Send className="w-4 h-4" />Send Test Email</button></div>
               </div>
@@ -306,7 +306,7 @@ export default function SettingsPage() {
                   <p className="text-xs font-semibold text-amber-800">Warning: modifying these settings may affect platform performance and stability. Proceed with caution.</p>
                 </div>
                 <div className="space-y-4">
-                  <div><label className={labelCls}>API Endpoint</label><input type="text" value="https://api.connectingfuture.com/v1" readOnly className={`${inputCls} font-mono bg-gray-50`} /></div>
+                  <div><label className={labelCls}>API Endpoint</label><input type="text" value="https://api.alumnex.com/v1" readOnly className={`${inputCls} font-mono bg-gray-50`} /></div>
                   <div><label className={labelCls}>API Key</label>
                     <div className="flex items-center gap-2">
                       <input type="password" value="sk_live_51234567890abcdefghijk" readOnly className={`${inputCls} font-mono flex-1`} />
