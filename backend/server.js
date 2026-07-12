@@ -144,6 +144,7 @@ async function initializeTables() {
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_email ON users(email)');
     await dbQuery('CREATE INDEX IF NOT EXISTS idx_user_type ON users(user_type)');
     await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'pending'");
+    await dbQuery("ALTER TABLE users ALTER COLUMN approval_status SET DEFAULT 'pending'");
     await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_reason TEXT");
     await dbQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ DEFAULT NULL");
 

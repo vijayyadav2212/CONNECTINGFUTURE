@@ -95,16 +95,24 @@ export default function LoginPage() {
       }
 
       // Success
+      const isAlumniPending = !isLogin && computedUserType === 'alumni' && !data.token;
+
       setModalState({
         show: true,
         success: true,
-        title: isLogin ? "Success!" : "Welcome Aboard!",
-        message: isLogin
-          ? "You have logged in successfully. Preparing your dashboard..."
-          : `Account created successfully as a ${computedUserType === 'student' ? 'Student' : 'Alumni'}. Redirecting...`,
+        title: isAlumniPending ? "Registration Successful" : (isLogin ? "Success!" : "Welcome Aboard!"),
+        message: isAlumniPending
+          ? "Your alumni registration has been submitted successfully. However, your profile must be approved by the administrator before you can log in. You will receive an email notification once approved."
+          : (isLogin
+              ? "You have logged in successfully. Preparing your dashboard..."
+              : `Account created successfully as a Student. Redirecting...`),
         action: () => {
-          login(data.token, data.user);
-          router.push('/post-login');
+          if (!isAlumniPending) {
+            login(data.token, data.user);
+            router.push('/post-login');
+          } else {
+            setIsLogin(true); // Switch to login view
+          }
         }
       });
     } catch (err: any) {

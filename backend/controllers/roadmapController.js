@@ -3,7 +3,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const crypto = require('crypto');
 const { isAdminRequest } = require('../middlewares/authMiddleware');
 
-const QUIZ_TOKEN_SECRET = process.env.QUIZ_TOKEN_SECRET || process.env.AUTH0_SECRET || 'connectingfuture-quiz-secret';
+const QUIZ_TOKEN_SECRET = process.env.QUIZ_TOKEN_SECRET || process.env.AUTH0_SECRET || 'alumnex-quiz-secret';
 
 function base64UrlEncode(value) {
   return Buffer.from(value, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');

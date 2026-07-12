@@ -195,7 +195,7 @@ async function registerEvent(req, res) {
                 <p style="margin: 8px 0;"><strong>🗺️ ${locationLabel}:</strong> ${locationValue}</p>
               </div>
               <p style="font-size: 14px; color: #666;">If you have any questions or need to cancel your registration, please contact ${organizer}.</p>
-              <p style="margin-top: 25px; font-size: 12px; color: #999; text-align: center;">ConnectingFuture Mentorship Platform</p>
+              <p style="margin-top: 25px; font-size: 12px; color: #999; text-align: center;">AlumNex Mentorship Platform</p>
             </div>
           </div>
         `

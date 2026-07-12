@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { dbQuery } = require('../config/db');
-const { sendAlumniUnderReviewEmail } = require('../services/userService');
+const { sendAlumniUnderReviewEmail, readAlumniAutoApproveSetting } = require('../services/userService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret-connecting-future-key-change-me-in-production';
 
@@ -27,11 +27,22 @@ async function register(req, res) {
     // Enforce role based on email domain
     const user_type = emailLower.endsWith('@pvppcoe.ac.in') ? 'student' : 'alumni';
 
+    // Check auto-approve setting for alumni
+    let shouldAutoApproveAlumni = false;
+    if (user_type === 'alumni') {
+      try {
+        shouldAutoApproveAlumni = await readAlumniAutoApproveSetting();
+      } catch (settingErr) {
+        console.warn('Failed to read alumni auto-approve setting:', settingErr.message);
+      }
+    }
+    const approval_status = user_type === 'student' ? 'approved' : (shouldAutoApproveAlumni ? 'approved' : 'pending');
+
     // Insert user
     const subId = `local|${Date.now()}`;
     const { rows } = await dbQuery(`
-      INSERT INTO users (auth0_id, email, password_hash, name, user_type, graduation_year, major, registration_completed)
-      VALUES (?, ?, ?, ?, ?, ?, ?, FALSE)
+      INSERT INTO users (auth0_id, email, password_hash, name, user_type, graduation_year, major, registration_completed, approval_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, FALSE, ?)
       RETURNING *
     `, [
       subId,
@@ -40,7 +51,8 @@ async function register(req, res) {
       name || null,
       user_type,
       graduation_year ? Number(graduation_year) : null,
-      major || null
+      major || null,
+      approval_status
     ]);
 
     const user = rows[0];
@@ -52,18 +64,21 @@ async function register(req, res) {
       });
     }
 
-    // Generate JWT
-    const token = jwt.sign(
-      {
-        sub: user.auth0_id,
-        email: user.email,
-        'https://schemas.quickstart/email': user.email,
-        user_type: user.user_type,
-        registration_completed: false
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // Generate JWT only if approved
+    let token = null;
+    if (approval_status === 'approved') {
+      token = jwt.sign(
+        {
+          sub: user.auth0_id,
+          email: user.email,
+          'https://schemas.quickstart/email': user.email,
+          user_type: user.user_type,
+          registration_completed: false
+        },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+    }
 
     return res.status(201).json({
       token,
@@ -72,7 +87,8 @@ async function register(req, res) {
         email: user.email,
         name: user.name,
         user_type: user.user_type,
-        registration_completed: false
+        registration_completed: false,
+        approval_status: user.approval_status
       }
     });
   } catch (e) {
@@ -132,6 +148,19 @@ async function login(req, res) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Block login for unapproved alumni accounts
+    if (user.user_type === 'alumni' && user.approval_status !== 'approved') {
+      if (user.approval_status === 'rejected') {
+        return res.status(403).json({
+          error: `Your account has been rejected by the administrator.${user.approval_reason ? ' Reason: ' + user.approval_reason : ''}`
+        });
+      } else {
+        return res.status(403).json({
+          error: 'Your account is pending administrator approval. You will receive an email once approved.'
+        });
+      }
+    }
+
     // Generate JWT
     const token = jwt.sign(
       {
@@ -152,7 +181,8 @@ async function login(req, res) {
         email: user.email,
         name: user.name,
         user_type: user.user_type,
-        registration_completed: user.registration_completed
+        registration_completed: user.registration_completed,
+        approval_status: user.approval_status
       }
     });
   } catch (e) {
