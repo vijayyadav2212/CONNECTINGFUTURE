@@ -59,7 +59,7 @@ export default function DonationPage() {
   useEffect(() => { fetchUserStats(); }, [user?.email]);
 
   const getPaymentAmount = () => selectedTier ? selectedTier.amount : customAmount > 0 ? customAmount : 0;
-  const getPaymentDescription = () => selectedTier ? `Donation: ${selectedTier.name}` : customAmount > 0 ? 'Custom Donation' : 'Donation to Connecting Future';
+  const getPaymentDescription = () => selectedTier ? `Donation: ${selectedTier.name}` : customAmount > 0 ? 'Custom Donation' : 'Donation to Alumnex';
 
   const handlePaymentSuccess = (paymentId: string, orderId: string) => {
     setPaymentDetails({ paymentId, orderId, amount: getPaymentAmount(), description: getPaymentDescription() });

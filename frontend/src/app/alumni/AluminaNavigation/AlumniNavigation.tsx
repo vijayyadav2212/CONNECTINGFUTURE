@@ -165,7 +165,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold text-gray-900 truncate">Connecting Future</h1>
+            <h1 className="text-sm font-bold text-gray-900 truncate">Alumnex</h1>
             <p className="text-[11px] text-gray-500 truncate">Alumni</p>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Connecting Future</h1>
+              <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Alumnex</h1>
               <p className="text-sm text-gray-500 font-medium mt-0.5">VPPCOE & VA</p>
             </div>
           </div>
@@ -317,7 +317,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                   />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-sm font-bold text-gray-900 truncate">Connecting Future</h1>
+                  <h1 className="text-sm font-bold text-gray-900 truncate">Alumnex</h1>
                   <p className="text-[11px] text-gray-500 truncate">VPPCOE & VA</p>
                 </div>
               </div>

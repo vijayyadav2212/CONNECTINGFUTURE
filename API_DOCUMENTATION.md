@@ -1,6 +1,8 @@
-# API Documentation
 
-This document provides comprehensive documentation for all API endpoints in the Connecting Future platform, including server-side Express API endpoints (backend) and frontend Next.js API routes.
+
++# API Documentation
+
+This document provides comprehensive documentation for all API endpoints in the Alumnex platform, including server-side Express API endpoints (backend) and frontend Next.js API routes.
 
 **Base URLs:**
 - Backend API: `http://localhost:4000` (development)

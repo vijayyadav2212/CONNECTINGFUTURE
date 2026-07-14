@@ -16,7 +16,7 @@ function deriveRole(user: any): 'admin' | 'student' | 'alumni' {
   if (isAdminEmail(email)) return 'admin';
 
   const claimed = String(user?.user_type || '').toLowerCase();
-  if (claimed === 'student' || claimed === 'alumni') {
+  if (claimed === 'student' || claimed === 'alumni' || claimed === 'admin') {
     return claimed as 'admin' | 'student' | 'alumni';
   }
 
@@ -47,7 +47,7 @@ export default function PostLogin() {
       const adminEmail = isAdminEmail(user?.email);
       const claimedRole = typeof user?.user_type === 'string' ? String(user.user_type).toLowerCase() : null;
 
-      if (adminEmail) {
+      if (adminEmail || claimedRole === 'admin') {
         role = 'admin';
       } else if (claimedRole === 'student') {
         role = 'student';

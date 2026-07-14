@@ -44,7 +44,7 @@ export const generatePDFReceipt = async (receiptData: ReceiptData) => {
           margin: 0 0 10px 0;
           color: #667eea;
           letter-spacing: 2px;
-        ">CONNECTING FUTURE</h1>
+        ">ALUMNEX</h1>
         <p style="
           font-size: 18px;
           margin: 0;

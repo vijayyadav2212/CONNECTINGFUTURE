@@ -294,7 +294,7 @@ export default function HomePage() {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
                 <GraduationCap className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Connecting Future</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Alumnex</h1>
             </div>
             <nav className="flex items-center space-x-4">
               {user ? (
@@ -458,7 +458,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className={`text-center mb-16 transition-all duration-1000 ${visibleFeatures ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <h3 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent mb-4">
-              Why Choose Connecting Future?
+              Why Choose Alumnex?
             </h3>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Our platform provides everything you need to build meaningful connections and advance your career.
@@ -510,7 +510,7 @@ export default function HomePage() {
               name="Arjun Kumar"
               role="Software Engineer at Google"
               initials="AK"
-              testimonial="Connecting Future helped me find my dream job. The mentorship program was invaluable in preparing me for technical interviews."
+              testimonial="Alumnex helped me find my dream job. The mentorship program was invaluable in preparing me for technical interviews."
               color="blue"
               delay="0"
               isVisible={visibleTestimonials}
@@ -576,7 +576,7 @@ export default function HomePage() {
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                   <GraduationCap className="h-6 w-6 text-white" />
                 </div>
-                <h4 className="text-xl font-bold">Connecting Future</h4>
+                <h4 className="text-xl font-bold">Alumnex</h4>
               </div>
               <p className="text-gray-400 leading-relaxed">
                 Bridging the gap between alumni and students to create meaningful connections.
@@ -612,7 +612,7 @@ export default function HomePage() {
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center">
             <p className="text-gray-400 transform hover:scale-105 transition-all duration-300 inline-block">
-              &copy; 2025 Connecting Future. All rights reserved. Made with <Heart className="w-4 h-4 inline text-red-500 animate-pulse" /> for the community.
+              &copy; 2025 Alumnex. All rights reserved. Made with <Heart className="w-4 h-4 inline text-red-500 animate-pulse" /> for the community.
             </p>
           </div>
         </div>

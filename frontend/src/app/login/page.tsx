@@ -131,7 +131,7 @@ export default function LoginPage() {
             <GraduationCap className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-            Connecting Future
+            Alumnex
           </h2>
           <p className="mt-2 text-sm text-gray-650 font-medium">
             Alumni and Student Network Portal

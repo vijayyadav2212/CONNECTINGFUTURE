@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Connecting Future",
-  description: "A platform connecting alumni with students",
+  title: "Alumnex",
+  description: "Alumni and Student Network Portal",
 };
 
 export default function RootLayout({

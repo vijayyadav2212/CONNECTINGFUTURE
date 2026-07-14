@@ -43,7 +43,7 @@ export default function PaymentSuccess({
         paymentId,
         orderId,
         amount,
-        description: description || 'Donation to Connecting Future',
+        description: description || 'Donation to Alumnex',
         date: formattedDate,
         time: formattedTime,
         customerName: 'Anonymous Donor', // You can pass actual user name here
@@ -74,7 +74,7 @@ export default function PaymentSuccess({
           </CardTitle>
           
           <p className="text-xl text-gray-600 max-w-md mx-auto">
-            Thank you for your generous contribution to Connecting Future. 
+            Thank you for your generous contribution to Alumnex. 
             Your donation will make a real difference in students' lives.
           </p>
         </CardHeader>
@@ -195,13 +195,13 @@ export default function PaymentSuccess({
                 onClick={() => {
                   if (navigator.share) {
                     navigator.share({
-                      title: 'I just donated to Connecting Future!',
+                      title: 'I just donated to Alumnex!',
                       text: `I contributed ₹${amount.toLocaleString()} to support student scholarships and community programs. Join me in making a difference!`,
                       url: window.location.origin
                     });
                   } else {
                     // Fallback for browsers that don't support Web Share API
-                    navigator.clipboard.writeText(`I just donated ₹${amount.toLocaleString()} to Connecting Future! Join me in supporting students and building a stronger community.`);
+                    navigator.clipboard.writeText(`I just donated ₹${amount.toLocaleString()} to Alumnex! Join me in supporting students and building a stronger community.`);
                     alert('Share message copied to clipboard!');
                   }
                 }}

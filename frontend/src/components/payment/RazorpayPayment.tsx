@@ -74,7 +74,7 @@ export default function RazorpayPayment({
           currency: paymentDetails.currency || 'INR',
           receipt: `receipt_${Date.now()}`,
           notes: {
-            description: paymentDetails.description || 'Payment for Connecting Future',
+            description: paymentDetails.description || 'Payment for Alumnex',
           },
         }),
       });
@@ -90,8 +90,8 @@ export default function RazorpayPayment({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.order.amount,
         currency: orderData.order.currency,
-        name: 'Connecting Future',
-        description: paymentDetails.description || 'Payment for Connecting Future',
+        name: 'Alumnex',
+        description: paymentDetails.description || 'Payment for Alumnex',
         order_id: orderData.order.id,
 
         handler: async function (response: any) {

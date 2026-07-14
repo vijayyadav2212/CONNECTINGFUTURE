@@ -23,7 +23,7 @@ function deriveRoleFromUser(user: any): 'admin' | 'student' | 'alumni' {
   if (isAdminEmail(email)) return 'admin';
 
   const claimedRole = String(user?.user_type || '').toLowerCase();
-  if (claimedRole === 'student' || claimedRole === 'alumni') {
+  if (claimedRole === 'student' || claimedRole === 'alumni' || claimedRole === 'admin') {
     return claimedRole as 'admin' | 'student' | 'alumni';
   }
 

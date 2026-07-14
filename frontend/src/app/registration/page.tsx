@@ -131,7 +131,7 @@ export default function RegistrationPage() {
                 <GraduationCap className="h-8 w-8 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Join Connecting Future</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900">Join Alumnex</CardTitle>
             <p className="text-gray-600 mt-2">Create your account to get started</p>
           </CardHeader>
           <CardContent className="space-y-6">

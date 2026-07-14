@@ -168,7 +168,7 @@ async function sendAlumniUnderReviewEmail({ to, name }) {
         <p style="font-size: 16px; margin: 0 0 14px;">Hi ${safeName},</p>
         <p style="font-size: 16px; line-height: 1.6; margin: 0 0 14px;">Thank you for registering. Your alumni profile has been submitted successfully and is currently under review by our admin team.</p>
         <p style="font-size: 16px; line-height: 1.6; margin: 0 0 14px;">We will notify you by email as soon as your account is approved.</p>
-        <p style="font-size: 14px; color: #6b7280; margin: 0;">Connecting Future Team</p>
+        <p style="font-size: 14px; color: #6b7280; margin: 0;">Alumnex Team</p>
       </div>
     </div>
   `;
