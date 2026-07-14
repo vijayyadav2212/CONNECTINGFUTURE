@@ -1,4 +1,4 @@
--- -- ConnectingFuture Database Setup Script
+-- -- AlumNex Database Setup Script
 -- -- Run this script to set up the database and tables for donation management
 
 -- -- Create database

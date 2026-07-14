@@ -36,9 +36,41 @@ function deriveRoleFromUser(user: any): 'admin' | 'student' | 'alumni' {
 }
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+  let response = NextResponse.next();
   const tokenCookie = request.cookies.get('cf_token');
-  const token = tokenCookie?.value;
+  let token = tokenCookie?.value;
+
+  if (!token) {
+    const refreshCookie = request.cookies.get('cf_refresh_token');
+    if (refreshCookie?.value) {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api/v2';
+        const baseUrl = apiBase.endsWith('/api/v2') ? apiBase.slice(0, -7) : apiBase;
+        
+        const refreshResp = await fetch(`${baseUrl}/api/v2/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: refreshCookie.value })
+        });
+        
+        if (refreshResp.ok) {
+          const data = await refreshResp.json();
+          if (data.token) {
+            token = data.token;
+            const redirectResponse = NextResponse.redirect(request.url);
+            redirectResponse.cookies.set('cf_token', token, { path: '/', maxAge: 900, sameSite: 'lax' });
+            if (data.refreshToken) {
+              redirectResponse.cookies.set('cf_refresh_token', data.refreshToken, { path: '/', maxAge: 604800, sameSite: 'lax' });
+            }
+            return redirectResponse;
+          }
+        }
+      } catch (err) {
+        console.error('Middleware token refresh error:', err);
+      }
+    }
+  }
+
   const user = token ? parseJwt(token) : null;
 
   // If the user is trying to access the registration page

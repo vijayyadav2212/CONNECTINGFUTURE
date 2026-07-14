@@ -9,7 +9,7 @@ class TokenManager {
   }
 
   // Store token in memory and localStorage
-  setToken(token, expiresIn = SESSION_TTL_SECONDS) {
+  setToken(token, refreshToken = null, expiresIn = 15 * 60) {
     this.token = token;
     this.tokenExpiry = new Date(Date.now() + (expiresIn * 1000));
     
@@ -17,6 +17,9 @@ class TokenManager {
       localStorage.setItem('auth_token', token);
       localStorage.setItem('auth_token_expiry', this.tokenExpiry.toISOString());
       localStorage.setItem('cf_jwt', token); // compatibility with mockAuth0
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
     }
   }
 
@@ -50,6 +53,13 @@ class TokenManager {
     return token !== null;
   }
 
+  getRefreshToken() {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('refresh_token');
+    }
+    return null;
+  }
+
   // Clear token from memory and localStorage
   clearToken(options = {}) {
     this.token = null;
@@ -60,6 +70,11 @@ class TokenManager {
       localStorage.removeItem('auth_token_expiry');
       localStorage.removeItem('cf_jwt');
       localStorage.removeItem('cf_user');
+      localStorage.removeItem('refresh_token');
+      
+      // Clear cookies
+      document.cookie = "cf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "cf_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       
       if (options.redirectToLogin) {
         window.location.replace('/login');

@@ -18,9 +18,11 @@ function deriveRole(email) {
 
 // Upsert a basic user profile
 async function upsertBasicUser({ auth0_id, email, name, picture }) {
+  const derived = deriveRole(email);
+  const approval_status = derived === 'alumni' ? 'pending' : 'approved';
   const sql = `
     INSERT INTO users (auth0_id, email, name, picture, user_type, approval_status)
-    VALUES (?, ?, ?, ?, COALESCE(?, 'alumni'), COALESCE(?, 'pending'))
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT (auth0_id)
     DO UPDATE SET
       email = EXCLUDED.email,
@@ -30,7 +32,7 @@ async function upsertBasicUser({ auth0_id, email, name, picture }) {
       approval_status = COALESCE(users.approval_status, EXCLUDED.approval_status)
     RETURNING *
   `;
-  const result = await dbQuery(sql, [auth0_id, email || null, name || null, picture || null, deriveRole(email), 'pending']);
+  const result = await dbQuery(sql, [auth0_id, email || null, name || null, picture || null, derived, approval_status]);
   return result.rows && result.rows[0];
 }
 

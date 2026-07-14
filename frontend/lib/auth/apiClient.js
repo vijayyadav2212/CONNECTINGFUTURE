@@ -35,7 +35,7 @@ class ApiClient {
     };
 
     try {
-      const response = await fetch(url, config);
+      let response = await fetch(url, config);
 
       // Handle common non-error statuses gracefully
       if (response.status === 204) {
@@ -43,8 +43,45 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        if (response.status === 401 && endpointPath !== '/auth/refresh') {
+          const refreshToken = tokenManager.getRefreshToken();
+          if (refreshToken) {
+            try {
+              const refreshUrl = `${this.baseURL}/auth/refresh`;
+              const refreshResponse = await fetch(refreshUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+              });
+              
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json();
+                if (refreshData.token) {
+                  // Save new tokens
+                  tokenManager.setToken(refreshData.token, refreshData.refreshToken);
+                  
+                  // Re-set cookies
+                  document.cookie = `cf_token=${refreshData.token}; path=/; max-age=900; SameSite=Lax`;
+                  if (refreshData.refreshToken) {
+                    document.cookie = `cf_refresh_token=${refreshData.refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+                  }
+                  
+                  // Re-fetch original request
+                  config.headers['Authorization'] = `Bearer ${refreshData.token}`;
+                  response = await fetch(url, config);
+                  if (response.status === 204) {
+                    return null;
+                  }
+                }
+              }
+            } catch (refreshErr) {
+              console.error('Silent refresh failed:', refreshErr);
+            }
+          }
+        }
+
         if (response.status === 401) {
-          // Token might be expired, clear it
+          // Token is invalid and refresh failed/expired, clear it
           tokenManager.clearToken({ redirectToLogin: true });
           throw new Error('Authentication required');
         }

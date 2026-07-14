@@ -1,8 +1,8 @@
 const { dbQuery } = require('./config/db');
 
 async function run() {
-  const { rows } = await dbQuery('SELECT id, email, user_type, password_hash FROM users');
-  console.log('Current Users in DB:', rows);
+  const { rows: users } = await dbQuery('SELECT id, email, user_type, approval_status, registration_completed FROM users');
+  console.log('Current Users in DB:', users);
   process.exit(0);
 }
 
