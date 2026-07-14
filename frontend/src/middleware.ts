@@ -58,7 +58,7 @@ export async function middleware(request: NextRequest) {
           if (data.token) {
             token = data.token;
             const redirectResponse = NextResponse.redirect(request.url);
-            redirectResponse.cookies.set('cf_token', token, { path: '/', maxAge: 900, sameSite: 'lax' });
+            redirectResponse.cookies.set('cf_token', token!, { path: '/', maxAge: 900, sameSite: 'lax' });
             if (data.refreshToken) {
               redirectResponse.cookies.set('cf_refresh_token', data.refreshToken, { path: '/', maxAge: 604800, sameSite: 'lax' });
             }

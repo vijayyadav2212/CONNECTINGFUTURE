@@ -68,6 +68,11 @@ async function createMentorshipSchema(dbQuery) {
   // Helpful indexes
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_sessions_pair ON mentorship_sessions(pair_key)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_sessions_status ON mentorship_sessions(status)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_ms_mentor_lower ON mentorship_sessions(LOWER(mentor_email))');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_ms_student_lower ON mentorship_sessions(LOWER(student_email))');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_mr_mentor_lower ON mentorship_requests(LOWER(mentor_email))');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_mr_student_lower ON mentorship_requests(LOWER(student_email))');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentor_email_lower ON mentors(LOWER(mentor_email))');
 
   // mentorship_subscriptions: recurring plan purchase by student for a mentor
   await dbQuery(`
@@ -97,6 +102,8 @@ async function createMentorshipSchema(dbQuery) {
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_subscriptions_pair ON mentorship_subscriptions(pair_key)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_subscriptions_status ON mentorship_subscriptions(status)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_subscriptions_end_at ON mentorship_subscriptions(end_at)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_sub_mentor_lower ON mentorship_subscriptions(LOWER(mentor_email))');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentorship_sub_student_lower ON mentorship_subscriptions(LOWER(student_email))');
 
   // mentor_daily_sessions: mentor-defined daily recurring sessions
   await dbQuery(`
@@ -119,6 +126,7 @@ async function createMentorshipSchema(dbQuery) {
   `);
 
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentor_daily_sessions_mentor ON mentor_daily_sessions(mentor_email)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentor_daily_sess_email_lower ON mentor_daily_sessions(LOWER(mentor_email))');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_mentor_daily_sessions_period ON mentor_daily_sessions(start_date, end_date)');
 
   // mentor_ratings: student feedback post-session

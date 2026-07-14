@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "db:init": "node scripts/initDb.js",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",

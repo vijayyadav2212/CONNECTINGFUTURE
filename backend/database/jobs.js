@@ -40,6 +40,7 @@ async function createJobsSchema(dbQuery) {
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_jobs_industry ON jobs(industry)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_jobs_job_type ON jobs(job_type)');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_jobs_posted_by ON jobs(posted_by)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_jobs_posted_by_lower ON jobs(LOWER(posted_by))');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_jobs_posted_date ON jobs(posted_date)');
   try {
     await dbQuery("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS target_audience VARCHAR(50) DEFAULT 'Both'");
