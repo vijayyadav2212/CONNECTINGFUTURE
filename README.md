@@ -550,16 +550,16 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 <a id="roadmap--future-scope"></a>
 ## 🗺️ Roadmap / Future Scope
 
-- [ ] Real-time WebSocket notifications (replacing/augmenting SSE)
-- [ ] Integrated video mentorship sessions
-- [ ] AI-based mentor-matching (skills/course/major similarity)
-- [ ] Automated analytics/reporting dashboard for admins
+- [x] Real-time WebSocket notifications (replacing/augmenting SSE)
+- [x] Integrated video mentorship sessions
+- [x] AI-based mentor-matching (skills/course/major similarity)
+- [x] Automated analytics/reporting dashboard for admins
 - [ ] Mobile app (React Native)
 
 ---
 
 <a id="author"></a>
-## 👨‍💻 Author - Vijay Yadav
+## 👨‍💻 Author - Vijay Yadav & Team
 
 <div align="left">
 
@@ -598,6 +598,6 @@ This project is licensed under the **MIT License** — feel free to use, modify,
 
 <div align="center">
 
-Made with ❤️ by **Vijay Yadav**
+Made with ❤️ by **Vijay Yadav & Team**
 
 </div>
