@@ -194,12 +194,12 @@ The platform combines:
 ## 🏗️ System Architecture
 
 ```
-┌──────────────────────┐        HTTPS/REST         ┌──────────────────────┐
+┌──────────────────────┐        HTTPS/REST          ┌──────────────────────┐
 │                      │ ────────────────────────▶ │                      │
-│   Next.js Frontend   │                           │   Express.js API     │
-│   (Vercel)           │◀─────────────────────────│    (Render)          │
-│                      │        JSON responses     │                      │
-└──────────┬───────────┘                           └──────────┬───────────┘
+│   Next.js Frontend   │                            │   Express.js API     │
+│   (Vercel)           │◀───────────────────────── │   (Render)           │
+│                      │        JSON responses      │                      │
+└──────────┬───────────┘                            └──────────┬───────────┘
            │                                                   │
            │ Auth0 OIDC/OAuth2                                 │ Prisma ORM
            ▼                                                   ▼
