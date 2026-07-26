@@ -6,14 +6,14 @@
 
 A verified, secure, university-only network that bridges the guidance gap between students and alumni through real-time mentorship, AI-generated career roadmaps, encrypted messaging, a moderated job/event board, and transparent donations.
 
-![Next.js](https://img.shields.io/badge/Next.js-15.5.3-000000?style=flat&logo=next.js)
-![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6?style=flat&logo=typescript)
-![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=flat&logo=node.js)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=flat&logo=postgresql)
-![Prisma](https://img.shields.io/badge/Prisma-5.17-2D3748?style=flat&logo=prisma)
-![Auth0](https://img.shields.io/badge/Auth-Auth0-EB5424?style=flat&logo=auth0)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Next.js](https://img.shields.io/badge/Next.js-15.5.3-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-5.17-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![Auth0](https://img.shields.io/badge/Auth-Auth0-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
 
 </div>
 
@@ -21,26 +21,27 @@ A verified, secure, university-only network that bridges the guidance gap betwee
 
 ## 📖 Table of Contents
 
-- [Overview](#-overview)
-- [Problem Statement](#-problem-statement)
-- [Key Features](#-key-features)
-- [Tech Stack](#-tech-stack)
-- [System Architecture](#-system-architecture)
-- [Project Structure](#-project-structure)
-- [Database Schema](#-database-schema)
-- [API Overview](#-api-overview)
-- [Getting Started](#-getting-started)
-- [Environment Variables](#-environment-variables)
-- [Deployment](#-deployment)
-- [Roles & Permissions](#-roles--permissions)
-- [Security](#-security)
-- [Project Stats](#-project-stats)
-- [Roadmap / Future Scope](#-roadmap--future-scope)
-- [Author](#-author)
-- [License](#-license)
+- [Overview](#overview)
+- [Problem Statement](#problem-statement)
+- [Key Features](#key-features)
+- [Tech Stack](#tech-stack)
+- [System Architecture](#system-architecture)
+- [Project Structure](#project-structure)
+- [Database Schema](#database-schema)
+- [API Overview](#api-overview)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Deployment](#deployment)
+- [Roles & Permissions](#roles--permissions)
+- [Security](#security)
+- [Project Stats](#project-stats)
+- [Roadmap / Future Scope](#roadmap--future-scope)
+- [Author](#author)
+- [License](#license)
 
 ---
 
+<a id="overview"></a>
 ## 🧭 Overview
 
 **Connecting Future** is a full-stack web platform designed for university students who struggle with placement preparation, career direction, and connecting with experienced seniors. It replaces fragmented, unverified channels — cold LinkedIn outreach, noisy unmoderated WhatsApp/Telegram groups, and opaque manual donation systems — with a single, closed-loop, university-verified network.
@@ -56,6 +57,7 @@ The platform combines:
 
 ---
 
+<a id="problem-statement"></a>
 ## ❗ Problem Statement
 
 | Pain Point | Description |
@@ -73,6 +75,7 @@ The platform combines:
 
 ---
 
+<a id="key-features"></a>
 ## ✨ Key Features
 
 ### 🔐 Role-Based Authentication
@@ -136,9 +139,22 @@ The platform combines:
 
 ---
 
+<a id="tech-stack"></a>
 ## 🛠️ Tech Stack
 
 ### Frontend
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
+![Radix UI](https://img.shields.io/badge/Radix_UI-161618?style=flat&logo=radixui&logoColor=white)
+![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-000000?style=flat&logo=shadcnui&logoColor=white)
+![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=flat&logo=framer&logoColor=white)
+![React Hook Form](https://img.shields.io/badge/React_Hook_Form-EC5990?style=flat&logo=reacthookform&logoColor=white)
+![Zod](https://img.shields.io/badge/Zod-3E67B1?style=flat&logo=zod&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22B5BF?style=flat)
+![Lucide](https://img.shields.io/badge/Lucide_Icons-F56565?style=flat&logo=lucide&logoColor=white)
+
 | Layer | Technology |
 |---|---|
 | Framework | **Next.js 15** (App Router, TypeScript) |
@@ -155,6 +171,16 @@ The platform combines:
 | Theming | `next-themes` |
 
 ### Backend
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=flat&logo=express&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
+![Auth0](https://img.shields.io/badge/Auth0-EB5424?style=flat&logo=auth0&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat&logo=googlegemini&logoColor=white)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-3448C5?style=flat&logo=cloudinary&logoColor=white)
+![Razorpay](https://img.shields.io/badge/Razorpay-0C2451?style=flat&logo=razorpay&logoColor=white)
+![Nodemailer](https://img.shields.io/badge/Nodemailer-22B573?style=flat)
+
 | Layer | Technology |
 |---|---|
 | Runtime | **Node.js** |
@@ -183,6 +209,10 @@ The platform combines:
 | **RapidAPI (JSearch)** | External job listing aggregation |
 
 ### Hosting / Deployment
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=flat&logo=render&logoColor=white)
+![Neon](https://img.shields.io/badge/Neon-00E599?style=flat&logo=neon&logoColor=white)
+
 | Component | Platform |
 |---|---|
 | Frontend | **Vercel** |
@@ -191,34 +221,67 @@ The platform combines:
 
 ---
 
+<a id="system-architecture"></a>
 ## 🏗️ System Architecture
 
-```
-┌──────────────────────┐        HTTPS/REST          ┌──────────────────────┐
-│                      │ ────────────────────────▶ │                      │
-│   Next.js Frontend   │                            │   Express.js API     │
-│   (Vercel)           │◀───────────────────────── │   (Render)           │
-│                      │        JSON responses      │                      │
-└──────────┬───────────┘                            └──────────┬───────────┘
-           │                                                   │
-           │ Auth0 OIDC/OAuth2                                 │ Prisma ORM
-           ▼                                                   ▼
-   ┌───────────────┐                                 ┌───────────────────┐
-   │   Auth0       │                                 │  PostgreSQL (Neon)│
-   │ (RBAC / JWT)  │                                 └───────────────────┘
-   └───────────────┘
-           │
-           ├──▶ Cloudinary (file/image storage)
-           ├──▶ Razorpay (payments)
-           ├──▶ Google Gemini API (AI roadmaps & quizzes)
-           └──▶ RapidAPI JSearch (external job listings)
+```mermaid
+graph TB
+    A["👤 User / Browser"]
+
+    subgraph FE["Frontend — Vercel"]
+        B["Next.js 15 App Router"]
+        B1["React 18 + TypeScript"]
+        B2["Tailwind CSS + shadcn/ui"]
+        B --> B1 --> B2
+    end
+
+    subgraph ID["Identity Provider"]
+        C["Auth0<br/>OAuth2 / OIDC"]
+    end
+
+    subgraph BE["Backend API — Render"]
+        D["Express.js Server"]
+        D1["express-jwt + jwks-rsa<br/>JWT / JWKS Verification"]
+        D2["122+ REST Endpoints<br/>(14 domain modules)"]
+        D3["AES-256-GCM<br/>Message Encryption"]
+        D4["Server-Sent Events<br/>(Live Feed Stream)"]
+        D --> D1 --> D2
+        D2 --> D3
+        D2 --> D4
+    end
+
+    E["Prisma ORM"]
+
+    subgraph DB["Database — Neon"]
+        F[("PostgreSQL")]
+    end
+
+    subgraph EXT["External Services"]
+        G["Cloudinary<br/>File / Image Storage"]
+        H["Razorpay<br/>Payment Gateway"]
+        I["Google Gemini API<br/>AI Roadmaps & Quizzes"]
+        J["RapidAPI JSearch<br/>External Job Listings"]
+    end
+
+    A -->|"HTTPS"| B
+    B -->|"Login redirect"| C
+    C -->|"JWT (id/access token)"| B
+    B -->|"REST call + Bearer JWT"| D
+    D2 -->|"Prisma Client"| E
+    E -->|"SQL queries"| F
+    D2 -->|"Upload / Delete media"| G
+    D2 -->|"Create order / Verify signature"| H
+    D2 -->|"Generate roadmap / quiz"| I
+    D2 -->|"Fetch external listings"| J
+    D4 -->|"text/event-stream"| B
 ```
 
 **Request flow example (Mentorship Request):**
-`Student UI → Next.js API proxy → Express `/api/mentorship/request` → Prisma → PostgreSQL → Notification created → SSE/poll → Alumni UI updates`
+`Student UI → Express /api/mentorship/request → JWT verified → Prisma write → PostgreSQL → Notification row created → Alumni UI polls/streams update`
 
 ---
 
+<a id="project-structure"></a>
 ## 📂 Project Structure
 
 ```
@@ -272,6 +335,7 @@ CONNECTINGFUTURE/
 
 ---
 
+<a id="database-schema"></a>
 ## 🗄️ Database Schema
 
 **Core Prisma models:**
@@ -313,6 +377,7 @@ All tables are indexed on their primary lookup columns (e.g., `auth0_id`, `email
 
 ---
 
+<a id="api-overview"></a>
 ## 🔌 API Overview
 
 The backend exposes **122+ REST endpoints** grouped into the following domains (see `API_DOCUMENTATION.md` for the full reference):
@@ -337,6 +402,7 @@ Authentication: protected routes require `Authorization: Bearer <JWT>` validated
 
 ---
 
+<a id="getting-started"></a>
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -351,8 +417,8 @@ Authentication: protected routes require `Authorization: Bearer <JWT>` validated
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/<your-username>/Connecting Future.git
-cd Connecting Future
+git clone https://github.com/vijayyadav2212/CONNECTINGFUTURE.git
+cd CONNECTINGFUTURE
 ```
 
 ### 2. Backend setup
@@ -375,6 +441,7 @@ npm run dev                # starts on http://localhost:3000
 
 ---
 
+<a id="environment-variables"></a>
 ## 🔑 Environment Variables
 
 ### Backend (`backend/.env`)
@@ -427,6 +494,7 @@ NEXT_PUBLIC_STUDENT_EMAIL_DOMAINS=
 
 ---
 
+<a id="deployment"></a>
 ## ☁️ Deployment
 
 | Component | Platform | Notes |
@@ -439,6 +507,7 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 ---
 
+<a id="roles--permissions"></a>
 ## 👥 Roles & Permissions
 
 | Role | Access |
@@ -449,6 +518,7 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 ---
 
+<a id="security"></a>
 ## 🛡️ Security
 
 - **RBAC** enforced at both route-middleware and UI levels.
@@ -461,6 +531,7 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 ---
 
+<a id="project-stats"></a>
 ## 📊 Project Stats
 
 | Metric | Value |
@@ -476,6 +547,7 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 ---
 
+<a id="roadmap--future-scope"></a>
 ## 🗺️ Roadmap / Future Scope
 
 - [ ] Real-time WebSocket notifications (replacing/augmenting SSE)
@@ -486,6 +558,7 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 ---
 
+<a id="author"></a>
 ## 👨‍💻 Author - Vijay Yadav
 
 <div align="left">
@@ -514,10 +587,9 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 </div>
 
-
-
 ---
 
+<a id="license"></a>
 ## 📄 License
 
 This project is licensed under the **MIT License** — feel free to use, modify, and distribute with attribution.
