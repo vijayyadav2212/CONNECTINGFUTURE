@@ -36,7 +36,7 @@ A verified, secure, university-only network that bridges the guidance gap betwee
 - [Security](#-security)
 - [Project Stats](#-project-stats)
 - [Roadmap / Future Scope](#-roadmap--future-scope)
-- [Team](#-team)
+- [Author](#-author)
 - [License](#-license)
 
 ---
@@ -194,10 +194,10 @@ The platform combines:
 ## 🏗️ System Architecture
 
 ```
-┌─────────────────────┐        HTTPS/REST        ┌──────────────────────┐
-│                      │ ────────────────────────▶│                      │
+┌──────────────────────┐        HTTPS/REST         ┌──────────────────────┐
+│                      │ ────────────────────────▶ │                      │
 │   Next.js Frontend   │                           │   Express.js API     │
-│   (Vercel)           │◀──────────────────────────│   (Render)           │
+│   (Vercel)           │◀─────────────────────────│    (Render)          │
 │                      │        JSON responses     │                      │
 └──────────┬───────────┘                           └──────────┬───────────┘
            │                                                   │
@@ -486,13 +486,35 @@ Full step-by-step instructions (Auth0 callback URLs, Razorpay webhook setup, Clo
 
 ---
 
-## 👨‍💻 Team — Team Devbappa
+## 👨‍💻 Author - Vijay Yadav
 
-| Member | Role | Responsibility |
-|---|---|---|
-| Lead Developer | Full-Stack Software Engineer | Next.js frontend, Express backend, Prisma migrations, third-party integrations |
-| Alumni Relations Manager | Moderator / Administrator | Alumni verification, job/event moderation, outreach |
-| Academic Coordinator | Course Advisor | Course mapping, roadmap validation |
+<div align="left">
+
+<a href="https://github.com/vijayyadav2212" target="_blank" rel="noopener noreferrer">
+  <img src="https://skillicons.dev/icons?i=github" alt="GitHub" width="36" height="36" title="GitHub" />
+</a>
+&nbsp;
+<a href="https://linkedin.com/in/vijay0411" target="_blank" rel="noopener noreferrer">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/linkedin/linkedin-original.svg" alt="LinkedIn" width="36" height="36" title="LinkedIn" />
+</a>
+&nbsp;
+<a href="https://leetcode.com/u/ttGXbZCUeP" target="_blank" rel="noopener noreferrer">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/leetcode/ffffff" />
+    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/leetcode/leetcode-original.svg" alt="LeetCode" width="36" height="36" title="LeetCode" />
+  </picture>
+</a>
+&nbsp;
+<a href="mailto:yvijay2212@gmail.com" target="_blank" rel="noopener noreferrer">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/gmail/ffffff" />
+    <img src="https://cdn.simpleicons.org/gmail/000000" alt="Email" width="36" height="36" title="Email" />
+  </picture>
+</a>
+
+</div>
+
+
 
 ---
 
@@ -504,6 +526,6 @@ This project is licensed under the **MIT License** — feel free to use, modify,
 
 <div align="center">
 
-Made with ❤️ by **Team Devbappa**
+Made with ❤️ by **Vijay Yadav**
 
 </div>
