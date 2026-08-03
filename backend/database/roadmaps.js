@@ -47,6 +47,7 @@ async function createRoadmapsSchema(dbQuery) {
 
   // Indexes
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_roadmaps_owner_email ON roadmaps(owner_email)');
+  await dbQuery('CREATE INDEX IF NOT EXISTS idx_roadmaps_owner_email_lower ON roadmaps(LOWER(owner_email))');
   await dbQuery('CREATE INDEX IF NOT EXISTS idx_roadmaps_created_at ON roadmaps(created_at)');
 
   // Per-student roadmap progress (milestone completion and unlock state)
