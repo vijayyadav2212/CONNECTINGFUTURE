@@ -178,16 +178,18 @@ function StudentResumeReviewContent() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto p-6 md:p-8 font-sans">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f3e8ff] rounded-[28px] p-8 md:p-10 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
+      <div className="bg-[#1A1B23] rounded-[32px] p-8 md:p-10 relative overflow-hidden shadow-2xl border border-white/5">
+        {/* Subtle background wave/gradient */}
+        <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-2 text-blue-600 font-semibold text-[15px] mb-3">
-            <Sparkles size={18} className="text-blue-500" />
+          <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+            <Sparkles size={16} />
             <span>Get Professional Feedback</span>
           </div>
-          <h1 className="text-3xl md:text-[44px] font-extrabold text-slate-900 mb-3 tracking-tight">
+          <h1 className="text-4xl md:text-[48px] font-black text-white mb-3 tracking-[-0.02em]">
             Resume Review
           </h1>
-          <p className="text-slate-600 text-[16px] font-medium max-w-2xl">
+          <p className="text-gray-400 text-[16px] font-medium max-w-2xl leading-relaxed">
             Connect with experienced alumni mentors to improve your resume. Get detailed feedback to land your dream job.
           </p>
         </div>
@@ -196,26 +198,28 @@ function StudentResumeReviewContent() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Request Form - Left Side */}
-        <div className="lg:col-span-2 bg-white rounded-[24px] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.02)] border border-slate-100">
-          <div className="flex items-center gap-2 mb-6">
-            <FileText className="text-blue-600" size={24} />
-            <h2 className="text-xl font-bold text-slate-900">Submit Request</h2>
+        <div className="lg:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-[#11233f]" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-[#11233f]">Submit Request</h2>
           </div>
 
           {/* Mentor Selection - Two Dropdowns */}
           {alumni.length > 0 ? (
-            <div className="space-y-5">
+            <div className="space-y-6">
               {/* Dropdown 1: Your Mentors */}
               {myMentors.length > 0 && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                  <label className="flex items-center gap-2 text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">
+                    <CheckCircle className="w-3.5 h-3.5 text-[#11233f]" />
                     Your Mentors (Direct Access)
                   </label>
                   <select
                     value={selectedAlumni}
                     onChange={(e) => setSelectedAlumni(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-900 cursor-pointer transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 bg-white rounded-[14px] focus:outline-none focus:ring-2 focus:ring-gray-300 font-medium text-slate-900 cursor-pointer transition"
                   >
                     <option value="">Choose from your mentors...</option>
                     {myMentors.map((a) => (
@@ -231,11 +235,11 @@ function StudentResumeReviewContent() {
               {restMentors.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-bold text-slate-700">Other Alumni</label>
+                    <label className="block text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Other Alumni</label>
                     {restMentors.length > 5 && (
                       <button
                         onClick={() => setShowMoreRestAlumni(!showMoreRestAlumni)}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                        className="text-[11px] font-bold text-blue-600 uppercase tracking-wider hover:text-blue-800 transition"
                       >
                         {showMoreRestAlumni ? `Show Less (${restMentors.length})` : `Show More (${restMentors.length})`}
                       </button>
@@ -244,7 +248,7 @@ function StudentResumeReviewContent() {
                   <select
                     value={selectedAlumni}
                     onChange={(e) => setSelectedAlumni(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-amber-300 bg-amber-50 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium text-slate-900 cursor-pointer transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 bg-white rounded-[14px] focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium text-slate-900 cursor-pointer transition"
                   >
                     <option value="">Choose from other mentors...</option>
                     {restMentorsToShow.map((a) => (
@@ -263,15 +267,15 @@ function StudentResumeReviewContent() {
               )}
             </div>
           ) : (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-[14px]">
+            <div className="p-4 bg-slate-50 border border-gray-100 rounded-[14px]">
               <p className="text-slate-600 text-sm font-medium">Loading mentors...</p>
             </div>
           )}
 
           {/* Resume Upload */}
-          <div className="space-y-3">
-            <label className="block text-sm font-bold text-slate-700">Upload Resume</label>
-            <div className="border-2 border-dashed border-slate-300 rounded-[14px] p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer">
+          <div className="space-y-2 mt-6">
+            <label className="block text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Upload Resume</label>
+            <div className="border-2 border-dashed border-gray-200 rounded-[20px] p-10 text-center hover:border-gray-300 hover:bg-gray-50 transition cursor-pointer">
               <input
                 type="file"
                 accept=".pdf"
@@ -300,13 +304,13 @@ function StudentResumeReviewContent() {
           </div>
 
           {/* Message */}
-          <div className="space-y-3">
-            <label className="block text-sm font-bold text-slate-700">Additional Message (Optional)</label>
+          <div className="space-y-2 mt-6">
+            <label className="block text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Additional Message (Optional)</label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Tell the mentor what specific feedback you'd like..."
-              className="w-full px-4 py-3 border border-slate-300 rounded-[14px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-medium"
+              className="w-full px-4 py-3 border border-slate-300 rounded-[14px] bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 text-slate-700 font-medium"
               rows={3}
             />
           </div>
@@ -315,7 +319,7 @@ function StudentResumeReviewContent() {
           <button
             onClick={handleSubmitRequest}
             disabled={loading || !selectedAlumni || !resume}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-[14px] transition flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(37,99,235,0.3)]"
+            className="w-full bg-[#16161c] hover:bg-black disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-[14px] transition flex items-center justify-center gap-2 shadow-sm"
           >
             {loading ? <Loader className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             {loading ? 'Submitting...' : 'Submit Request'}
@@ -323,25 +327,27 @@ function StudentResumeReviewContent() {
         </div>
 
         {/* Stats Card - Right Side */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[24px] p-6 border border-blue-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] h-fit">
-          <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <BookOpen className="text-blue-600" size={20} />
-            Your Reviews
-          </h3>
+        <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.03)] h-fit">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-[#11233f]" />
+            </div>
+            <h3 className="text-xl font-extrabold text-[#11233f]">Your Reviews</h3>
+          </div>
           <div className="space-y-4">
             {requests.length === 0 ? (
               <p className="text-sm text-slate-600 text-center py-4">No requests yet. Submit one above!</p>
             ) : (
               <>
-                <div className="bg-white rounded-[12px] p-4 border border-blue-100">
+                <div className="bg-white rounded-[12px] p-4 border border-gray-100">
                   <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">TOTAL REQUESTS</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">{requests.length}</p>
+                  <p className="text-3xl font-bold text-[#16161c] mt-2">{requests.length}</p>
                 </div>
-                <div className="bg-white rounded-[12px] p-4 border border-amber-100">
+                <div className="bg-white rounded-[12px] p-4 border border-gray-100">
                   <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">PENDING</p>
                   <p className="text-2xl font-bold text-amber-600">{requests.filter(r => r.status === 'pending').length}</p>
                 </div>
-                <div className="bg-white rounded-[12px] p-4 border border-green-100">
+                <div className="bg-white rounded-[12px] p-4 border border-gray-100">
                   <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">COMPLETED</p>
                   <p className="text-2xl font-bold text-green-600">{requests.filter(r => r.status === 'completed').length}</p>
                 </div>
@@ -353,14 +359,14 @@ function StudentResumeReviewContent() {
 
       {/* Past Requests */}
       {requests.length > 0 && (
-        <div className="bg-white rounded-[24px] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.02)] border border-slate-100">
+        <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
-            <FileText className="text-blue-600" size={24} />
+            <FileText className="text-[#16161c]" size={24} />
             <h2 className="text-xl font-bold text-slate-900">Review Requests History</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {requests.map((req) => (
-              <div key={req.id} className="border border-slate-200 rounded-[16px] p-5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition">
+              <div key={req.id} className="border border-gray-100 rounded-[16px] p-5 hover:shadow-md transition">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <p className="font-bold text-slate-900">{req.alumni_name || 'Alumni Mentor'}</p>

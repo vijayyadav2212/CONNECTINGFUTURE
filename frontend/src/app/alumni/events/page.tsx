@@ -183,18 +183,21 @@ export default function EventsPage() {
       <div className="space-y-6">
 
         {/* Page Header */}
-        <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] px-8 py-10 md:px-12 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 relative overflow-hidden">
+        <div className="bg-[#1A1C23]  rounded-[32px] px-8 py-10 md:px-12 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 relative overflow-hidden text-white">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="relative z-10 flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-indigo-500 font-bold text-[14px] bg-indigo-50/50 w-fit px-3 py-1.5 rounded-full border border-indigo-100/50">
+            <div className="flex items-center gap-2 text-gray-300 font-bold text-[14px] bg-white/10 w-fit px-3 py-1.5 rounded-full border border-white/20">
               <Sparkles className="w-4 h-4" />
               <span>Events Hub</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-[#1e293b] tracking-tight">Discover Events!</h1>
+            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">Discover Events!</h1>
             <p className="text-slate-500 font-semibold text-[16px]">Your community is growing. Ready to connect and make an impact today?</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="relative z-10 flex items-center justify-center gap-2 p-5 bg-white text-indigo-500 hover:text-indigo-600 font-bold rounded-[20px] transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:scale-105 border border-indigo-50"
+            className="relative z-10 flex items-center justify-center gap-2 p-5 bg-white text-[#1A1C23] hover:text-[#1A1C23] font-bold rounded-[20px] transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:scale-105 border border-indigo-50"
             title="Create Event"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -204,12 +207,12 @@ export default function EventsPage() {
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           {[
-            { label: 'Total Events', value: events.length, color: 'text-emerald-600', bg: 'bg-emerald-50', iconBg: 'bg-white' },
-            { label: 'Upcoming', value: upcomingEvents.length, color: 'text-blue-600', bg: 'bg-blue-50', iconBg: 'bg-white' },
-            { label: 'Past Events', value: pastEvents.length, color: 'text-purple-600', bg: 'bg-purple-50', iconBg: 'bg-white' },
-            { label: 'Online', value: events.filter(e => e.is_virtual).length, color: 'text-orange-600', bg: 'bg-orange-50', iconBg: 'bg-white' },
+            { label: 'Total Events', value: events.length, color: 'text-slate-800', bg: 'bg-white', iconBg: 'bg-slate-50 border border-slate-100' },
+            { label: 'Upcoming', value: upcomingEvents.length, color: 'text-slate-800', bg: 'bg-white', iconBg: 'bg-slate-50 border border-slate-100' },
+            { label: 'Past Events', value: pastEvents.length, color: 'text-slate-800', bg: 'bg-white', iconBg: 'bg-slate-50 border border-slate-100' },
+            { label: 'Online', value: events.filter(e => e.is_virtual).length, color: 'text-slate-800', bg: 'bg-white', iconBg: 'bg-slate-50 border border-slate-100' },
           ].map((s, i) => (
-            <div key={i} className={`rounded-[24px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.03)] p-6 flex flex-col gap-4 ${s.bg}`}>
+            <div key={i} className={`rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] p-6 flex flex-col gap-4 ${s.bg}`}>
               <div className={`w-12 h-12 rounded-2xl ${s.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
                 <Calendar className={`w-5 h-5 ${s.color}`} />
               </div>
@@ -336,12 +339,12 @@ export default function EventsPage() {
           <h3 className="text-[20px] font-bold text-slate-800 tracking-tight mb-8">Event Categories</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {[
-              { emoji: '🤝', label: 'Networking', color: 'bg-blue-50 text-blue-600 shadow-blue-500/10' },
-              { emoji: '🎓', label: 'Educational', color: 'bg-purple-50 text-purple-600 shadow-purple-500/10' },
-              { emoji: '🎉', label: 'Social', color: 'bg-emerald-50 text-emerald-600 shadow-emerald-500/10' },
-              { emoji: '💼', label: 'Career', color: 'bg-orange-50 text-orange-600 shadow-orange-500/10' },
+              { emoji: '🤝', label: 'Networking', color: 'bg-white text-slate-800' },
+              { emoji: '🎓', label: 'Educational', color: 'bg-white text-slate-800' },
+              { emoji: '🎉', label: 'Social', color: 'bg-white text-slate-800' },
+              { emoji: '💼', label: 'Career', color: 'bg-white text-slate-800' },
             ].map((item, i) => (
-              <div key={i} className={`${item.color} rounded-[24px] p-6 text-center cursor-pointer hover:-translate-y-2 transition-transform duration-300 shadow-lg border border-white`}>
+              <div key={i} className={`${item.color} rounded-[24px] p-6 text-center cursor-pointer hover:-translate-y-2 transition-transform duration-300 shadow-sm hover:shadow-md border border-slate-100`}>
                 <div className="text-4xl mb-4 transform group-hover:scale-110 transition-transform">{item.emoji}</div>
                 <p className="text-[14px] font-black uppercase tracking-widest">{item.label}</p>
               </div>

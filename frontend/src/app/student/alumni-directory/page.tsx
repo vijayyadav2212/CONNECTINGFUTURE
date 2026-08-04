@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import StudentNavigation from '../StudentNavigation/StudentNavigation';
-import { Search, Filter, MapPin, Building, GraduationCap, Linkedin, Mail, MessageSquare, Star, Users, Clock } from 'lucide-react';
+import { Search, Filter, MapPin, Building, GraduationCap, Linkedin, Mail, MessageSquare, Star, Users, Clock, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@auth0/nextjs-auth0/client';
@@ -196,22 +196,14 @@ const AlumniDirectoryPage = () => {
   if (loading) {
     return (
       <StudentNavigation>
-        <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-orange-50">
-          {/* Animated background blobs */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-green-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
-          </div>
-
-          <div className="p-8 relative">
-            <div className="animate-pulse max-w-7xl mx-auto">
-              <div className="h-8 bg-white/50 backdrop-blur-md rounded-xl w-1/4 mb-6"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white/50 backdrop-blur-md h-96 rounded-2xl shadow-lg"></div>
-                ))}
-              </div>
+        <div className="min-h-screen bg-[#F5F6FA] p-8">
+          <div className="animate-pulse max-w-7xl mx-auto">
+            <div className="h-32 bg-white rounded-[24px] shadow-sm border border-gray-100 w-full mb-8"></div>
+            <div className="h-20 bg-white rounded-2xl shadow-sm border border-gray-100 w-full mb-8"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white h-[360px] rounded-3xl shadow-sm border border-gray-100"></div>
+              ))}
             </div>
           </div>
         </div>
@@ -221,481 +213,311 @@ const AlumniDirectoryPage = () => {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-orange-50">
-        {/* Animated background blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="min-h-screen bg-[#F5F6FA] p-8">
+        <div className="max-w-7xl mx-auto">
+          
+          {/* Header Section (Black Rounded) */}
           <motion.div
-            className="absolute top-0 -left-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-            animate={{
-              x: [0, 100, 0],
-              y: [0, 50, 0],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          ></motion.div>
-          <motion.div
-            className="absolute top-0 -right-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-            animate={{
-              x: [0, -100, 0],
-              y: [0, 100, 0],
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          ></motion.div>
-          <motion.div
-            className="absolute -bottom-8 left-20 w-72 h-72 bg-green-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-            animate={{
-              x: [0, 50, 0],
-              y: [0, -50, 0],
-            }}
-            transition={{
-              duration: 25,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          ></motion.div>
-        </div>
-
-        <div className="p-4 sm:p-6 lg:p-8 relative">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6 }}
-              className="mb-8"
-            >
-              <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-6 lg:p-8 shadow-xl border border-white/30">
-                <div className="absolute inset-0 bg-white/20 backdrop-blur-sm rounded-3xl"></div>
-                <div className="relative z-10">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
-                    Alumni Directory
-                  </h1>
-                  <p className="text-base lg:text-lg text-gray-700 font-medium max-w-2xl mb-4">
-                    Connect with successful alumni and find experienced mentors in your field of interest
-                  </p>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="font-medium">{alumni.length} Alumni</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="font-medium">{alumni.filter(alum => alum.isOpenToMentoring).length} Mentors Available</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                      <span className="font-medium">Instant Connect</span>
-                    </div>
-                  </div>
+            initial="hidden"
+            animate="visible"
+            variants={fadeInUp}
+            transition={{ duration: 0.6 }}
+            className="mb-8"
+          >
+            <div className="bg-[#16161c] rounded-[24px] p-8 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center">
+              <div className="mb-6 lg:mb-0">
+                <h1 className="text-3xl font-bold text-white mb-2">Alumni Directory</h1>
+                <p className="text-sm text-gray-400">Connect with successful alumni and find experienced mentors.</p>
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center gap-2 bg-[#2a2a35] text-white px-4 py-2 rounded-full border border-white/10">
+                  <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                  <span className="font-medium">{alumni.length} Registered</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#2a2a35] text-white px-4 py-2 rounded-full border border-white/10">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="font-medium">{alumni.filter((alum: any) => alum.isOpenToMentoring).length} Mentors Available</span>
                 </div>
               </div>
-            </motion.div>
+            </div>
+          </motion.div>
 
-            {/* My Requests (incoming pending) */}
-            {connections.length > 0 && currentUserEmail && (() => {
-              const incoming = connections.filter(c => c.status === 'pending' && c.target_email.toLowerCase() === currentUserEmail.toLowerCase());
-              if (!incoming.length) return null;
-              return (
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={fadeInUp}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  className="mb-8"
+          {/* My Requests (incoming pending) */}
+          {connections.length > 0 && currentUserEmail && (() => {
+            const incoming = connections.filter((c: any) => c.status === 'pending' && c.target_email.toLowerCase() === currentUserEmail.toLowerCase());
+            if (!incoming.length) return null;
+            return (
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={fadeInUp}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="mb-8"
+              >
+                <div>
+                  <h2 className="text-lg font-bold text-[#16161c] mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5" /> Pending Requests
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {incoming.map((req: any, idx: number) => {
+                      const email = req.requester_email;
+                      const info = requesterProfiles[email.toLowerCase()] || {};
+                      const displayName = info.name || email;
+                      const initials = (displayName || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                      return (
+                        <motion.div
+                          key={req.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between"
+                        >
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-[#16161c] flex items-center justify-center text-white font-bold">{initials}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-[#16161c] truncate">{displayName}</p>
+                              <p className="text-xs text-gray-500 truncate">{email}</p>
+                              {(info.major || info.graduation_year) && (
+                                <p className="text-[11px] text-gray-400 truncate mt-1 uppercase tracking-wider font-semibold">
+                                  {info.major || 'N/A'} {info.graduation_year ? `• '`+info.graduation_year.toString().slice(2) : ''}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => respondRequest(email, 'accept')} disabled={connLoading} className="flex-1 py-2 rounded-xl bg-[#16161c] text-white text-xs font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors">Accept</button>
+                            <button onClick={() => respondRequest(email, 'reject')} disabled={connLoading} className="flex-1 py-2 rounded-xl bg-red-50 text-red-600 border border-red-100 text-xs font-bold hover:bg-red-100 disabled:opacity-50 transition-colors">Decline</button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
+
+          {/* Search and Filter Bar */}
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeInUp}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 items-center">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search by name, company, position..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-[#16161c]/20 transition-all font-medium text-[#16161c] placeholder-gray-400"
+                />
+              </div>
+              <div className="relative w-full lg:w-auto">
+                <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <select
+                  value={filterExpertise}
+                  onChange={(e) => setFilterExpertise(e.target.value)}
+                  className="w-full lg:w-auto pl-12 pr-8 py-3 bg-gray-50 rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-[#16161c]/20 font-medium text-[#16161c] transition-all"
                 >
-                  <div className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-white/40">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-blue-600" />
-                      My Requests
-                    </h2>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {incoming.map((req, idx) => {
-                        const email = req.requester_email;
-                        const info = requesterProfiles[email.toLowerCase()] || {};
-                        const displayName = info.name || email;
-                        const initials = (displayName || '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                        return (
-                          <motion.div
-                            key={req.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className="bg-white/80 p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg">{initials}</div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 truncate">{displayName}</p>
-                                <p className="text-xs text-gray-600 truncate">{email}</p>
-                                {(info.major || info.graduation_year) && (
-                                  <p className="text-xs text-gray-500 truncate">{info.major || '—'}{info.graduation_year ? ` • Class of ${info.graduation_year}` : ''}</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="mt-3 flex gap-2 justify-end">
-                              <Button onClick={() => respondRequest(email, 'accept')} disabled={connLoading} className="px-3 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-semibold hover:from-green-600 hover:to-emerald-700 disabled:opacity-60">Accept</Button>
-                              <Button onClick={() => respondRequest(email, 'reject')} disabled={connLoading} className="px-3 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-semibold hover:from-red-600 hover:to-rose-700 disabled:opacity-60">Decline</Button>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })()}
+                  {expertiseOptions.map((option: string) => (
+                    <option key={option} value={option}>
+                      {option === 'all' ? 'All Expertise' : option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </motion.div>
 
-            {/* Search and Filter Bar */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mb-8"
-            >
-              <div className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-white/40">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Search className="w-5 h-5 text-blue-600" />
-                  Find Your Perfect Mentor
-                </h2>
-                <div className="flex flex-col lg:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="Search by name, company, position, or expertise..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 border-2 border-white/50 bg-white/60 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium text-gray-900 placeholder-gray-500 backdrop-blur-sm"
-                    />
+          {/* Results Summary */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-bold text-xl text-[#16161c]">
+              {filteredAlumni.length} Results
+            </h2>
+          </div>
+
+          {/* Alumni Grid */}
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+          >
+            {filteredAlumni.length === 0 ? (
+              <div className="col-span-full">
+                <div className="bg-white rounded-[32px] p-12 text-center border border-gray-100 shadow-sm max-w-2xl mx-auto">
+                  <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-8 h-8 text-gray-400" />
                   </div>
-                  <div className="relative">
-                    <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select
-                      value={filterExpertise}
-                      onChange={(e) => setFilterExpertise(e.target.value)}
-                      className="pl-12 pr-8 py-4 border-2 border-white/50 bg-white/60 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 min-w-[220px] font-medium text-gray-900 transition-all duration-200 backdrop-blur-sm"
-                    >
-                      {expertiseOptions.map(option => (
-                        <option key={option} value={option}>
-                          {option === 'all' ? 'All Expertise Areas' : option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <Button
-                    className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                  <h3 className="text-xl font-bold text-[#16161c] mb-2">No Alumni Found</h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    We couldn't find anyone matching your criteria. Try adjusting your search or filters.
+                  </p>
+                  <button
+                    onClick={() => { setSearchTerm(''); setFilterExpertise('all'); }}
+                    className="px-6 py-2.5 bg-[#16161c] text-white rounded-full font-bold text-sm hover:bg-gray-800 transition-colors"
                   >
-                    <Search className="w-5 h-5 mr-2" />
-                    Search Alumni
-                  </Button>
+                    Clear Filters
+                  </button>
                 </div>
               </div>
-            </motion.div>
-
-            {/* Results Summary */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="mb-8"
-            >
-              <div className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-xl p-4 lg:p-6 shadow-lg border border-white/40">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg">
-                      <Users className="w-6 h-6 text-blue-600" />
+            ) : (
+              filteredAlumni.map((alum: any) => (
+                <motion.div
+                  key={alum.id}
+                  variants={fadeInUp}
+                  className="bg-white rounded-[32px] p-8 flex flex-col shadow-sm border border-gray-100 hover:shadow-lg transition-shadow duration-300 relative group"
+                >
+                  {/* Mentoring Status Badge */}
+                  {alum.isOpenToMentoring && (
+                    <div className="absolute top-6 right-6">
+                      <div className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-1.5 rounded-full border border-green-100">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Mentor</span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-lg font-bold text-gray-900">
-                        {filteredAlumni.length} Alumni Found
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Out of {alumni.length} registered alumni
-                      </p>
+                  )}
+
+                  {/* Profile Header */}
+                  <div className="flex items-center gap-5 mb-6">
+                    <div className="w-16 h-16 rounded-full bg-[#16161c] flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
+                      {alum.name.split(' ').map((n: string) => n[0]).join('').slice(0,2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0 pr-16">
+                      <h3 className="font-bold text-xl text-[#16161c] truncate">{alum.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <GraduationCap className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-500">Class of {alum.graduationYear}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-lg border border-green-200">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-semibold text-green-800">
-                        {alumni.filter(alum => alum.isOpenToMentoring).length} Available Mentors
-                      </span>
+
+                  {/* Professional Info */}
+                  <div className="space-y-4 mb-6 flex-1">
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50">
+                      <div className="flex items-start gap-3 mb-3">
+                        <Building className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Role</p>
+                          <p className="font-bold text-sm text-[#16161c]">{alum.position}</p>
+                          <p className="text-sm font-medium text-gray-500">{alum.company}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</p>
+                          <p className="font-bold text-sm text-[#16161c]">{alum.location || 'Remote'}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
 
-            {/* Alumni Grid */}
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8"
-            >
-              {filteredAlumni.length === 0 ? (
-                <div className="col-span-full">
-                  <div className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl shadow-lg p-12 text-center border border-white/40">
-                    <div className="bg-gradient-to-br from-gray-100 to-gray-200 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Users className="w-12 h-12 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">No Alumni Found</h3>
-                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                      We couldn't find any alumni matching your criteria. Try adjusting your search terms or filters.
-                    </p>
-                    <Button
-                      onClick={() => { setSearchTerm(''); setFilterExpertise('all'); }}
-                      className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
-                    >
-                      Reset Filters
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                filteredAlumni.map((alum, idx) => (
-                  <motion.div
-                    key={alum.id}
-                    variants={fadeInUp}
-                    transition={{ duration: 0.5 }}
-                    whileHover={{ y: -5, scale: 1.02 }}
-                    className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40 group relative overflow-hidden"
-                  >
-                    {/* Status Badge */}
-                    {alum.isOpenToMentoring && (
-                      <div className="absolute top-4 right-4 z-10">
-                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                          Available 🟢
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="p-6 lg:p-8">
-                      {/* Profile Header */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="relative">
-                          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg lg:text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            {alum.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white"></div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg lg:text-xl group-hover:text-emerald-600 transition-colors duration-200 mb-1">
-                            {alum.name}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                            <GraduationCap className="w-4 h-4 text-emerald-500" />
-                            <span className="font-medium">Class of {alum.graduationYear}</span>
-                          </div>
-                          <div className="text-xs text-gray-500 font-medium">
-                            {alum.degree}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Professional Info */}
-                      <div className="bg-gradient-to-r from-gray-50/80 to-blue-50/80 p-4 rounded-xl mb-6 border border-gray-200/50 backdrop-blur-sm">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-emerald-100 p-2 rounded-lg">
-                              <Building className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Current Role</p>
-                              <p className="font-bold text-gray-900 text-sm">{alum.position}</p>
-                              <p className="text-emerald-600 font-medium text-sm">{alum.company}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="bg-green-100 p-2 rounded-lg">
-                              <MapPin className="w-4 h-4 text-green-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Location</p>
-                              <p className="font-semibold text-gray-900 text-sm">{alum.location}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expertise Tags */}
-                      <div className="mb-6">
-                        <h4 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                          Expertise Areas
-                        </h4>
+                    {/* Expertise Areas */}
+                    {alum.expertise && alum.expertise.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Expertise</p>
                         <div className="flex flex-wrap gap-2">
-                          {alum.expertise.slice(0, 3).map((exp, index) => (
-                            <span key={index} className="px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg hover:from-emerald-100 hover:to-teal-100 transition-colors duration-200">
+                          {alum.expertise.slice(0, 3).map((exp: string, index: number) => (
+                            <span key={index} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">
                               {exp}
                             </span>
                           ))}
                           {alum.expertise.length > 3 && (
-                            <span className="px-3 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200">
-                              +{alum.expertise.length - 3} more
+                            <span className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg">
+                              +{alum.expertise.length - 3}
                             </span>
                           )}
                         </div>
                       </div>
+                    )}
+                  </div>
 
-                      {/* Rating and Response Time */}
-                      {(alum.rating !== undefined || alum.responseTime) && (
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                              <span className="font-bold text-yellow-800">
-                                {alum.rating !== undefined ? alum.rating : 'N/A'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-yellow-700 font-medium">Rating</p>
-                          </div>
-                          <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                            <div className="mb-1">
-                              <span className="font-bold text-emerald-800 text-sm">
-                                {alum.responseTime || 'N/A'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-emerald-700 font-medium">Response Time</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Mentoring Status */}
-                      {alum.isOpenToMentoring ? (
-                        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                            <div>
-                              <p className="text-green-800 font-bold text-sm">Available for Mentoring</p>
-                              <p className="text-green-700 text-xs">Ready to guide and support you</p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-200 rounded-xl">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                            <div>
-                              <p className="text-gray-700 font-bold text-sm">Currently Unavailable</p>
-                              <p className="text-gray-600 text-xs">Not taking mentorship requests</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-3">
-                        {(() => {
-                          const conn: { id: number; pair_key: string; requester_email: string; target_email: string; status: 'pending' | 'accepted' | 'rejected' | 'removed' } | undefined = alum.email ? connections.find(c => c.pair_key === buildPairKey(currentUserEmail, alum.email!)) : undefined;
-                          const status = conn?.status;
-                          const isRequester = conn && conn.requester_email.toLowerCase() === String(currentUserEmail).toLowerCase();
-                          if (!alum.email || !status) {
-                            return (
-                              <Button
-                                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${alum.email
-                                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transform hover:scale-105'
-                                  : 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                                  }`}
-                                disabled={!alum.email}
-                                onClick={() => alum.email && connectToAlumni(alum.email)}
-                              >
-                                <MessageSquare className="w-4 h-4 mr-2" />
-                                Connect
-                              </Button>
-                            );
-                          }
-                          if (status === 'pending' && isRequester) {
-                            return (
-                              <Button disabled className="flex-1 px-4 py-3 rounded-xl font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-2 justify-center">
-                                <Clock className="w-4 h-4" />
-                                Request Sent
-                              </Button>
-                            );
-                          }
-                          if (status === 'pending' && !isRequester) {
-                            return (
-                              <div className="flex gap-2 flex-1">
-                                <Button onClick={() => alum.email && respondRequest(alum.email, 'accept')} disabled={connLoading} className="flex-1 text-sm px-3 py-3 rounded-xl font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow hover:shadow-md disabled:opacity-60">Accept</Button>
-                                <Button onClick={() => alum.email && respondRequest(alum.email, 'reject')} disabled={connLoading} className="flex-1 text-sm px-3 py-3 rounded-xl font-semibold bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow hover:shadow-md disabled:opacity-60">Decline</Button>
-                              </div>
-                            );
-                          }
-                          if (status === 'accepted') {
-                            return (
-                              <Button variant="outline" disabled className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-700">Connected</Button>
-                            );
-                          }
-                          if (status === 'rejected' || status === 'removed') {
-                            return (
-                              <Button
-                                onClick={() => alum.email && connectToAlumni(alum.email)}
-                                className="flex-1 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-60 text-sm"
-                              >
-                                Re-connect
-                              </Button>
-                            );
-                          }
-                          return null;
-                        })()}
-                        {alum.linkedinUrl && (
-                          <Button
-                            variant="outline"
-                            className="px-4 py-3 rounded-xl border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 group"
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-auto pt-4 border-t border-gray-50">
+                    {(() => {
+                      const conn = alum.email ? connections.find((c: any) => c.pair_key === buildPairKey(currentUserEmail, alum.email!)) : undefined;
+                      const status = conn?.status;
+                      const isRequester = conn && conn.requester_email.toLowerCase() === String(currentUserEmail).toLowerCase();
+                      
+                      if (!alum.email || !status) {
+                        return (
+                          <button
+                            className={`flex-1 py-3 rounded-2xl font-bold text-sm transition-colors flex items-center justify-center gap-2 ${
+                              alum.email
+                                ? 'bg-[#16161c] text-white hover:bg-gray-800'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                            disabled={!alum.email}
+                            onClick={() => alum.email && connectToAlumni(alum.email)}
                           >
-                            <Linkedin className="w-4 h-4 text-blue-600 group-hover:text-blue-700" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          className="px-4 py-3 rounded-xl border-2 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-500 transition-all duration-200 group bg-white shadow-sm"
-                        >
-                          <Mail className="w-4 h-4 text-emerald-600 group-hover:text-emerald-700" />
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </motion.div>
-
-            {/* Load More Button */}
-            {
-              filteredAlumni.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-center mt-8"
-                >
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="px-8 py-4 rounded-xl font-semibold border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg bg-white/70 backdrop-blur-sm"
-                  >
-                    <Users className="w-5 h-5 mr-2" />
-                    Load More Alumni
-                  </Button>
-                  <p className="text-sm text-gray-500 mt-3">
-                    Showing {filteredAlumni.length} of {alumni.length} total alumni
-                  </p>
+                            <MessageSquare className="w-4 h-4" /> Connect
+                          </button>
+                        );
+                      }
+                      if (status === 'pending' && isRequester) {
+                        return (
+                          <button disabled className="flex-1 py-3 rounded-2xl font-bold text-sm bg-gray-100 text-gray-500 flex items-center justify-center gap-2">
+                            <Clock className="w-4 h-4" /> Pending
+                          </button>
+                        );
+                      }
+                      if (status === 'pending' && !isRequester) {
+                        return (
+                          <div className="flex gap-2 flex-1">
+                            <button onClick={() => alum.email && respondRequest(alum.email, 'accept')} disabled={connLoading} className="flex-1 py-3 rounded-2xl font-bold text-xs bg-[#16161c] text-white hover:bg-gray-800 disabled:opacity-50">Accept</button>
+                            <button onClick={() => alum.email && respondRequest(alum.email, 'reject')} disabled={connLoading} className="flex-1 py-3 rounded-2xl font-bold text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">Decline</button>
+                          </div>
+                        );
+                      }
+                      if (status === 'accepted') {
+                        return (
+                          <button disabled className="flex-1 py-3 rounded-2xl font-bold text-sm bg-green-50 text-green-700 border border-green-200 flex items-center justify-center gap-2">
+                            <CheckCircle className="w-4 h-4" /> Connected
+                          </button>
+                        );
+                      }
+                      if (status === 'rejected' || status === 'removed') {
+                        return (
+                          <button
+                            onClick={() => alum.email && connectToAlumni(alum.email)}
+                            className="flex-1 py-3 rounded-2xl font-bold text-sm bg-[#16161c] text-white hover:bg-gray-800 flex items-center justify-center gap-2"
+                          >
+                            <MessageSquare className="w-4 h-4" /> Connect
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
+                    
+                    {alum.linkedinUrl && (
+                      <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-[#0077b5]/10 text-[#0077b5] hover:bg-[#0077b5]/20 transition-colors">
+                        <Linkedin className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
-              )
-            }
-          </div>
+              ))
+            )}
+          </motion.div>
+
+          {/* Load More Button */}
+          {filteredAlumni.length > 0 && (
+            <div className="text-center mt-12 mb-8">
+              <button className="px-8 py-3 bg-white border-2 border-gray-100 rounded-full font-bold text-sm text-[#16161c] hover:border-[#16161c] hover:bg-gray-50 transition-all shadow-sm">
+                Load More Alumni
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
     </StudentNavigation>
   );
 };
+
 
 export default AlumniDirectoryPage;

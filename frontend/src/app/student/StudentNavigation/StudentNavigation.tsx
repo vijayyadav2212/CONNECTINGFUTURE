@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award, AlertTriangle, X } from 'lucide-react';
+import { User, Users, Building, MessageSquare, Trophy, Settings, Heart, Calendar, Map, Camera, FileText, BarChart3, Bell, BookOpen, Briefcase, Target, Award, AlertTriangle, X, LayoutGrid, Zap, LogOut } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Interfaces
@@ -87,16 +87,14 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   }, [pathname]);
 
   const navigationItems: NavItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: <BarChart3 className="w-5 h-5" />, route: "/student/dashboard" },
-    { id: "academic", label: "Academic Progress", icon: <BookOpen className="w-5 h-5" />, route: "/student/academic-progress" },
-    { id: "alumni", label: "Alumni Directory", icon: <Users className="w-5 h-5" />, route: "/student/alumni-directory" },
-    { id: "mentorship", label: "Find Mentors", icon: <User className="w-5 h-5" />, route: "/student/mentorship-requests" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, route: "/student/dashboard" },
+    { id: "network", label: "Network", icon: <Users className="w-5 h-5" />, route: "/student/alumni-directory" },
+    { id: "mentorship", label: "Mentorship", icon: <Zap className="w-5 h-5" />, route: "/student/mentorship-requests" },
     { id: "resume-review", label: "Resume Reviews", icon: <FileText className="w-5 h-5" />, route: "/student/resume-review" },
-    { id: "career", label: "Career Resources", icon: <Target className="w-5 h-5" />, route: "/student/career-resources" },
-    { id: "jobs", label: "Job Opportunities", icon: <Briefcase className="w-5 h-5" />, route: "/student/job-opportunities" },
+    { id: "jobs", label: "Jobs & Internship", icon: <Building className="w-5 h-5" />, route: "/student/job-opportunities" },
     { id: "events", label: "Events", icon: <Calendar className="w-5 h-5" />, route: "/student/events" },
-    { id: "messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, route: "/student/messages" },
-    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, route: "/student/settings" },
+    { id: "roadmaps", label: "Roadmaps", icon: <Map className="w-5 h-5" />, route: "/student/career-resources" },
+    { id: "memories", label: "Memories", icon: <Camera className="w-5 h-5" />, route: "/student/academic-progress" },
   ];
 
   const isActiveRoute = (route: string): boolean => {
@@ -169,345 +167,266 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
-      <div className="lg:hidden sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden shrink-0">
-            <img
-              src="/NEWCNLOGO.png"
-              className="w-8 h-8 object-contain"
-              alt="Alumnex Logo"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = 'https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff';
-              }}
-            />
+    <div className="min-h-screen bg-[#F5F6FA] overflow-x-hidden font-sans">
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden sticky top-0 z-50 bg-[#16161c] text-white px-4 py-3 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-sm font-bold text-gray-900 truncate">Alumnex</h1>
-            <p className="text-[11px] text-gray-500 truncate">Student</p>
-          </div>
+          <h1 className="text-base font-bold">Alumnex</h1>
         </div>
         <button
           type="button"
           onClick={() => setIsMobileMenuOpen(true)}
-          className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700"
-          aria-label="Open student menu"
+          className="p-2 text-white hover:bg-white/10 rounded-lg"
         >
           <BookOpen className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Navigation Sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef]">
-        <div className="h-full flex flex-col">
-          {/* Logo & Branding */}
-          <div className="px-6 py-5 bg-white border-b border-[#eaecf0]">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
-                <img
-                  src="/NEWCNLOGO.png"
-                  className="w-8 h-8 object-contain"
-                  alt="Alumnex Logo"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = 'https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff';
-                  }}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Alumnex</h1>
-                <p className="text-sm text-gray-500 font-medium mt-0.5">VPPCOE & VA</p>
-              </div>
+      {/* Navigation Sidebar (Desktop) */}
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[260px] h-screen bg-[#1A1B23] flex-col justify-between rounded-r-[32px] py-8">
+        <div className="flex flex-col w-full">
+          {/* Logo */}
+          <div className="px-10 mb-10 flex items-center">
+            <div className="relative w-12 h-10 flex">
+              <div className="w-[20px] h-[36px] bg-white rounded-full z-10 absolute left-0 top-0"></div>
+              <div className="w-[20px] h-[36px] bg-[#4a4d60] rounded-full absolute left-2 top-2"></div>
             </div>
           </div>
 
-          {/* Student Profile Summary */}
-          <div className="px-4 py-5 bg-white border-b border-[#eaecf0]">
-            <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
-              <div className="flex items-start gap-3.5">
-                <div className="relative">
-                  <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
-                    {studentData.avatar && !imgError ? (
-                      <img
-                        src={studentData.avatar}
-                        alt={studentData.name}
-                        className="w-full h-full object-cover"
-                        onError={() => setImgError(true)}
-                      />
-                    ) : (
-                      <span className="text-white font-semibold text-lg">
-                        {studentData.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'S'}
-                      </span>
-                    )}
-                  </div>
-                  {studentData.verified && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                      <span className="text-white text-[10px]">✓</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-[16px] text-gray-900 truncate">
-                    {studentData.name}
-                  </h3>
-
-                  {profileLoaded && studentData.name === 'Student' && (
-                    <button
-                      onClick={() => router.push('/student/settings')}
-                      className="text-xs text-amber-600 hover:text-amber-700 underline mt-0.5"
-                    >
-                      ⚠ Set your name in Settings
-                    </button>
-                  )}
-
-                  {studentData.name !== 'Student' && (
-                    <>
-                      <p className="text-sm text-gray-600 mt-0.5 truncate">{studentData.department || 'Department not set'}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">
-                        {studentData.year || 'Year not set'}
-                        {studentData.rollNumber ? ` • ${studentData.rollNumber}` : ''}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3.5 flex justify-center">
-                <span className="text-[12px] bg-[#e9efff] text-[#2563eb] px-3.5 py-1.5 rounded-full font-semibold inline-block">
-                  Verified Student
-                </span>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
-                <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 rounded-[10px] border border-green-100 hover:bg-green-100 transition-colors">
-                  <BookOpen className="w-4 h-4 text-green-600" />
-                  <span className="text-xs font-semibold text-green-700">Study</span>
-                </button>
-                <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-50 rounded-[10px] border border-blue-100 hover:bg-blue-100 transition-colors">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-blue-700">Connect</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation Menu */}
-          <nav className="flex-1 overflow-y-auto px-4 py-5">
-            <ul className="space-y-2.5">
-              {navigationItems.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={item.route}
-                    className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 ${isActiveRoute(item.route)
-                      ? 'bg-[#e8f5ee] text-[#14532d] border-[#b7e4c7] shadow-[0_1px_3px_rgba(22,101,52,0.12)]'
-                      : 'text-gray-700 border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
+          {/* Navigation Links */}
+          <nav className="w-full">
+            <ul className="space-y-3 w-full relative">
+              {navigationItems.map((item) => {
+                const active = isActiveRoute(item.route);
+                return (
+                  <li key={item.id} className="relative w-full">
+                    <Link
+                      href={item.route}
+                      className={`flex items-center w-full px-10 py-2.5 transition-all duration-200 ${
+                        active ? 'text-white font-bold' : 'text-[#8c8d93] hover:text-white font-medium'
                       }`}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <span className={`h-6 w-1.5 rounded-full ${isActiveRoute(item.route) ? 'bg-green-500' : 'bg-transparent'}`} />
-                      <span className={`${isActiveRoute(item.route) ? 'text-green-700' : 'text-gray-500'}`}>
-                        {item.icon}
-                      </span>
-                      <span className="font-medium text-[15px] truncate">{item.label}</span>
-                    </div>
-                    {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
-                      <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-1 rounded-full min-w-[22px] text-center">
-                        {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
-                      </span>
+                    >
+                      <div className="flex items-center gap-5 w-full">
+                        <span className={`flex items-center justify-center w-5 h-5 ${active ? 'text-white' : 'text-[#8c8d93]'}`}>
+                          {item.icon}
+                        </span>
+                        <span className="text-[15px]">
+                          {item.label}
+                        </span>
+                      </div>
+                    </Link>
+                    {/* Active Indicator Line on the right edge */}
+                    {active && (
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-white rounded-l-full shadow-[0_0_12px_rgba(255,255,255,0.6)]"></div>
                     )}
-                  </Link>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </nav>
+        </div>
+        
+        {/* Bottom Actions */}
+        <div className="flex flex-col gap-2 mt-8 w-full relative">
+          <Link
+            href="/student/settings"
+            className="flex items-center gap-5 px-10 py-2 text-[#8c8d93] hover:text-white transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-[15px] font-medium">Settings</span>
+          </Link>
+          <Link
+            href="/student/support"
+            className="flex items-center gap-5 px-10 py-2 text-[#8c8d93] hover:text-white transition-colors"
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span className="text-[15px] font-medium">Support</span>
+          </Link>
+          <a
+            href="/api/auth/logout"
+            className="flex items-center gap-5 px-10 py-2 text-[#8c8d93] hover:text-white transition-colors mb-8"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="text-[15px] font-medium">Log Out</span>
+          </a>
 
+          {/* Profile Avatar */}
+          <div className="px-10 flex items-center">
+            <div className="w-10 h-10 rounded-full border border-gray-600 bg-black flex items-center justify-center overflow-hidden shadow-lg relative">
+              {studentData.avatar && !imgError ? (
+                <img
+                  src={studentData.avatar}
+                  alt={studentData.name}
+                  className="w-full h-full object-cover"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <span className="text-white font-bold text-[15px] z-10">
+                  {studentData.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </aside>
 
+      {/* Mobile Menu Modal */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <button
             type="button"
-            aria-label="Close student menu"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-2xl border-r border-gray-200 overflow-y-auto">
-            <div className="px-4 py-4 bg-white border-b border-[#eaecf0] flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden shrink-0">
-                  <img
-                    src="/NEWCNLOGO.png"
-                    className="w-8 h-8 object-contain"
-                    alt="Alumnex Logo"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff';
-                    }}
-                  />
+          <div className="absolute left-0 top-0 h-full w-[280px] bg-[#16161c] shadow-2xl flex flex-col justify-between overflow-y-auto">
+            <div className="flex flex-col w-full">
+              <div className="px-6 py-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center">
+                    <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                  </div>
+                  <h1 className="text-[20px] font-bold text-white tracking-wide">Alumnex</h1>
+                </div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-white">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="px-6 mb-8 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden shrink-0">
+                  {studentData.avatar && !imgError ? (
+                    <img
+                      src={studentData.avatar}
+                      alt={studentData.name}
+                      className="w-full h-full object-cover"
+                      onError={() => setImgError(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white font-semibold text-sm">
+                      {studentData.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-sm font-bold text-gray-900 truncate">Alumnex</h1>
-                  <p className="text-[11px] text-gray-500 truncate">VPPCOE & VA</p>
+                  <h3 className="text-[14px] font-semibold text-white truncate">
+                    {studentData.name}
+                  </h3>
+                  <p className="text-[12px] text-[#8c8d93]">Student</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700"
-                aria-label="Close student menu"
+
+              <nav className="px-4">
+                <ul className="space-y-1">
+                  {navigationItems.map((item) => {
+                    const active = isActiveRoute(item.route);
+                    return (
+                      <li key={item.id}>
+                        <Link
+                          href={item.route}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-200 ${
+                            active
+                              ? 'text-white'
+                              : 'text-[#8c8d93] hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className={`flex items-center justify-center w-6 h-6 ${active ? 'text-white' : 'text-[#8c8d93]'}`}>
+                              {item.icon}
+                            </span>
+                            <span className={`text-[15px] ${active ? 'font-semibold' : 'font-medium'}`}>
+                              {item.label}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
+                              <span className="bg-white text-[#16161c] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
+                              </span>
+                            )}
+                            {active && (
+                              <div className="w-1 h-5 bg-white rounded-full"></div>
+                            )}
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
+            </div>
+            
+            <div className="p-4 mb-4">
+              <Link
+                href="/student/settings"
+                className="flex items-center gap-4 px-8 py-3 text-[#8c8d93] hover:text-white transition-colors rounded-2xl"
               >
-                <X className="w-5 h-5" />
-              </button>
+                <Settings className="w-5 h-5" />
+                <span className="text-[15px] font-medium">Settings</span>
+              </Link>
+              <Link
+                href="/student/support"
+                className="flex items-center gap-4 px-8 py-3 text-[#8c8d93] hover:text-white transition-colors rounded-2xl"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="text-[15px] font-medium">Support</span>
+              </Link>
+              <a
+                href="/api/auth/logout"
+                className="flex items-center gap-4 px-8 py-3 text-[#8c8d93] hover:text-white transition-colors rounded-2xl"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-[15px] font-medium">Log Out</span>
+              </a>
             </div>
-
-            <div className="px-4 py-5 bg-white border-b border-[#eaecf0]">
-              <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
-                <div className="flex items-start gap-3.5">
-                  <div className="relative">
-                    <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
-                      {studentData.avatar && !imgError ? (
-                        <img
-                          src={studentData.avatar}
-                          alt={studentData.name}
-                          className="w-full h-full object-cover"
-                          onError={() => setImgError(true)}
-                        />
-                      ) : (
-                        <span className="text-white font-semibold text-lg">
-                          {studentData.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'S'}
-                        </span>
-                      )}
-                    </div>
-                    {studentData.verified && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                        <span className="text-white text-[10px]">✓</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-[16px] text-gray-900 truncate">
-                      {studentData.name}
-                    </h3>
-
-                    {profileLoaded && studentData.name === 'Student' && (
-                      <button
-                        onClick={() => router.push('/student/settings')}
-                        className="text-xs text-amber-600 hover:text-amber-700 underline mt-0.5"
-                      >
-                        ⚠ Set your name in Settings
-                      </button>
-                    )}
-
-                    {studentData.name !== 'Student' && (
-                      <>
-                        <p className="text-sm text-gray-600 mt-0.5 truncate">{studentData.department || 'Department not set'}</p>
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">
-                          {studentData.year || 'Year not set'}
-                          {studentData.rollNumber ? ` • ${studentData.rollNumber}` : ''}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-3.5 flex justify-center">
-                  <span className="text-[12px] bg-[#e9efff] text-[#2563eb] px-3.5 py-1.5 rounded-full font-semibold inline-block">
-                    Verified Student
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2.5">
-                  <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 rounded-[10px] border border-green-100 hover:bg-green-100 transition-colors">
-                    <BookOpen className="w-4 h-4 text-green-600" />
-                    <span className="text-xs font-semibold text-green-700">Study</span>
-                  </button>
-                  <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-50 rounded-[10px] border border-blue-100 hover:bg-blue-100 transition-colors">
-                    <Users className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs font-semibold text-blue-700">Connect</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <nav className="px-4 py-5">
-              <ul className="space-y-2.5">
-                {navigationItems.map((item) => (
-                  <li key={item.id}>
-                    <Link
-                      href={item.route}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 ${isActiveRoute(item.route)
-                        ? 'bg-[#e8f5ee] text-[#14532d] border-[#b7e4c7] shadow-[0_1px_3px_rgba(22,101,52,0.12)]'
-                        : 'text-gray-700 border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
-                        }`}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <span className={`h-6 w-1.5 rounded-full ${isActiveRoute(item.route) ? 'bg-green-500' : 'bg-transparent'}`} />
-                        <span className={`${isActiveRoute(item.route) ? 'text-green-700' : 'text-gray-500'}`}>
-                          {item.icon}
-                        </span>
-                        <span className="font-medium text-[15px] truncate">{item.label}</span>
-                      </div>
-                      {(item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : (item.badge ? Number(item.badge) : 0)) > 0 && (
-                        <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-1 rounded-full min-w-[22px] text-center">
-                          {item.id === 'messages' ? messageUnread : item.id === 'jobs' ? jobNewBadge : item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
           </div>
         </div>
       )}
 
       {/* Main Content Area */}
-      <main className="lg:ml-[300px] min-h-screen">
-        {/* Incomplete Profile Alert — hidden on the profile page itself */}
-        {
-          (() => {
-            const profileIncomplete =
-              studentData.name === 'Student' ||
-              !studentData.department ||
-              !studentData.year;
-            if (!profileLoaded || !profileIncomplete || pathname === '/student/settings') return null;
-            const missing = [
-              studentData.name === 'Student' && 'Full name',
-              !studentData.department && 'Department',
-              !studentData.year && 'Year of study',
-            ].filter(Boolean).join(', ');
-            return (
-              <div className="mx-4 mt-4 flex items-start gap-3 bg-amber-50 border border-amber-300 text-amber-900 p-4 rounded-xl shadow-sm">
-                <AlertTriangle className="w-5 h-5 mt-0.5 text-amber-500 shrink-0" />
-                <div className="flex-1 text-sm">
-                  <p className="font-semibold">Your profile is incomplete</p>
-                  <p className="text-amber-800 mt-0.5">
-                    Missing: <span className="font-medium">{missing}</span>
-                  </p>
-                  <button
-                    onClick={() => router.push('/student/settings')}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors"
-                  >
-                    Complete your profile →
-                  </button>
-                </div>
+      <main className="lg:ml-[260px] min-h-screen">
+        {/* Incomplete Profile Alert */}
+        {(() => {
+          const profileIncomplete =
+            studentData.name === 'Student' ||
+            !studentData.department ||
+            !studentData.year;
+          if (!profileLoaded || !profileIncomplete || pathname === '/student/settings') return null;
+          const missing = [
+            studentData.name === 'Student' && 'Full name',
+            !studentData.department && 'Department',
+            !studentData.year && 'Year of study',
+          ].filter(Boolean).join(', ');
+          return (
+            <div className="mx-8 mt-6 flex items-start gap-3 bg-amber-50 border border-amber-300 text-amber-900 p-4 rounded-xl shadow-sm">
+              <AlertTriangle className="w-5 h-5 mt-0.5 text-amber-500 shrink-0" />
+              <div className="flex-1 text-sm">
+                <p className="font-semibold">Your profile is incomplete</p>
+                <p className="text-amber-800 mt-0.5">
+                  Missing: <span className="font-medium">{missing}</span>
+                </p>
+                <button
+                  onClick={() => router.push('/student/settings')}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                >
+                  Complete your profile →
+                </button>
               </div>
-            );
-          })()
-        }
+            </div>
+          );
+        })()}
 
         {/* Page Content */}
-        <div className="flex-1 px-4 sm:px-6 lg:px-0">
+        <div className="flex-1 w-full">
           {children}
         </div>
-      </main >
-
-    </div >
+      </main>
+    </div>
   );
 }

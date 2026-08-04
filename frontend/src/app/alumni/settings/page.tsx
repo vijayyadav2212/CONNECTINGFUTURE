@@ -191,9 +191,9 @@ export default function SettingsPage() {
     return (
       <AlumniNavigation>
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Settings</h1>
-            <p className="text-slate-500 text-sm mt-1 font-medium">Loading your preferences...</p>
+          <div className="bg-[#1A1B23] rounded-[32px] border border-white/10 px-6 py-7 md:px-8 shadow-sm">
+            <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
+            <p className="text-slate-400 text-sm mt-1 font-medium">Loading your preferences...</p>
           </div>
           <div className="bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 flex items-center justify-center text-slate-500 font-semibold">
             Loading settings...
@@ -208,11 +208,11 @@ export default function SettingsPage() {
       <div className={`${isCompact ? 'space-y-4' : 'space-y-6'} ${isReducedMotion ? 'motion-reduce' : ''}`}>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm relative overflow-hidden">
-          <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-100/60 blur-2xl pointer-events-none" />
+        <div className="bg-[#1A1B23] rounded-[32px] border border-white/10 px-6 py-7 md:px-8 shadow-sm relative overflow-hidden text-white">
+          <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
           <div className="relative z-10">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Settings</h1>
-            <p className="text-slate-500 text-sm mt-1 font-medium">Manage your profile, notifications, and privacy</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
+            <p className="text-slate-400 text-sm mt-1 font-medium">Manage your profile, notifications, and privacy</p>
           </div>
         </div>
 
@@ -224,7 +224,7 @@ export default function SettingsPage() {
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider px-2 mb-2">Account</p>
             <nav className="flex md:block gap-2 md:gap-0 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
               {menuItems.map(({ id, label, icon: Icon }) => (
-                <button key={id} onClick={() => setActiveTab(id)} className={`min-w-fit md:w-full whitespace-nowrap flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${activeTab === id ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <button key={id} onClick={() => setActiveTab(id)} className={`min-w-fit md:w-full whitespace-nowrap flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${activeTab === id ? 'bg-[#11233f] text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
                   <Icon className="w-4 h-4" />{label}
                   {activeTab === id && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
                 </button>

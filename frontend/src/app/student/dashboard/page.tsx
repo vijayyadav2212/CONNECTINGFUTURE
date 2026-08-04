@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import StudentNavigation from '../StudentNavigation/StudentNavigation';
-import { User, BookOpen, Users, Trophy, Calendar, MessageSquare, Target, TrendingUp, Award, Clock, CheckCircle, AlertCircle, Briefcase, GraduationCap, UserPlus, Check, X } from 'lucide-react';
+import { Search, Bell, User, BookOpen, Users, Trophy, Calendar, MessageSquare, Target, TrendingUp, Award, Clock, CheckCircle, AlertCircle, Briefcase, GraduationCap, UserPlus, Check, X, Mail, IdCard, Building2, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
@@ -115,6 +115,7 @@ export default function StudentDashboard() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [connections, setConnections] = useState<Array<{ id: number; pair_key: string; requester_email: string; target_email: string; status: 'pending' | 'accepted' | 'rejected' | 'removed' }>>([]);
   const [connLoading, setConnLoading] = useState(false);
+  const [activeNotificationIndex, setActiveNotificationIndex] = useState(0);
   const API_BASE = useMemo(() => ((process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api'), []);
   const myEmail = (authUser?.email as string) || '';
 
@@ -144,6 +145,54 @@ export default function StudentDashboard() {
     connections.filter(c => c.status === 'accepted').slice(0, 1).forEach(c => items.push({ type: 'connection', title: 'New Connection', subtitle: c.requester_email === myEmail ? c.target_email : c.requester_email, timestamp: new Date() }));
     return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 4);
   }, [applications, mentorships, connections, myEmail]);
+
+  const timelineItems = useMemo(() => {
+    const items: { id: string; type: 'event' | 'job' | 'mentor'; title: string; subtitle: string; date: Date }[] = [];
+    
+    upcomingEvents.forEach(ev => {
+      items.push({
+        id: `ev-${ev.id}`,
+        type: 'event',
+        title: ev.title,
+        subtitle: ev.location || (ev.is_virtual ? 'Virtual' : 'In-person'),
+        date: ev.event_date ? new Date(ev.event_date) : new Date()
+      });
+    });
+
+    applications.forEach(app => {
+      items.push({
+        id: `job-${app.id}`,
+        type: 'job',
+        title: app.title,
+        subtitle: `Applied at ${app.company}`,
+        date: new Date(app.updated_at)
+      });
+    });
+
+    mentorships.forEach(m => {
+      items.push({
+        id: `mentor-${m.id}`,
+        type: 'mentor',
+        title: m.status === 'accepted' ? 'Mentor Session' : 'Mentorship Pending',
+        subtitle: m.mentor_email,
+        date: new Date(m.updated_at)
+      });
+    });
+    
+    // Sort descending and take top 3
+    let sorted = items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 3);
+    
+    // Fallback static data if empty so the UI doesn't look broken during development
+    if (sorted.length === 0) {
+      const today = new Date();
+      sorted = [
+        { id: 'static-1', type: 'event', title: 'Tech Career Fair', subtitle: 'Main Campus Hall', date: new Date(today.setHours(9, 0, 0, 0)) },
+        { id: 'static-2', type: 'mentor', title: 'Mentorship Session', subtitle: 'With Jane Smith', date: new Date(today.setHours(11, 15, 0, 0)) },
+        { id: 'static-3', type: 'job', title: 'Frontend Developer', subtitle: 'Google - Remote', date: new Date(today.setHours(14, 30, 0, 0)) }
+      ];
+    }
+    return sorted;
+  }, [upcomingEvents, applications, mentorships]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -341,7 +390,7 @@ export default function StudentDashboard() {
   if (loading) {
     return (
       <StudentNavigation>
-        <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-blue-50">
+        <div className="min-h-screen relative overflow-hidden bg-[#F5F6FA]">
           {/* Animated background blobs */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
@@ -371,7 +420,7 @@ export default function StudentDashboard() {
   if (error) {
     return (
       <StudentNavigation>
-        <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-blue-50 p-8">
+        <div className="min-h-screen relative overflow-hidden bg-[#F5F6FA] p-8">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -392,465 +441,300 @@ export default function StudentDashboard() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-green-50 to-blue-50">
-        {/* Animated background blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-            animate={{
-              x: [0, 100, 0],
-              y: [0, 50, 0],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          ></motion.div>
-          <motion.div
-            className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-            animate={{
-              x: [0, -100, 0],
-              y: [0, 100, 0],
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          ></motion.div>
-          <motion.div
-            className="absolute -bottom-8 left-20 w-72 h-72 bg-green-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-            animate={{
-              x: [0, 50, 0],
-              y: [0, -50, 0],
-            }}
-            transition={{
-              duration: 25,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          ></motion.div>
+      <div className="p-8 bg-[#F5F6FA] min-h-screen">
+        {/* Header Section (Black Rounded) */}
+        <div className="bg-[#16161c] rounded-[24px] p-6 mb-8 flex flex-col md:flex-row justify-between items-center shadow-xl">
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            <p className="text-xs text-gray-400 mt-1">Focus on learning, not chasing data.</p>
+          </div>
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-none md:w-80">
+              <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              <input 
+                type="text" 
+                placeholder="Search anything..." 
+                className="w-full pl-10 pr-4 py-2.5 bg-white text-sm font-medium rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50" 
+              />
+            </div>
+            <button className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white transition-colors relative shrink-0">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-[#16161c]"></span>
+            </button>
+            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-gray-700 bg-gray-800 flex items-center justify-center text-white font-bold text-sm">
+              {profile?.name?.charAt(0).toUpperCase() || 'S'}
+            </div>
+          </div>
         </div>
 
-        <div className="p-6 lg:p-8 relative">
-          {/* Welcome Section */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={fadeInUp}
-            transition={{ duration: 0.6 }}
-            className="mb-8"
-          >
-            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
-              {/* Subtle background pattern */}
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          {/* Left Column (Main Content) - Span 8 */}
+          <div className="xl:col-span-8 flex flex-col gap-8">
+            
+            {/* Profile Card */}
+            <div className="bg-[#1A1B23] rounded-[32px] p-8 flex flex-col shadow-2xl relative overflow-hidden border border-white/5">
+              {/* Subtle background wave/gradient */}
+              <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
+              
+              <div className="flex flex-col items-center mb-8 relative z-10 mt-4">
+                <div className="w-24 h-24 rounded-full border border-white/20 flex items-center justify-center mb-4 bg-transparent">
+                  <User className="w-10 h-10 text-white/80" strokeWidth={1.5} />
+                </div>
+                <h3 className="font-bold text-3xl text-white mb-3">{profile?.name || 'Student Name'}</h3>
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5">
+                  <IdCard className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-300 font-medium">Student ID: {profile?.rollNumber || '1234'}</span>
+                </div>
+              </div>
 
-              <div className="relative z-10">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    {/* Welcome Back label */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      <span className="text-blue-700 font-semibold text-sm">Welcome Back</span>
+              <div className="flex flex-col gap-4 relative z-10">
+                <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-white/5">
+                  <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center shrink-0 bg-[#1e1e24]">
+                    <Mail className="w-5 h-5 text-gray-300" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500 uppercase tracking-[0.15em] font-semibold mb-1.5">Email Address</p>
+                    <p className="text-[15px] font-medium text-white/90">{profile?.email || 'student@university.edu'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-white/5">
+                    <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center shrink-0 bg-[#1e1e24]">
+                      <Building2 className="w-5 h-5 text-gray-300" />
                     </div>
-
-                    {/* Main greeting */}
-                    <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-                      Hello, {profile?.name || 'Student'}!
-                    </h1>
-
-                    {/* Subtitle */}
-                    <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
-                      Your community is growing. Ready to make an impact today?
-                    </p>
-
-                    {/* Additional info */}
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-600">
-                      <span className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                        <GraduationCap className="w-4 h-4" />
-                        {profile?.year}
-                      </span>
-                      <span className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                        <BookOpen className="w-4 h-4" />
-                        {profile?.department}
-                      </span>
-                      <span className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                        <User className="w-4 h-4" />
-                        {profile?.rollNumber}
-                      </span>
+                    <div>
+                      <p className="text-[11px] text-gray-500 uppercase tracking-[0.15em] font-semibold mb-1.5">Department</p>
+                      <p className="text-[15px] font-medium text-white/90">{profile?.department || 'Computer Science'}</p>
                     </div>
                   </div>
-
-                  {/* Settings/Update Button */}
-                  {/* <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push('/student/settings')}
-                    className="hidden md:flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-white/40"
-                  >
-                    <svg className="w-4 h-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">Update Interests</span>
-                  </motion.button> */}
+                  
+                  <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-white/5">
+                    <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center shrink-0 bg-[#1e1e24]">
+                      <GraduationCap className="w-5 h-5 text-gray-300" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-500 uppercase tracking-[0.15em] font-semibold mb-1.5">Grad Year</p>
+                      <p className="text-[15px] font-medium text-white/90">{profile?.year || '2026'}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </motion.div>
 
-          {/* Quick Stats Cards */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-          >
-            <motion.div
-              variants={fadeInUp}
-              whileHover={{ scale: 1.05, y: -5 }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Academic Progress</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {currentSemester?.name || 'No semester selected'}
-                  </p>
-                  <p className="text-green-600 text-sm mt-1">
-                    {currentSemesterGpa ? `${Number(currentSemesterGpa).toFixed(2)} CGPA` : 'No data yet'}
-                  </p>
-                  <p className={`text-xs mt-1 ${currentSemesterBacklogs > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                    {currentSemesterBacklogs > 0 ? `${currentSemesterBacklogs} backlog${currentSemesterBacklogs !== 1 ? 's' : ''}` : 'No backlogs'}
-                  </p>
+            {/* Quick-Action */}
+            <div>
+              <h2 className="font-bold text-lg text-[#16161c] mb-6">Quick-Action</h2>
+              <div className="flex items-center justify-between w-full pr-8">
+                <div className="flex flex-col items-start gap-2.5 cursor-pointer group">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center group-hover:shadow-md transition-all">
+                    <BookOpen className="w-7 h-7 text-gray-600 group-hover:text-[#16161c]" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-gray-500">View Courses</span>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-green-100 to-green-200 rounded-xl shadow-md">
-                  <BookOpen className="w-6 h-6 text-green-600" />
+                <div className="flex flex-col items-start gap-2.5 cursor-pointer group">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center group-hover:shadow-md transition-all">
+                    <Users className="w-7 h-7 text-gray-600 group-hover:text-[#16161c]" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-gray-500">Find Mentor</span>
+                </div>
+                <div className="flex flex-col items-start gap-2.5 cursor-pointer group">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center group-hover:shadow-md transition-all">
+                    <Briefcase className="w-7 h-7 text-gray-600 group-hover:text-[#16161c]" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-gray-500">Apply Job</span>
+                </div>
+                <div className="flex flex-col items-start gap-2.5 cursor-pointer group">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center group-hover:shadow-md transition-all">
+                    <Target className="w-7 h-7 text-gray-600 group-hover:text-[#16161c]" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-gray-500">Network</span>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              variants={fadeInUp}
-              whileHover={{ scale: 1.05, y: -5 }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Active Mentors</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{acceptedMentors}</p>
-                  <p className="text-blue-600 text-sm mt-1">{mentorships.length > 0 ? `${mentorships.length} request${mentorships.length !== 1 ? 's' : ''}` : 'Connected'}</p>
+            {/* Stats Boxes (Horizontal) */}
+            <div className="grid grid-cols-3 gap-6">
+              
+              {/* Box 1: Active Courses */}
+              <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-between items-start transition-transform hover:-translate-y-1">
+                <div className="flex flex-col">
+                  <h3 className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-2">Active Courses</h3>
+                  <p className="text-[32px] font-extrabold text-[#11233f] leading-none mb-3">{currentSemesterCourses?.length || 0}</p>
+                  <p className="text-[13px] font-bold text-[#16161c]">Currently enrolled</p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-md">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-[22px] h-[22px] text-[#16161c]" strokeWidth={2.5} />
                 </div>
               </div>
-            </motion.div>
 
-            <motion.div
-              variants={fadeInUp}
-              whileHover={{ scale: 1.05, y: -5 }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Job Applications</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{activeApplications}</p>
-                  <p className="text-purple-600 text-sm mt-1">{applications.length > 0 ? `${applications.length} total applied` : 'In Progress'}</p>
+              {/* Box 2: Connected Mentors */}
+              <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-between items-start transition-transform hover:-translate-y-1">
+                <div className="flex flex-col">
+                  <h3 className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-2">Connected Mentors</h3>
+                  <p className="text-[32px] font-extrabold text-[#11233f] leading-none mb-3">{acceptedMentors || 0}</p>
+                  <p className="text-[13px] font-bold text-[#16161c]">Accepted connections</p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl shadow-md">
-                  <Briefcase className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
+                  <Users className="w-[22px] h-[22px] text-[#16161c]" strokeWidth={2.5} />
                 </div>
               </div>
-            </motion.div>
 
-            <motion.div
-              variants={fadeInUp}
-              whileHover={{ scale: 1.05, y: -5 }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Network Size</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{acceptedCount}</p>
-                  <p className="text-orange-600 text-sm mt-1">Connections</p>
+              {/* Box 3: Job Applications */}
+              <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-between items-start transition-transform hover:-translate-y-1">
+                <div className="flex flex-col">
+                  <h3 className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-2">Job Applications</h3>
+                  <p className="text-[32px] font-extrabold text-[#11233f] leading-none mb-3">{applications?.length || 0}</p>
+                  <p className="text-[13px] font-bold text-[#16161c]">Pending & Reviewed</p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl shadow-md">
-                  <TrendingUp className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-[22px] h-[22px] text-[#16161c]" strokeWidth={2.5} />
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
 
-          {/* Main Content Grid */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-          >
-            {/* Academic Overview */}
-            <motion.div
-              variants={fadeInUp}
-              transition={{ duration: 0.6 }}
-              className="lg:col-span-2"
-            >
-              <div className="bg-gradient-to-br from-white/75 via-white/65 to-white/55 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Academic Overview</h2>
-                  <button className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors" onClick={() => router.push('/student/academic-progress')}>
-                    View Details →
+            </div>
+
+          </div>
+          
+          {/* Right Column (Sidebar) - Span 4 */}
+          <div className="xl:col-span-4 flex flex-col gap-6">
+            
+            {/* Calendar */}
+            <div className="mb-2 bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-4xl font-extrabold text-[#16161c] inline-block mr-2">18</h2>
+                  <div className="inline-block align-top mt-1">
+                    <p className="text-[10px] font-bold text-gray-500 leading-none">Friday</p>
+                    <p className="text-xs font-bold text-[#16161c]">December</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-400 hover:text-[#16161c] shadow-sm">&lt;</button>
+                  <button className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-400 hover:text-[#16161c] shadow-sm">&gt;</button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-7 text-center gap-y-4">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-[11px] font-bold text-[#16161c] mb-2">{day}</div>
+                ))}
+                
+                {/* Dummy Dates */}
+                <div className="text-sm font-medium text-gray-300">30</div>
+                <div className="text-sm font-medium text-gray-300">31</div>
+                {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17].map(d => (
+                  <div key={d} className="text-sm font-medium text-gray-600">{d}</div>
+                ))}
+                <div className="text-sm font-bold text-white bg-[#16161c] w-7 h-7 flex items-center justify-center rounded-full mx-auto shadow-md">18</div>
+                {[19,20,21,22,23,24,25,26].map(d => (
+                  <div key={d} className="text-sm font-medium text-gray-600">{d}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notifications Stack */}
+            <div className="mt-4 mb-10">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-bold text-lg text-[#16161c]">Notifications</h2>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setActiveNotificationIndex(prev => Math.max(0, prev - 1))}
+                    disabled={activeNotificationIndex === 0}
+                    className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 hover:text-[#16161c] shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setActiveNotificationIndex(prev => Math.min(timelineItems.length - 1, prev + 1))}
+                    disabled={activeNotificationIndex === timelineItems.length - 1}
+                    className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 hover:text-[#16161c] shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowDown className="w-4 h-4" />
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Current Semester</h3>
-                      <BookOpen className="w-5 h-5 text-green-600" />
-                    </div>
-                    <p className="text-2xl font-bold text-green-600">{currentSemester?.name || 'Not Set'}</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {currentSemesterCourses.length > 0
-                        ? `${currentSemesterCourses.length} subjects updated from Academic Progress`
-                        : 'Add subjects in Academic Progress'}
-                    </p>
-                    <p className={`text-xs mt-1 ${currentSemesterBacklogs > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                      {currentSemesterBacklogs > 0 ? `${currentSemesterBacklogs} backlog${currentSemesterBacklogs !== 1 ? 's' : ''} in this semester` : 'No backlogs in this semester'}
-                    </p>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Job Applications</h3>
-                      <Briefcase className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <p className="text-2xl font-bold text-blue-600">{applications.length}</p>
-                    <p className="text-sm text-gray-600 mt-1">{activeApplications} active, {applications.filter(a => a.status === 'withdrawn').length} withdrawn</p>
-                  </motion.div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Semester Marks</h3>
-                    <span className="text-sm text-gray-600">
-                      {currentSemesterCourses.length > 0
-                        ? `${currentSemesterCourses.length} subjects, ${currentSemesterAverageMarks}% average`
-                        : 'No subject marks yet'}
-                    </span>
-                  </div>
-                  {currentSemesterCourses.length > 0 ? (
-                    <>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, currentSemesterAverageMarks)}%` }}
-                          transition={{ duration: 1.5, ease: "easeOut" }}
-                          className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full"
-                        />
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-600 mt-1">
-                        <span>{currentSemesterAverageMarks}% average</span>
-                        <span>{currentSemesterCourses.length} subjects tracked</span>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-sm text-gray-500 bg-gray-50 rounded-xl p-3">Add subjects in Academic Progress to track semester marks here</p>
-                  )}
-                </div>
-
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push('/student/academic-progress')}
-                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-xl transition-all duration-300 text-center shadow-md hover:shadow-lg"
-                  >
-                    <BookOpen className="w-5 h-5 text-gray-600 mx-auto mb-1" />
-                    <span className="text-xs font-medium text-gray-700">Courses</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push('/student/career-resources')}
-                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-xl transition-all duration-300 text-center shadow-md hover:shadow-lg"
-                  >
-                    <Target className="w-5 h-5 text-gray-600 mx-auto mb-1" />
-                    <span className="text-xs font-medium text-gray-700">Career</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push('/student/mentorship-requests')}
-                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-xl transition-all duration-300 text-center shadow-md hover:shadow-lg"
-                  >
-                    <Users className="w-5 h-5 text-gray-600 mx-auto mb-1" />
-                    <span className="text-xs font-medium text-gray-700">Mentors</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push('/student/events')}
-                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-xl transition-all duration-300 text-center shadow-md hover:shadow-lg"
-                  >
-                    <Calendar className="w-5 h-5 text-gray-600 mx-auto mb-1" />
-                    <span className="text-xs font-medium text-gray-700">Events</span>
-                  </motion.button>
-                </div>
               </div>
-            </motion.div>
 
-            {/* Recent Activity & Notifications */}
-            <div className="space-y-6">
-              {/* Connection Requests */}
-              <motion.div
-                variants={fadeInUp}
-                transition={{ duration: 0.6 }}
-                className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <UserPlus className="w-5 h-5" /> Connection Requests
-                  </h2>
-                  <div className="text-sm text-gray-600">
-                    Pending: <span className="font-semibold">{pendingReceived.length + pendingSent.length}</span>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  {pendingReceived.length === 0 && pendingSent.length === 0 && (
-                    <p className="text-sm text-gray-600">No pending connection requests.</p>
-                  )}
-                  {pendingReceived.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-800 mb-2">Received</h3>
-                      <ul className="space-y-2">
-                        {pendingReceived.map((req, idx) => (
-                          <motion.li
-                            key={req.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className="flex items-center justify-between p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm"
-                          >
-                            <div className="text-sm text-gray-800">{req.requester_email}</div>
-                            <div className="flex gap-2">
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => respondTo(req.requester_email, 'accept')} disabled={connLoading}>Accept</Button>
-                              <Button size="sm" variant="destructive" onClick={() => respondTo(req.requester_email, 'reject')} disabled={connLoading}>Decline</Button>
-                            </div>
-                          </motion.li>
-                        ))}
-                      </ul>
+              <div className="relative h-[150px] w-full">
+                {timelineItems.map((item, index) => {
+                  const diff = index - activeNotificationIndex;
+                  if (diff < 0 || diff > 2) return null;
+                  
+                  const isMiddle = diff === 1;
+                  const isBottom = diff === 2;
+                  
+                  let transform = 'translateY(0) scale(1)';
+                  let opacity = 1;
+                  let zIndex = 30;
+                  let bgColor = 'bg-white';
+                  
+                  if (isMiddle) {
+                    transform = 'translateY(22px) scale(0.95)';
+                    opacity = 0.95;
+                    zIndex = 20;
+                    bgColor = 'bg-[#f8f9fc]';
+                  } else if (isBottom) {
+                    transform = 'translateY(44px) scale(0.9)';
+                    opacity = 0.85;
+                    zIndex = 10;
+                    bgColor = 'bg-[#f0f2f8]';
+                  }
+
+                  let hours = item.date.getHours();
+                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                  hours = hours % 12;
+                  hours = hours ? hours : 12;
+                  const timeStr = diff === 0 && index === 0 ? '4 min ago' : `${hours}:${item.date.getMinutes().toString().padStart(2, '0')} ${ampm}`;
+
+                  let Icon = Bell;
+                  let iconBg = 'bg-indigo-50';
+                  let iconColor = 'text-indigo-600';
+                  let appName = 'Notification';
+                  
+                  if (item.type === 'event') {
+                    Icon = Calendar;
+                    iconBg = 'bg-rose-50';
+                    iconColor = 'text-rose-600';
+                    appName = 'Event';
+                  } else if (item.type === 'job') {
+                    Icon = Briefcase;
+                    iconBg = 'bg-teal-50';
+                    iconColor = 'text-teal-600';
+                    appName = 'Job Portal';
+                  } else if (item.type === 'mentor') {
+                    Icon = User;
+                    iconBg = 'bg-indigo-50';
+                    iconColor = 'text-indigo-600';
+                    appName = 'Mentorship';
+                  }
+
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={`absolute top-0 left-0 right-0 ${bgColor} rounded-[32px] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 transition-all duration-500 ease-out`}
+                      style={{ transform, opacity, zIndex, transformOrigin: 'top center' }}
+                    >
+                       <div className="flex gap-4 items-center">
+                         <div className={`w-[60px] h-[60px] shrink-0 rounded-[20px] ${iconBg} flex items-center justify-center`}>
+                           <Icon className={`w-8 h-8 ${iconColor}`} strokeWidth={2.5} />
+                         </div>
+                         
+                         <div className="flex-1 min-w-0 pr-2">
+                           <div className="flex justify-between items-start mb-0.5">
+                             <h4 className="font-bold text-gray-900 text-[16px]">{appName}</h4>
+                             <span className="text-[11px] font-medium text-gray-400 pt-1">{timeStr}</span>
+                           </div>
+                           <h3 className="font-semibold text-gray-800 text-[14px] leading-tight mb-0.5 truncate">{item.title}</h3>
+                           <p className="text-[12px] text-gray-500 line-clamp-1">{item.subtitle}</p>
+                         </div>
+                       </div>
                     </div>
-                  )}
-                  {pendingSent.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-800 mb-2">Sent</h3>
-                      <ul className="space-y-2">
-                        {pendingSent.map((req, idx) => (
-                          <motion.li
-                            key={req.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className="flex items-center justify-between p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm"
-                          >
-                            <div className="text-sm text-gray-800">To: {req.target_email}</div>
-                            <div className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Pending</div>
-                          </motion.li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Recent Activity */}
-              <motion.div
-                variants={fadeInUp}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-              >
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-                {recentActivity.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No recent activity yet. Apply to jobs or connect with mentors!</p>
-                ) : (
-                  <div className="space-y-4">
-                    {recentActivity.map((item, idx) => (
-                      <motion.div key={idx} whileHover={{ x: 5 }} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors">
-                        <div className={`p-2 rounded-xl shadow-sm ${item.type === 'job' ? 'bg-gradient-to-br from-purple-100 to-purple-200'
-                            : item.type === 'mentor' ? 'bg-gradient-to-br from-blue-100 to-blue-200'
-                              : 'bg-gradient-to-br from-green-100 to-green-200'
-                          }`}>
-                          {item.type === 'job' && <Briefcase className="w-4 h-4 text-purple-600" />}
-                          {item.type === 'mentor' && <Users className="w-4 h-4 text-blue-600" />}
-                          {item.type === 'connection' && <CheckCircle className="w-4 h-4 text-green-600" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                          <p className="text-xs text-gray-600 truncate">{item.subtitle}</p>
-                        </div>
-                        <span className="text-xs text-gray-400 whitespace-nowrap">
-                          {item.timestamp.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-
-              {/* Upcoming Events */}
-              <motion.div
-                variants={fadeInUp}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-gradient-to-br from-white/70 via-white/60 to-white/50 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/40"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">Upcoming Events</h2>
-                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium" onClick={() => router.push('/student/events')}>View all →</button>
-                </div>
-                {upcomingEvents.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No upcoming events. Check back soon!</p>
-                ) : (
-                  <div className="space-y-3">
-                    {upcomingEvents.map((event, idx) => (
-                      <motion.div
-                        key={event.id}
-                        whileHover={{ scale: 1.02 }}
-                        className={`p-3 border border-gray-200 rounded-xl shadow-sm bg-gradient-to-br ${idx === 0 ? 'from-white to-blue-50' : idx === 1 ? 'from-white to-green-50' : 'from-white to-purple-50'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-medium text-gray-900 text-sm truncate pr-2">{event.title}</h3>
-                          <span className={`text-xs px-2 py-1 rounded-lg whitespace-nowrap ${getEventDateColor(event.event_date)}`}>
-                            {formatEventDate(event.event_date)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          {event.event_time || (event.event_date ? new Date(event.event_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Time TBD')}
-                          {event.is_virtual ? ' · Online' : (event.location ? ` · ${event.location}` : '')}
-                        </p>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
+                  );
+                })}
+              </div>
             </div>
-          </motion.div>
+
+          </div>
         </div>
       </div>
     </StudentNavigation>

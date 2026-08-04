@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 function buildApiRoot() {
   const base = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
-  return base.endsWith("/api") ? base : `${base.replace(/\/$/, "")}/api`;
+  return base.endsWith("/api/v2") ? base : (base.endsWith("/api") ? `${base}/v2` : `${base.replace(/\/$/, "")}/api/v2`);
 }
 const API_ROOT = buildApiRoot();
 
@@ -329,14 +329,17 @@ export default function MessagesPage() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex items-center gap-4 relative overflow-hidden">
+        <div className="bg-[#1A1C23]  rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex items-center gap-4 relative overflow-hidden text-white">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-100/60 blur-2xl pointer-events-none" />
           <div className="relative z-10 w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-indigo-600" />
+            <MessageCircle className="w-5 h-5 text-[#1A1C23]" />
           </div>
           <div className="relative z-10">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Messages</h1>
-            <p className="text-slate-500 text-sm mt-1 font-medium">Connect and chat with your alumni network</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Messages</h1>
+            <p className="text-gray-300 text-sm mt-1 font-medium">Connect and chat with your alumni network</p>
           </div>
           {error && <p className="ml-auto relative z-10 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 font-semibold">{error}</p>}
         </div>
@@ -378,7 +381,7 @@ export default function MessagesPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] text-slate-500 truncate flex-1">{t.last_message}</p>
-                      {t.unread > 0 && <span className="ml-2 w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{t.unread}</span>}
+                      {t.unread > 0 && <span className="ml-2 w-5 h-5 rounded-full bg-[#1A1C23] text-white text-[10px] font-bold flex items-center justify-center shrink-0">{t.unread}</span>}
                     </div>
                   </div>
                 </button>
@@ -412,18 +415,18 @@ export default function MessagesPage() {
                         )}
                         {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
                           <div className="flex gap-1.5">
-                            <button onClick={() => respondConnection('accept')} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Accept</button>
+                            <button onClick={() => respondConnection('accept')} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-[#1A1C23] text-white font-semibold hover:bg-black disabled:opacity-60">Accept</button>
                             <button onClick={() => respondConnection('reject')} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-red-50 text-red-600 border border-red-200 font-semibold hover:bg-red-100 disabled:opacity-60">Reject</button>
                           </div>
                         )}
                         {!connectionStatus && (
-                          <button onClick={sendConnectionRequest} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">{connectionActionLoading ? '…' : 'Connect'}</button>
+                          <button onClick={sendConnectionRequest} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-[#1A1C23] text-white font-semibold hover:bg-black disabled:opacity-60">{connectionActionLoading ? '…' : 'Connect'}</button>
                         )}
                         {connectionStatus === 'accepted' && (
                           <button onClick={removeConnection} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 disabled:opacity-60">Remove</button>
                         )}
                         {(connectionStatus === 'rejected' || connectionStatus === 'removed') && (
-                          <button onClick={sendConnectionRequest} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">{connectionActionLoading ? '…' : 'Re-connect'}</button>
+                          <button onClick={sendConnectionRequest} disabled={connectionActionLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-[#1A1C23] text-white font-semibold hover:bg-black disabled:opacity-60">{connectionActionLoading ? '…' : 'Re-connect'}</button>
                         )}
                       </>
                     )}
@@ -442,7 +445,7 @@ export default function MessagesPage() {
                       <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                         <div className="max-w-[72%]">
                           <div
-                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${mine ? 'bg-indigo-600 text-white rounded-br-sm shadow-sm' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-sm shadow-sm'}`}
+                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${mine ? 'bg-[#1A1C23] text-white rounded-br-sm shadow-sm' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-sm shadow-sm'}`}
                             onDoubleClick={() => { if (canRevealActions) setActionMessageId(m.id); }}
                             onContextMenu={(e) => {
                               if (!canRevealActions) return;
@@ -470,7 +473,7 @@ export default function MessagesPage() {
                               </>
                             )}
                           </div>
-                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${mine ? 'justify-end text-indigo-600' : 'justify-start text-slate-400'}`}>
+                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${mine ? 'justify-end text-[#1A1C23]' : 'justify-start text-slate-400'}`}>
                             <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             {m.edited_at && !m.deleted_at && <span>(edited)</span>}
                             {mine && m.read_at && <CheckCheck className="w-3 h-3" />}
@@ -500,7 +503,7 @@ export default function MessagesPage() {
                                 className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300"
                                 placeholder="Edit message"
                               />
-                              <button onClick={() => saveEditMessage(m.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Save</button>
+                              <button onClick={() => saveEditMessage(m.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-[#1A1C23] text-white hover:bg-black">Save</button>
                               <button onClick={cancelEditMessage} className="px-2 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">Cancel</button>
                             </div>
                           )}
@@ -550,7 +553,7 @@ export default function MessagesPage() {
                       disabled={connectionStatus !== 'accepted'}
                       className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 disabled:bg-gray-50 disabled:text-gray-400"
                     />
-                    <button onClick={sendMessage} disabled={!canSend || connectionStatus !== 'accepted' || sendingMessage} className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 shrink-0">
+                    <button onClick={sendMessage} disabled={!canSend || connectionStatus !== 'accepted' || sendingMessage} className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:bg-gray-200 disabled:text-gray-400 shrink-0">
                       <Send className="w-4 h-4" />
                     </button>
                   </div>

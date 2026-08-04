@@ -133,7 +133,7 @@ export default function Settings() {
     if (!token) return;
     try {
       setLoading(true);
-      const res = await fetch(`${backendUrl}/api/users/profile`, {
+      const res = await fetch(`${backendUrl}/api/v2/users/profile`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -179,7 +179,7 @@ export default function Settings() {
     }
     try {
       setSaving(true);
-      const res = await fetch(`${backendUrl}/api/users/profile`, {
+      const res = await fetch(`${backendUrl}/api/v2/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -245,29 +245,29 @@ export default function Settings() {
   ];
 
   const profileFieldClass =
-    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition-all [color-scheme:light]';
+    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-[#11233f] outline-none transition-all [color-scheme:light]';
   const profileFieldWithIconClass =
-    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition-all [color-scheme:light]';
+    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-[#11233f] outline-none transition-all [color-scheme:light]';
   const profileFieldDisabledClass =
-    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 shadow-sm focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition-all cursor-not-allowed [color-scheme:light]';
+    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-[#11233f] outline-none transition-all cursor-not-allowed [color-scheme:light]';
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="min-h-screen bg-[#F5F6FA] py-6 px-4 sm:px-6 lg:px-8 pb-12">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
-            <div className="relative bg-gradient-to-br from-green-100/60 via-emerald-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+            <div className="bg-[#1A1B23] rounded-[32px] p-8 lg:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <GraduationCap className="w-5 h-5 text-green-600" />
-                    <span className="text-green-700 font-semibold text-sm">Account Center</span>
+                  <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Account Center</span>
                   </div>
-                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                  <h1 className="text-3xl lg:text-5xl font-black text-white tracking-tight mb-4">
                     Settings
                   </h1>
-                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                  <p className="text-[#8a94a6] text-lg max-w-2xl mb-8 leading-relaxed">
                     Manage your profile, notifications, privacy, and security preferences.
                   </p>
                 </div>
@@ -290,7 +290,7 @@ export default function Settings() {
                         key={item.id}
                         onClick={() => setActiveTab(item.id as any)}
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                          ? 'bg-green-600 text-white shadow-md shadow-green-200'
+                          ? 'bg-[#11233f] text-white shadow-md'
                           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                           }`}
                       >
@@ -312,7 +312,7 @@ export default function Settings() {
                           key={item.id}
                           onClick={() => setActiveTab(item.id as any)}
                           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                            ? 'bg-green-600 text-white shadow-md shadow-green-200'
+                            ? 'bg-[#11233f] text-white shadow-md'
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                             }`}
                         >
@@ -350,7 +350,7 @@ export default function Settings() {
                     <button
                       onClick={handleProfileSave}
                       disabled={saving}
-                      className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg shadow-green-200 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="bg-[#11233f] hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {saving ? 'Saving...' : 'Save Changes'}
@@ -375,7 +375,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => setIsAvatarModalOpen(true)}
-                        className="text-green-600 text-sm font-semibold hover:underline"
+                        className="text-[#11233f] text-sm font-semibold hover:underline"
                       >
                         Change Photo
                       </button>

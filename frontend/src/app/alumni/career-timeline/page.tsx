@@ -26,7 +26,7 @@ function CareerTimelinePage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <h1 className="text-xl text-red-500">Authentication Error</h1>
-          <a href="/api/auth/login" className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          <a href="/api/auth/login" className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-[#1A1C23]">
             Login
           </a>
         </div>

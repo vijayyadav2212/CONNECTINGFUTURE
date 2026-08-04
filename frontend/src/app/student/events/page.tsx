@@ -291,37 +291,36 @@ function EventsContent() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-blue-50 py-4 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#F5F6FA] py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-[32px] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18)_0,_rgba(16,185,129,0.12)_32%,_rgba(255,255,255,0.98)_100%)] p-6 lg:p-8 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
-              <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-blue-300/25 blur-3xl" />
-              <div className="absolute -bottom-12 left-1/4 h-44 w-44 rounded-full bg-emerald-300/20 blur-3xl" />
+            <div className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#1A1B23] p-8 lg:p-10 shadow-2xl">
+              <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
               <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-blue-700 shadow-sm backdrop-blur">
-                    <GraduationCap className="w-4 h-4 text-blue-600" />
-                    Campus Events
+                  <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Campus Events</span>
                   </div>
-                  <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 mb-3 tracking-tight">
+                  <h1 className="text-4xl lg:text-[48px] font-black text-white mb-3 tracking-[-0.02em]">
                     Discover events that fit your next step.
                   </h1>
-                  <p className="max-w-2xl text-base lg:text-lg text-slate-700 font-medium leading-relaxed mb-4">
+                  <p className="max-w-2xl text-[16px] text-gray-400 font-medium leading-relaxed mb-6">
                     Browse workshops, seminars, career fairs, and networking sessions in a clean, focused layout built around the theme colors already used in the app.
                   </p>
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-700">
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                  <div className="flex flex-wrap gap-4 text-[13px] font-bold text-gray-400">
+                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-[14px] border border-white/10">
                       <div className="w-2 h-2 bg-green-500 rounded-full" />
-                      <span className="font-medium">{events.length} Events</span>
+                      <span>{events.length} Events</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-[14px] border border-white/10">
                       <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                      <span className="font-medium">{events.filter(e => e.isRegistered).length} Registered</span>
+                      <span>{events.filter(e => e.isRegistered).length} Registered</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-[14px] border border-white/10">
                       <div className="w-2 h-2 bg-orange-500 rounded-full" />
-                      <span className="font-medium">{events.filter(e => e.isSaved).length} Saved</span>
+                      <span>{events.filter(e => e.isSaved).length} Saved</span>
                     </div>
                   </div>
                 </div>
@@ -330,15 +329,15 @@ function EventsContent() {
           </div>
 
           {/* Upcoming Events Highlight */}
-          <div className="mb-8 rounded-[32px] border border-slate-100/80 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] lg:p-8">
+          <div className="mb-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] lg:p-8">
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm">
+              <h2 className="flex items-center gap-3 text-2xl font-extrabold text-[#11233f]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-[#11233f]">
                 🚀
                 </div>
                 Upcoming Events
               </h2>
-              <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-600 sm:inline-flex">
+              <span className="hidden text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] sm:inline-flex">
                 Top picks this week
               </span>
             </div>
@@ -370,7 +369,7 @@ function EventsContent() {
           </div>
 
           {/* Search and Filters */}
-          <div className="mb-8 rounded-[32px] border border-slate-100 bg-white/90 p-6 shadow-[0_12px_35px_rgba(15,23,42,0.04)] backdrop-blur-sm lg:p-8">
+          <div className="mb-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] lg:p-8">
             <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center">
               <div className="flex-1 relative group">
                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
@@ -419,7 +418,7 @@ function EventsContent() {
                   <div className={`w-10 h-5 rounded-full transition-colors ${virtualOnly ? 'bg-emerald-500' : 'bg-slate-200'}`} />
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${virtualOnly ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
-                <span className="text-xs font-black text-slate-700 uppercase tracking-widest">Virtual Only</span>
+                <span className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Virtual Only</span>
               </label>
 
               <label className="flex items-center gap-3 cursor-pointer group">
@@ -433,7 +432,7 @@ function EventsContent() {
                   <div className={`w-10 h-5 rounded-full transition-colors ${autoRefresh ? 'bg-emerald-500' : 'bg-slate-200'}`} />
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoRefresh ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
-                <span className="text-xs font-black text-slate-700 uppercase tracking-widest">Auto-refresh (10s)</span>
+                <span className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Auto-refresh (10s)</span>
               </label>
             </div>
           </div>

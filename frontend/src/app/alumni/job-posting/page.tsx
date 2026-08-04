@@ -695,30 +695,31 @@ export default function AlumniJobBoard() {
       <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col font-sans mb-8">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#e7eaff] to-[#eaddff] rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
+        <div className="bg-[#1A1C23] text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="relative z-10 max-w-2xl">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold text-[15px] mb-3">
-              <Briefcase size={18} className="text-indigo-500" />
+            <div className="flex items-center gap-2 text-white font-semibold text-[15px] mb-3">
+              <Briefcase size={18} className="text-white" />
               <span>Explore Opportunities</span>
             </div>
-            <h1 className="text-4xl md:text-[44px] font-extrabold text-[#1e293b] mb-4 tracking-tight leading-tight">
+            <h1 className="text-[32px] md:text-[38px] font-bold text-white mb-2 tracking-tight leading-tight">
               Jobs & Internship
             </h1>
-            <p className="text-slate-600 text-[17px] font-medium opacity-90">
+            <p className="text-[#8F93A3] text-[14px] font-medium leading-[1.6]">
               Browse opportunities, publish openings, and manage your postings in one place.
             </p>
           </div>
 
           {/* Tab Container */}
-          <div className="relative z-10 flex gap-2 bg-white/40 p-2 rounded-2xl shadow-sm border border-white/60 backdrop-blur-md shrink-0">
+          <div className="relative z-10 flex gap-2 bg-[#2D303E] p-2 rounded-2xl shadow-sm border border-[#3A3D4A] shrink-0">
             {["Browse Jobs", "Post Job", "My Posts"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 py-3 rounded-xl text-[15px] font-bold transition-all duration-300 ${
-                  activeTab === tab 
-                    ? "bg-white text-[#4F46E5] shadow-sm border border-white" 
-                    : "text-indigo-900/60 hover:text-indigo-900 hover:bg-white/40 border border-transparent"
+                  activeTab === tab ? "bg-[#1A1C23] text-white shadow-sm border border-[#3A3D4A]" : "text-gray-400 hover:text-white hover:bg-[#3A3D4A]/50 border border-transparent"
                 }`}
               >
                 {tab}
@@ -730,10 +731,10 @@ export default function AlumniJobBoard() {
         {/* TAB: BROWSE JOBS */}
         {activeTab === "Browse Jobs" && (
           <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="bg-white/50 backdrop-blur-sm p-4 rounded-[2rem] border border-white shadow-xl shadow-blue-500/5">
+              <div className="bg-white p-6 rounded-[32px] border border-gray-50 shadow-sm mb-6">
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <div className="relative flex-1 group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-all" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1A1C23] transition-all" />
                     <input
                       className="w-full bg-white border border-slate-100 rounded-2xl pl-12 pr-12 py-4 outline-none focus:ring-4 focus:ring-blue-500/10 text-slate-900 font-medium"
                       placeholder="Search roles, companies, location, or tags..."
@@ -822,7 +823,7 @@ export default function AlumniJobBoard() {
                   </p>
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {searchQuery.trim() ? (
-                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+                      <span className="text-[11px] font-bold text-[#1A1C23] bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
                         Search: {searchQuery.trim()}
                       </span>
                     ) : null}
@@ -838,14 +839,14 @@ export default function AlumniJobBoard() {
                   <button
                     type="button"
                     onClick={() => setBrowseSection("portal")}
-                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "portal" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "portal" ? "bg-[#1A1C23] text-white" : "text-slate-700 hover:bg-slate-100"}`}
                   >
                     Portal Jobs
                   </button>
                   <button
                     type="button"
                     onClick={() => setBrowseSection("external")}
-                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "external" ? "bg-rose-600 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "external" ? "bg-black text-white" : "text-slate-700 hover:bg-slate-100"}`}
                   >
                     External Jobs
                   </button>
@@ -861,7 +862,7 @@ export default function AlumniJobBoard() {
 
                   <div className="grid grid-cols-1 gap-8">
                 {filteredJobs.map((job) => (
-                  <div key={job.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden p-8 hover:shadow-xl transition-all border-white/40">
+                  <div key={job.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden p-8 hover:border-gray-200 transition-all">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex gap-3 md:gap-4 items-center flex-wrap">
                         <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-tight">{job.title}</h3>
@@ -878,7 +879,7 @@ export default function AlumniJobBoard() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                       <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><Building2 className="w-5 h-5 text-blue-500" /></div>
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><Building2 className="w-5 h-5 text-[#1A1C23]" /></div>
                         <div><p className="text-[10px] font-bold text-slate-400 uppercase">Company</p><p className="font-bold text-slate-700">{job.company}</p></div>
                       </div>
                       <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
@@ -895,7 +896,7 @@ export default function AlumniJobBoard() {
 
                     <div className="flex flex-wrap gap-2 mb-8">
                       {(job.tags || []).map((tag, i) => (
-                        <span key={i} className="text-[11px] font-black px-4 py-1.5 bg-blue-50 text-blue-600 rounded-xl">#{tag}</span>
+                        <span key={i} className="text-[11px] font-black px-4 py-1.5 bg-gray-100 text-[#1A1C23] rounded-xl">#{tag}</span>
                       ))}
                     </div>
 
@@ -914,7 +915,7 @@ export default function AlumniJobBoard() {
                             ? "bg-gray-300 text-gray-700 cursor-not-allowed"
                             : String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()
                               ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-                              : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white hover:shadow-xl transform hover:scale-105"
+                              : "bg-[#1A1C23] hover:bg-black text-white hover:shadow-xl transform hover:scale-105"
                             }`}
                         >
                           {String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()
@@ -985,13 +986,13 @@ export default function AlumniJobBoard() {
                     return (
                       <div key={job.job_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 overflow-hidden">
+                          <div className="w-10 h-10 rounded-xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0 overflow-hidden">
                             {job.logo_url ? <img src={job.logo_url} alt={job.company} className="w-full h-full object-contain" /> : <Briefcase className="w-5 h-5" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2 mb-1">
                               <p className="font-bold text-gray-900 text-sm truncate">{job.title}</p>
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200"><Clock className="w-3 h-3" />{formatExternalDate(job.posted_date)}</span>
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-blue-700 border border-blue-200"><Clock className="w-3 h-3" />{formatExternalDate(job.posted_date)}</span>
                             </div>
                             <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 mb-2">
                               <span className="flex items-center gap-1"><Building className="w-3 h-3" />{job.company}</span>
@@ -1004,7 +1005,7 @@ export default function AlumniJobBoard() {
                             <button onClick={() => toggleExternalBookmark(job.job_id)} className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors">
                               {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-rose-600" /> : <Bookmark className="w-3.5 h-3.5" />}
                             </button>
-                            <button onClick={() => handleExternalApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors">
+                            <button onClick={() => handleExternalApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-black text-white hover:bg-rose-700 transition-colors">
                               Apply <ExternalLink className="w-3 h-3" />
                             </button>
                           </div>
@@ -1032,7 +1033,7 @@ export default function AlumniJobBoard() {
                   {postJobSteps.map((step, idx) => (
                     <div key={step.s} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all ${activeStep >= step.s ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all ${activeStep >= step.s ? "bg-[#1A1C23] text-white border-[#1A1C23]" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
                           {step.s}
                         </div>
                         {idx < postJobSteps.length - 1 ? <div className="w-px h-7 bg-slate-200 mt-2" /> : null}
@@ -1061,7 +1062,7 @@ export default function AlumniJobBoard() {
 
               <div className="lg:col-span-2 bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
                 <div className="mb-5">
-                  <p className="text-[12px] font-bold text-indigo-600 uppercase tracking-widest">Step {activeStep} of 4</p>
+                  <p className="text-[12px] font-bold text-[#1A1C23] uppercase tracking-widest">Step {activeStep} of 4</p>
                   <h2 className="text-[24px] font-bold text-slate-900 tracking-tight mt-1">{postJobSteps.find(s => s.s === activeStep)?.title}</h2>
                   <p className="text-[13px] text-slate-500 mt-1">{postJobSteps.find(s => s.s === activeStep)?.hint}</p>
                 </div>
@@ -1216,7 +1217,7 @@ export default function AlumniJobBoard() {
                   <button
                     onClick={() => activeStep < 4 ? goToNextStep() : handleSubmit()}
                     disabled={isSubmitting}
-                    className="px-10 py-3.5 bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white rounded-[14px] font-bold shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50"
+                    className="px-10 py-3.5 bg-[#1A1C23] hover:bg-black text-white rounded-[14px] font-bold shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50"
                   >
                     {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : activeStep === 1 ? "Next: Job Details" : activeStep === 2 ? "Next: Compensation" : "Next: Application"}
                   </button>
@@ -1230,7 +1231,7 @@ export default function AlumniJobBoard() {
             <div className="space-y-10 animate-in fade-in duration-500">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
-                  { label: "Total Posts", val: myJobs.length, icon: <FileText className="text-blue-500" />, bg: "bg-blue-50", plus: true },
+                  { label: "Total Posts", val: myJobs.length, icon: <FileText className="text-[#1A1C23]" />, bg: "bg-blue-50", plus: true },
                   { label: "Active Posts", val: myJobs.filter(j => j.status === 'Approved').length, icon: <CheckCircle2 className="text-emerald-500" />, bg: "bg-emerald-50" },
                   { label: "Total Views", val: "0", icon: <Eye className="text-purple-500" />, bg: "bg-purple-50" },
                   { label: "Applications", val: "0", icon: <Users className="text-orange-500" />, bg: "bg-orange-50" }
@@ -1240,7 +1241,7 @@ export default function AlumniJobBoard() {
                       <div className={`w-14 h-14 ${s.bg} rounded-2xl flex items-center justify-center`}>{s.icon}</div>
                       <div><p className="text-[11px] font-black text-slate-400 uppercase">{s.label}</p><p className="text-3xl font-black text-slate-800">{s.val}</p></div>
                     </div>
-                    {s.plus && <button onClick={() => setActiveTab("Post Job")} className="p-3 bg-blue-500 text-white rounded-xl shadow-lg"><Plus className="w-4 h-4" /></button>}
+                    {s.plus && <button onClick={() => setActiveTab("Post Job")} className="p-3 bg-[#1A1C23] text-white rounded-xl shadow-lg"><Plus className="w-4 h-4" /></button>}
                   </div>
                 ))}
               </div>
@@ -1266,7 +1267,7 @@ export default function AlumniJobBoard() {
                     <div className="w-full md:w-auto flex flex-wrap md:flex-nowrap gap-3 md:justify-end">
                       <button onClick={() => openEditModal(job as any)} className="flex-1 md:flex-none px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-black hover:bg-slate-200 transition-colors">Edit</button>
                       <button onClick={() => handleViewApplicants(job)} className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black hover:bg-slate-50 transition-colors">Applicants</button>
-                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="flex-1 md:flex-none px-6 py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-colors">View Details</button>
+                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="flex-1 md:flex-none px-6 py-3 bg-[#1A1C23] text-white rounded-xl font-black shadow-lg shadow-blue-500/20 hover:bg-black transition-colors">View Details</button>
                     </div>
                   </div>
                 ))}
@@ -1344,7 +1345,7 @@ export default function AlumniJobBoard() {
 
           <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-white flex justify-end gap-3">
             <button onClick={() => setIsEditModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">Cancel</button>
-            <button onClick={saveEditedJob} disabled={isSavingEdit} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-60">
+            <button onClick={saveEditedJob} disabled={isSavingEdit} className="px-6 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black disabled:opacity-60">
               {isSavingEdit ? "Saving..." : "Save Changes"}
             </button>
           </div>
@@ -1364,7 +1365,7 @@ export default function AlumniJobBoard() {
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handlePortalResumeFileChange}
                 disabled={uploading}
-                className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-blue-700 hover:file:bg-blue-100"
               />
               <div className="text-xs text-slate-500">PDF, DOC, DOCX up to 10MB. Or paste a URL below.</div>
               <input
@@ -1392,7 +1393,7 @@ export default function AlumniJobBoard() {
               <button
                 onClick={submitPortalApplication}
                 disabled={applySubmitting}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-60"
+                className="px-5 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black disabled:opacity-60"
               >
                 {applySubmitting ? "Submitting..." : "Submit Application"}
               </button>
@@ -1416,7 +1417,7 @@ export default function AlumniJobBoard() {
           <div className="mt-5 flex justify-end">
             <button
               onClick={() => setIsEditSuccessOpen(false)}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700"
+              className="px-5 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black"
             >
               OK
             </button>
@@ -1442,7 +1443,7 @@ export default function AlumniJobBoard() {
             <button
               onClick={() => submitExternalApplicationFeedback(true)}
               disabled={submittingExternalFeedback}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-60"
+              className="px-5 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black disabled:opacity-60"
             >
               Yes, I Applied
             </button>
@@ -1483,7 +1484,7 @@ export default function AlumniJobBoard() {
               {selectedJob.postedBy === user?.email && (
                 <div className="pt-6 border-t border-slate-100 space-y-4">
                   <h4 className="font-black text-slate-800 uppercase text-xs tracking-widest">Registered Applicants ({selectedJob.applied || 0})</h4>
-                  <button onClick={() => {setIsModalOpen(false); handleViewApplicants(selectedJob);}} className="text-sm text-blue-500 font-bold flex items-center gap-2 hover:text-blue-600 tracking-wide transition-all">View Full Applicant List <ChevronRight className="w-4 h-4" /></button>
+                  <button onClick={() => {setIsModalOpen(false); handleViewApplicants(selectedJob);}} className="text-sm text-[#1A1C23] font-bold flex items-center gap-2 hover:text-[#1A1C23] tracking-wide transition-all">View Full Applicant List <ChevronRight className="w-4 h-4" /></button>
                 </div>
               )}
             </div>
@@ -1517,7 +1518,7 @@ export default function AlumniJobBoard() {
                   {applicants.map((app) => (
                     <div key={app.id} className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
                        <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">
+                         <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-[#1A1C23]">
                            {app.applicant_email.charAt(0).toUpperCase()}
                          </div>
                          <div>
@@ -1538,7 +1539,7 @@ export default function AlumniJobBoard() {
                              href={previewHref}
                              target="_blank" 
                              rel="noreferrer" 
-                             className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 text-sm hover:scale-105 transition-all"
+                             className="px-6 py-3 bg-[#1A1C23] text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 text-sm hover:scale-105 transition-all"
                            >
                              Open Resume
                            </a>

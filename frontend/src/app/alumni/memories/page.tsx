@@ -284,7 +284,7 @@ export default function MemoriesPage() {
                   toast({ title: 'Unable to open profile', description: 'Please try again.', variant: 'destructive' });
                 }
               }}
-              className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+              className="font-bold text-[#1A1C23] hover:text-indigo-700 hover:underline"
             >
               {p.text}
             </button>
@@ -463,7 +463,7 @@ export default function MemoriesPage() {
         category: newMemory.category,
         type: 'photo'
       });
-      toast({ title: 'Memory shared!', description: 'Your memory has been posted.', className: "bg-indigo-500 text-white rounded-2xl border-none" });
+      toast({ title: 'Memory shared!', description: 'Your memory has been posted.', className: "bg-[#1A1C23] text-white rounded-2xl border-none" });
       setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
       setTaggedUsers([]);
       setImagePreview(null); setImageFile(null); setShowAddForm(false);
@@ -501,13 +501,13 @@ export default function MemoriesPage() {
   const renderCommentThread = (memoryId: number) => (
     <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5">
       <h4 className="flex items-center gap-2 text-sm font-black text-slate-800 mb-4 tracking-wider uppercase">
-        <MessageCircle className="w-4 h-4 text-indigo-500" />
+        <MessageCircle className="w-4 h-4 text-[#1A1C23]" />
         Comments ({comments[memoryId]?.length ?? memories.find((m: any) => m.id === memoryId)?.comments ?? 0})
       </h4>
       <div className="space-y-4 max-h-60 overflow-y-auto mb-4 pr-1">
         {(comments[memoryId] || []).map((c: any, i: number) => (
           <div key={`${c.id}-${i}`} className="flex gap-3">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] text-[11px] font-black flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
             <div className="flex-1 bg-slate-50/70 rounded-[16px] p-4 border border-slate-100/60">
               <div className="flex items-start justify-between gap-3 mb-1.5">
                 <span className="text-[13px] font-black text-slate-800 leading-none shrink-0">{c.author}</span>
@@ -520,7 +520,7 @@ export default function MemoriesPage() {
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
         <input id={`comment-input-${memoryId}`} value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment..." className="min-w-0 w-full px-4 py-2.5 text-[14px] rounded-[16px] border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" />
-        <button onClick={() => handleAddComment(memoryId)} className="w-11 h-11 inline-flex items-center justify-center bg-indigo-500 text-white rounded-[14px] text-sm font-bold hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-200 shrink-0">
+        <button onClick={() => handleAddComment(memoryId)} className="w-11 h-11 inline-flex items-center justify-center bg-[#1A1C23] text-white rounded-[14px] text-sm font-bold hover:bg-[#1A1C23] transition-colors shadow-sm shadow-indigo-200 shrink-0">
           <Send className="w-4 h-4" />
         </button>
       </div>
@@ -538,7 +538,7 @@ export default function MemoriesPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/35 via-slate-900/5 to-transparent" />
             <div className="absolute top-3 left-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-white/95 backdrop-blur-md text-[10px] uppercase font-black tracking-widest text-slate-800 shadow-sm border border-white/20">
-                <CatIcon className="w-3.5 h-3.5 text-indigo-500" />{memory.category}
+                <CatIcon className="w-3.5 h-3.5 text-[#1A1C23]" />{memory.category}
               </span>
             </div>
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
@@ -554,7 +554,7 @@ export default function MemoriesPage() {
         <div className="p-6 flex flex-col min-h-[242px]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0 w-full">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[12px] font-black flex items-center justify-center shrink-0 shadow-sm">{a.name.charAt(0)}</div>
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] text-[12px] font-black flex items-center justify-center shrink-0 shadow-sm">{a.name.charAt(0)}</div>
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] sm:text-[14px] font-black text-slate-800 leading-tight break-words sm:truncate">{a.name}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 break-words sm:truncate">{a.batch}{a.department ? ` · ${a.department}` : ''}</p>
@@ -566,7 +566,7 @@ export default function MemoriesPage() {
             </span>
           </div>
           
-          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-indigo-600 transition-colors line-clamp-2 min-h-[44px]" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
+          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-[#1A1C23] transition-colors line-clamp-2 min-h-[44px]" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
           <div className="line-clamp-2 min-h-[40px] mb-4 leading-relaxed">
             {renderMemoryDescription(memory, 'text-[13px] font-medium text-slate-500')}
           </div>
@@ -589,7 +589,7 @@ export default function MemoriesPage() {
             <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Open to like and comment</span>
             <button
               onClick={() => setSelectedMemory(memory)}
-              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors shadow-sm"
+              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-[#1A1C23] text-white hover:bg-[#1A1C23] transition-colors shadow-sm"
             >
               View Details
             </button>
@@ -605,28 +605,29 @@ export default function MemoriesPage() {
       <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans px-2 md:px-4">
 
         {/* Alumni Hero */}
-        <div className="rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-indigo-100/60 bg-[radial-gradient(circle_at_top_left,_#eef2ff_0,_#f8faff_42%,_#ffffff_100%)]">
-          <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-indigo-200/35 blur-3xl" />
-          <div className="absolute -bottom-10 left-1/3 w-56 h-56 rounded-full bg-cyan-200/30 blur-3xl" />
-          <div className="relative z-10 max-w-3xl">
-            <div className="inline-flex items-center gap-2 text-indigo-700 font-bold text-[12px] mb-4 uppercase tracking-[0.15em] bg-white/70 border border-indigo-100 px-3 py-1.5 rounded-full">
-              <Sparkles className="w-4 h-4" />
+        <div className="bg-[#1A1C23] text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
+          <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+          <div className="relative z-10 flex flex-col gap-3 max-w-3xl">
+            <div className="inline-flex items-center gap-2 text-gray-300 font-bold text-[12px] bg-white/10 w-fit px-3 py-1.5 rounded-full border border-white/20 uppercase tracking-[0.15em]">
+              <Sparkles className="w-4 h-4 text-gray-300" />
               Alumni Memories Hub
             </div>
-            <h1 className="text-4xl md:text-[46px] font-extrabold text-slate-800 mb-4 tracking-tight leading-[1.05]">
+            <h1 className="text-4xl md:text-[46px] font-extrabold text-white mb-4 tracking-tight leading-[1.05]">
               Preserve Campus Stories,
-              <span className="text-indigo-600"> Professionally</span>
+              <span className="text-white"> Professionally</span>
             </h1>
-            <p className="text-slate-600 text-[16px] md:text-[17px] font-medium opacity-95 mt-2 max-w-2xl">
+            <p className="text-[#8F93A3] text-[16px] md:text-[17px] font-medium leading-[1.6] mt-2 max-w-2xl">
               Relive milestones, celebrate achievements, and keep every alumni memory discoverable through one consistent and modern experience.
             </p>
           </div>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="absolute top-1/2 right-8 md:right-12 -translate-y-1/2 bg-white/80 hover:bg-white text-indigo-500 p-4 rounded-2xl backdrop-blur-sm shadow-[0_12px_24px_rgb(79,70,229,0.2)] border border-indigo-100/60 transition-all duration-300 group hidden sm:block hover:scale-105"
+            className="relative z-10 bg-white hover:bg-slate-100 text-[#1A1C23] p-4 rounded-2xl shadow-sm border border-slate-100 transition-all duration-300 hidden sm:block hover:scale-105"
             title="Share Memory"
           >
-            <Camera className="w-8 h-8 text-indigo-500 stroke-[2.5]" />
+            <Camera className="w-8 h-8 text-[#1A1C23] stroke-[2.5]" />
           </button>
         </div>
 
@@ -646,7 +647,7 @@ export default function MemoriesPage() {
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Top Category</p>
-            <p className="text-xl font-extrabold text-indigo-600 capitalize">{topCategory}</p>
+            <p className="text-xl font-extrabold text-[#1A1C23] capitalize">{topCategory}</p>
             <p className="text-[11px] font-bold text-slate-400 mt-1">{totalComments} comments</p>
           </div>
         </div>
@@ -654,7 +655,7 @@ export default function MemoriesPage() {
         {/* Mobile FAB */}
         <button 
           onClick={() => setShowAddForm(!showAddForm)}
-          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30 z-[90] hover:bg-indigo-600 transition-colors hover:scale-105"
+          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#1A1C23] text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30 z-[90] hover:bg-[#1A1C23] transition-colors hover:scale-105"
         >
           <Camera className="w-6 h-6" />
         </button>
@@ -671,7 +672,7 @@ export default function MemoriesPage() {
             <div className="flex gap-4">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-full md:w-52 h-[52px] rounded-[16px] border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white text-[14px] font-bold text-slate-700 shadow-sm transition-colors">
-                  <Filter className="w-4 h-4 mr-2 text-indigo-500" /><SelectValue placeholder="All Categories" />
+                  <Filter className="w-4 h-4 mr-2 text-[#1A1C23]" /><SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-slate-100 shadow-xl font-medium">
                   <SelectItem value="all">All Categories</SelectItem>
@@ -685,15 +686,15 @@ export default function MemoriesPage() {
               </Select>
               
               <div className="hidden sm:flex gap-1.5 bg-slate-50 border border-slate-100 p-1.5 rounded-[16px] shrink-0">
-                <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600 border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><Grid className="w-4 h-4" /></button>
-                <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600 border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><List className="w-4 h-4" /></button>
+                <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-[#1A1C23] border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><Grid className="w-4 h-4" /></button>
+                <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[#1A1C23] border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><List className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
           
           <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 p-2 border border-slate-100">
             {TABS.map(t => (
-              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-white text-indigo-600 shadow-sm border border-indigo-100' : 'text-slate-500 hover:bg-white hover:text-slate-800 border border-transparent'}`}>
+              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-white text-[#1A1C23] shadow-sm border border-indigo-100' : 'text-slate-500 hover:bg-white hover:text-slate-800 border border-transparent'}`}>
                 {t.icon}{t.label}
               </button>
             ))}
@@ -706,7 +707,7 @@ export default function MemoriesPage() {
           <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 animate-in slide-in-from-top-4 fade-in duration-300">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100"><Sparkles className="w-5 h-5 text-indigo-500" /></div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100"><Sparkles className="w-5 h-5 text-[#1A1C23]" /></div>
                 <div>
                   <h3 className="text-xl font-extrabold text-slate-800">Share a Memory</h3>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mt-1">Upload and Inspire</p>
@@ -730,7 +731,7 @@ export default function MemoriesPage() {
                       <button onClick={e => { e.preventDefault(); setImagePreview(null); setImageFile(null); }} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-xl flex items-center justify-center text-slate-600 hover:text-rose-600 hover:scale-110 transition-all z-10"><X className="w-4 h-4" /></button>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                    <div className="flex flex-col items-center text-slate-400 group-hover:text-[#1A1C23] transition-colors">
                       <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <Upload className="w-6 h-6" />
                       </div>
@@ -795,7 +796,7 @@ export default function MemoriesPage() {
                             className="w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-[12px] font-black flex items-center justify-center shrink-0">
+                              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] text-[12px] font-black flex items-center justify-center shrink-0">
                                 {String(u.name || 'U').charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
@@ -840,7 +841,7 @@ export default function MemoriesPage() {
 
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
                 <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); setTaggedUsers([]); setMentionOpen(false); }} className="px-6 py-3.5 text-sm font-black rounded-[16px] bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest text-center">Cancel</button>
-                <button onClick={handleAddMemory} disabled={isSharing} className="px-8 py-3.5 bg-indigo-500 text-white text-sm font-black rounded-[16px] hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-60 uppercase tracking-widest text-center">
+                <button onClick={handleAddMemory} disabled={isSharing} className="px-8 py-3.5 bg-[#1A1C23] text-white text-sm font-black rounded-[16px] hover:bg-[#1A1C23] transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-60 uppercase tracking-widest text-center">
                   {isSharing ? 'Sharing…' : 'Post Memory'}
                 </button>
               </div>
@@ -883,7 +884,7 @@ export default function MemoriesPage() {
                   />
                   <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/90 text-slate-700 border border-white/40">
-                      <Eye className="w-3.5 h-3.5 text-indigo-500" />
+                      <Eye className="w-3.5 h-3.5 text-[#1A1C23]" />
                       {selectedMemory.views || 0} views
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/90 text-slate-700 border border-white/40 capitalize">
@@ -903,13 +904,13 @@ export default function MemoriesPage() {
               <div className="w-full flex-1 flex flex-col max-h-[92vh] overflow-y-auto bg-white">
                 <div className="p-5 sm:p-6 md:p-8 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
                   <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-indigo-50 border border-indigo-100 text-indigo-600 font-black text-[16px] sm:text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-indigo-50 border border-indigo-100 text-[#1A1C23] font-black text-[16px] sm:text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
                     <div className="min-w-0 flex-1">
                       <p className="font-black text-slate-800 text-[16px] sm:text-[18px] leading-tight break-words">{selectedMemory.author?.name}</p>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1 break-words">{selectedMemory.author?.batch}{selectedMemory.author?.department ? ` · ${selectedMemory.author.department}` : ''}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
                         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 shadow-sm">{selectedMemory.category}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-sm">{selectedMemory.type || 'photo'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] shadow-sm">{selectedMemory.type || 'photo'}</span>
                       </div>
                     </div>
                   </div>
@@ -922,7 +923,7 @@ export default function MemoriesPage() {
                   
                     {Array.isArray(selectedMemory.tags) && selectedMemory.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-2 mb-6">
-                        {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors">#{t}</span>)}
+                        {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500 hover:bg-indigo-50 hover:border-indigo-100 hover:text-[#1A1C23] transition-colors">#{t}</span>)}
                       </div>
                     )}
                   
@@ -939,7 +940,7 @@ export default function MemoriesPage() {
                         onClick={() => document.getElementById(`comment-input-${selectedMemory.id}`)?.focus()}
                         className="h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] bg-slate-50 text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-100 transition-colors"
                       >
-                        <MessageCircle className="w-4 h-4 text-indigo-500" />
+                        <MessageCircle className="w-4 h-4 text-[#1A1C23]" />
                         <span>{comments[selectedMemory.id]?.length || selectedMemory.comments || 0}</span>
                       </button>
                     </div>
@@ -959,7 +960,7 @@ export default function MemoriesPage() {
             {tagProfile && (
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 font-black text-[18px] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] font-black text-[18px] flex items-center justify-center">
                     {String(tagProfile.name || tagProfile.email || 'U').charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -985,7 +986,7 @@ export default function MemoriesPage() {
                     <button
                       onClick={requestConnectFromTag}
                       disabled={tagActionBusy || !user?.email || !tagProfile?.email}
-                      className="flex-1 h-11 rounded-xl bg-indigo-600 text-white text-[13px] font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                      className="flex-1 h-11 rounded-xl bg-[#1A1C23] text-white text-[13px] font-bold hover:bg-black transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
                     >
                       <UserPlus className="w-4 h-4" />
                       Connect

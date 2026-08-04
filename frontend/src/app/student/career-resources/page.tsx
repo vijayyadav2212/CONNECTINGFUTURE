@@ -517,41 +517,41 @@ export default function CareerResources() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-white p-4 lg:p-6">
+      <div className="min-h-screen bg-[#F5F6FA] p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
-          <div className="bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-[40px] p-6 lg:p-8 border border-white/30 shadow-[0_20px_50px_rgba(0,0,0,0.03)] mb-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl opacity-60" />
+          <div className="bg-[#0f0f12] rounded-[32px] p-8 lg:p-10 shadow-2xl border border-white/5 relative overflow-hidden mb-8">
+            <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
             
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 text-blue-700 font-black text-[11px] mb-4 uppercase tracking-[0.2em]">
-                  <Sparkles size={16} className="text-blue-600 animate-pulse" />
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                  <Sparkles size={16} />
                   <span>Curated Learning</span>
                 </div>
                 
-                <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight uppercase">
+                <h1 className="text-4xl lg:text-[48px] font-black text-white mb-3 tracking-[-0.02em]">
                   Career Resources
                 </h1>
                 
-                <p className="text-slate-600 text-base font-medium max-w-[600px] leading-relaxed mb-4">
+                <p className="text-gray-400 text-[16px] font-medium max-w-[600px] leading-relaxed mb-6">
                   Discover curated learning resources to boost your career, from alumni-recommended courses to professional roadmaps.
                 </p>
                 
-                <div className="flex flex-wrap gap-3">
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[12px] font-black text-slate-500 border border-slate-50 shadow-sm flex items-center gap-2.5 uppercase tracking-widest">
-                     <BookOpen size={16} className="text-blue-600" />
-                     {allResources.length} Resources
+                <div className="flex flex-wrap gap-4 text-[13px] font-bold text-gray-400">
+                   <div className="bg-white/5 px-4 py-2 rounded-[14px] border border-white/10 flex items-center gap-2.5">
+                     <BookOpen size={16} className="text-blue-500" />
+                     <span>{allResources.length} Resources</span>
                    </div>
-                   <div className="bg-white/90 px-5 py-2.5 rounded-full text-[12px] font-black text-slate-500 border border-slate-50 shadow-sm flex items-center gap-2.5 uppercase tracking-widest">
-                     <TrendingUp size={16} className="text-blue-500" />
-                     Expert Verified
+                   <div className="bg-white/5 px-4 py-2 rounded-[14px] border border-white/10 flex items-center gap-2.5">
+                     <TrendingUp size={16} className="text-emerald-500" />
+                     <span>Expert Verified</span>
                    </div>
                 </div>
               </div>
               
               <div className="hidden lg:block">
-                <div className="w-32 h-32 rounded-[40px] bg-gradient-to-br from-blue-50 to-green-100 flex items-center justify-center text-blue-700 shadow-inner border border-white/80">
+                <div className="w-32 h-32 rounded-[40px] bg-white/5 flex items-center justify-center text-blue-400 border border-white/10">
                   <GraduationCap size={48} strokeWidth={1.5} />
                 </div>
               </div>
@@ -563,8 +563,8 @@ export default function CareerResources() {
             <div className="fixed inset-0 bg-white z-[100] overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
               <div className="min-h-screen flex flex-col">
                 {/* Immersive Header */}
-                <div className="bg-slate-900 text-white p-8 lg:p-12 relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.5),_transparent_40%)]" />
+                <div className="bg-[#0f0f12] text-white p-8 lg:p-12 relative overflow-hidden border-b border-white/5">
+                  <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
                   <div className="max-w-7xl mx-auto relative z-10">
                     <button 
                       onClick={() => {

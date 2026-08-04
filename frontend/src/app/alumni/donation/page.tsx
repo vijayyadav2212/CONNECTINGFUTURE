@@ -88,7 +88,10 @@ export default function DonationPage() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
+        <div className="bg-[#1A1C23]  rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden text-white">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-100/60 blur-2xl pointer-events-none" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
@@ -97,7 +100,7 @@ export default function DonationPage() {
             <p className="text-slate-500 text-sm mt-1 font-medium">Help us connect alumni with students and create opportunities</p>
           </div>
           <button onClick={() => router.push('/alumni/donation/history')} className="relative z-10 flex items-center gap-2 px-4 py-2.5 bg-white text-sm font-semibold text-slate-700 rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
-            <History className="w-4 h-4 text-indigo-600" />Donation History<ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            <History className="w-4 h-4 text-[#1A1C23]" />Donation History<ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
 
@@ -106,7 +109,7 @@ export default function DonationPage() {
           <div className="bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-slate-900 text-sm">Your Donation Impact, {user.name?.split(' ')[0] || 'Friend'}</h3>
-              <button onClick={() => router.push('/alumni/donation/history')} className="text-xs text-indigo-600 font-semibold hover:underline">View All →</button>
+              <button onClick={() => router.push('/alumni/donation/history')} className="text-xs text-[#1A1C23] font-semibold hover:underline">View All →</button>
             </div>
             {loadingStats ? (
               <div className="flex items-center gap-2 py-4"><div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /><span className="text-sm text-slate-400">Loading…</span></div>
@@ -161,7 +164,7 @@ export default function DonationPage() {
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Custom Amount</p>
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {QUICK_AMOUNTS.map(amt => (
-                  <button key={amt} onClick={() => { setCustomAmount(amt); setSelectedTier(null); }} className={`py-2 text-sm font-bold rounded-xl border transition-all ${customAmount === amt && !selectedTier ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-700'}`}>₹{amt}</button>
+                  <button key={amt} onClick={() => { setCustomAmount(amt); setSelectedTier(null); }} className={`py-2 text-sm font-bold rounded-xl border transition-all ${customAmount === amt && !selectedTier ? 'bg-[#1A1C23] text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-700'}`}>₹{amt}</button>
                 ))}
               </div>
               <div className="flex gap-2">
@@ -184,7 +187,7 @@ export default function DonationPage() {
                       </div>
                       <p className="text-xs text-slate-400">{tier.description}</p>
                     </div>
-                    {selectedTier?.id === tier.id && <CheckCircle className="w-5 h-5 text-indigo-600 shrink-0" />}
+                    {selectedTier?.id === tier.id && <CheckCircle className="w-5 h-5 text-[#1A1C23] shrink-0" />}
                   </div>
                   {selectedTier?.id === tier.id && (
                     <div className="mt-3 pt-3 border-t border-slate-100">
@@ -192,7 +195,7 @@ export default function DonationPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {tier.benefits.map((b, i) => (
                           <div key={i} className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <CheckCircle className="w-3.5 h-3.5 text-indigo-500 shrink-0" />{b}
+                            <CheckCircle className="w-3.5 h-3.5 text-[#1A1C23] shrink-0" />{b}
                           </div>
                         ))}
                       </div>
@@ -210,9 +213,9 @@ export default function DonationPage() {
             {paymentAmount > 0 ? (
               <>
                 <div className="bg-indigo-50 border border-indigo-200 rounded-[24px] p-4 text-center">
-                  <p className="text-xs text-indigo-600 font-semibold mb-1">You're donating</p>
+                  <p className="text-xs text-[#1A1C23] font-semibold mb-1">You're donating</p>
                   <p className="text-3xl font-black text-indigo-700">₹{paymentAmount.toLocaleString()}</p>
-                  <p className="text-xs text-indigo-600 mt-1">{getPaymentDescription()}</p>
+                  <p className="text-xs text-[#1A1C23] mt-1">{getPaymentDescription()}</p>
                 </div>
                 <RazorpayPayment
                   paymentDetails={{

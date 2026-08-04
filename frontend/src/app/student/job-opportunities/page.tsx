@@ -538,7 +538,7 @@ const JobOpportunitiesPage = () => {
   if (loading) {
     return (
       <StudentNavigation>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen bg-[#F5F6FA] p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse space-y-8">
               {/* Header Skeleton */}
@@ -596,22 +596,22 @@ const JobOpportunitiesPage = () => {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-6 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#F5F6FA] py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+            <div className="relative bg-[#1A1B23] rounded-[32px] p-8 lg:p-10 shadow-2xl border border-white/5 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
-                    <span className="text-blue-700 font-semibold text-sm">Career Journey</span>
+                  <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Career Journey</span>
                   </div>
-                  <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+                  <h1 className="text-4xl lg:text-[48px] font-black text-white mb-3 tracking-[-0.02em]">
                     Job Opportunities
                   </h1>
-                  <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
+                  <p className="text-gray-400 text-[16px] font-medium max-w-2xl mb-2">
                     Discover internships and career opportunities matched to your goals.
                   </p>
                 </div>
@@ -621,11 +621,13 @@ const JobOpportunitiesPage = () => {
 
           {/* Search and Filter Bar */}
           <div className="mb-8">
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Search className="w-5 h-5 text-blue-600" />
-                Find Your Perfect Opportunity
-              </h2>
+            <div className="bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] p-8 border border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                  <Search className="w-5 h-5 text-[#11233f]" />
+                </div>
+                <h2 className="text-xl font-extrabold text-[#11233f]">Find Your Perfect Opportunity</h2>
+              </div>
               <div className="flex flex-col lg:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -662,7 +664,7 @@ const JobOpportunitiesPage = () => {
                   </select>
                 </div>
                 <Button 
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                  className="bg-[#16161c] hover:bg-black text-white px-8 py-4 rounded-xl font-bold shadow-sm hover:shadow-md transition-all duration-200 h-auto"
                 >
                   <Search className="w-5 h-5 mr-2" />
                   Search Jobs
@@ -673,25 +675,25 @@ const JobOpportunitiesPage = () => {
 
           {/* Results Summary */}
           <div className="mb-8">
-            <div className="bg-white rounded-xl shadow-md p-4 lg:p-6 border border-gray-100">
+            <div className="bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] p-6 lg:p-8 border border-gray-100">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-3 rounded-lg">
+                  <div className="w-12 h-12 bg-blue-50 flex items-center justify-center shrink-0 rounded-[16px]">
                     <Briefcase className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-gray-900">
+                    <p className="text-xl font-extrabold text-[#11233f]">
                       {filteredJobs.length} Opportunities Found
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-[13px] font-bold text-gray-500">
                       Out of {jobs.length} total positions available
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2 bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200">
-                    <Star className="w-4 h-4 text-yellow-600" />
-                    <span className="text-sm font-semibold text-yellow-800">
+                  <div className="flex items-center gap-2 bg-yellow-50 px-4 py-2 rounded-[14px] border border-yellow-200">
+                    <Star className="w-4 h-4 text-amber-600" />
+                    <span className="text-[13px] font-bold text-amber-700">
                       {jobs.filter(job => job.isBookmarked).length} Saved
                     </span>
                   </div>
@@ -701,18 +703,18 @@ const JobOpportunitiesPage = () => {
           </div>
 
           <div className="mb-6">
-            <div className="inline-flex w-full sm:w-auto p-1 rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="inline-flex w-full sm:w-auto p-1.5 rounded-[16px] border border-gray-200 bg-white shadow-sm">
               <button
                 type="button"
                 onClick={() => setActiveJobsSection('portal')}
-                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeJobsSection === 'portal' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-[12px] text-[13px] font-bold uppercase tracking-wider transition-colors ${activeJobsSection === 'portal' ? 'bg-[#16161c] text-white' : 'text-[#8a94a6] hover:bg-gray-100 hover:text-[#11233f]'}`}
               >
                 Portal Jobs
               </button>
               <button
                 type="button"
                 onClick={() => setActiveJobsSection('external')}
-                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeJobsSection === 'external' ? 'bg-rose-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-[12px] text-[13px] font-bold uppercase tracking-wider transition-colors ${activeJobsSection === 'external' ? 'bg-[#16161c] text-white' : 'text-[#8a94a6] hover:bg-gray-100 hover:text-[#11233f]'}`}
               >
                 External Jobs
               </button>
@@ -721,38 +723,38 @@ const JobOpportunitiesPage = () => {
 
           {activeJobsSection === 'portal' && (
             <>
-              <div className="mb-4">
-                <h2 className="text-2xl font-extrabold text-gray-900">Portal Jobs</h2>
-                <p className="text-sm text-gray-600">Jobs posted directly on the platform.</p>
+              <div className="mb-6">
+                <h2 className="text-2xl font-extrabold text-[#11233f]">Portal Jobs</h2>
+                <p className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mt-1">Jobs posted directly on the platform.</p>
               </div>
 
               {/* Job Listings */}
               <div className="space-y-6">
             {filteredJobs.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
-                <div className="bg-gradient-to-br from-gray-100 to-gray-200 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Briefcase className="w-12 h-12 text-gray-400" />
+              <div className="bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] p-12 text-center border border-gray-100">
+                <div className="bg-gray-100 w-24 h-24 rounded-[24px] flex items-center justify-center mx-auto mb-6">
+                  <Briefcase className="w-10 h-10 text-[#11233f]" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">No Jobs Found</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                <h3 className="text-xl font-extrabold text-[#11233f] mb-3">No Jobs Found</h3>
+                <p className="text-gray-500 font-medium mb-8 max-w-md mx-auto">
                   We couldn't find any opportunities matching your criteria. Try adjusting your search terms or filters.
                 </p>
                 <Button 
                   onClick={() => {setSearchTerm(''); setFilterType('all');}}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                  className="bg-[#16161c] hover:bg-black text-white px-8 py-4 rounded-[14px] font-bold shadow-sm transition-all duration-200 h-auto"
                 >
                   Reset Filters
                 </Button>
               </div>
             ) : (
               filteredJobs.map(job => (
-                <div key={job.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-blue-200 group relative">
+                <div key={job.id} className="bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border border-gray-100 hover:border-gray-200 group relative">
                   <div className="p-6 lg:p-8">
                     {/* Header Section */}
                     <div className="flex flex-col lg:flex-row lg:items-start justify-between mb-6">
                       <div className="flex-1">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                          <h3 className="text-xl lg:text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                          <h3 className="text-xl lg:text-2xl font-extrabold text-[#11233f] group-hover:text-blue-600 transition-colors duration-200">
                             {job.title}
                           </h3>
                           <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 self-start ${getTypeColor(job.type)} transition-all duration-200 group-hover:scale-105`}>

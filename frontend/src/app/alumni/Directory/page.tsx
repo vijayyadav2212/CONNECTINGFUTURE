@@ -185,7 +185,10 @@ function AlumniDirectoryPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Enhanced Header */}
-          <div className="bg-blue-600 rounded-2xl p-8 text-white relative overflow-hidden">
+          <div className="bg-[#1A1C23] rounded-2xl p-8 text-white relative overflow-hidden">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
             
@@ -240,7 +243,7 @@ function AlumniDirectoryPage() {
 
               <div className="space-y-3">
                 <Label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Building className="w-4 h-4 text-indigo-600" />
+                  <Building className="w-4 h-4 text-[#1A1C23]" />
                   Industry
                 </Label>
                 <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>

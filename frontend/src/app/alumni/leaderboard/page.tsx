@@ -63,12 +63,15 @@ export default function LeaderboardPage() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-[#1A1C23] text-white rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <Trophy className="w-6 h-6 text-amber-500" />Alumni Hall of Fame
             </h1>
-            <p className="text-gray-500 text-sm mt-1">Recognizing alumni who give back most to the community</p>
+            <p className="text-gray-300 text-sm mt-1">Recognizing alumni who give back most to the community</p>
           </div>
           <div className="flex gap-3">
             <div className="bg-white px-4 py-2.5 rounded-xl border border-gray-100 shadow-sm text-center">

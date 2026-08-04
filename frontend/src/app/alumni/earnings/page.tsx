@@ -172,14 +172,17 @@ export default function EarningsPage() {
       <div className="space-y-6 max-w-7xl mx-auto mb-8">
 
         {/* Header Banner */}
-        <div className="bg-gradient-to-r from-[#ecfdf5] to-[#dbeafe] rounded-[32px] border border-emerald-100/40 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
+        <div className="bg-[#1A1C23]  rounded-[32px] border border-emerald-100/40 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden text-white">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-emerald-100/40 blur-2xl pointer-events-none" />
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-2 tracking-tight">
               <TrendingUp className="w-8 h-8 text-emerald-600" />
               Earnings Dashboard
             </h1>
-            <p className="text-slate-600 text-sm mt-1 font-medium">Track your mentorship earnings with detailed breakdown</p>
+            <p className="text-gray-300 text-sm mt-1 font-medium">Track your mentorship earnings with detailed breakdown</p>
           </div>
           <button
             onClick={handleDownloadStatement}
@@ -270,7 +273,7 @@ export default function EarningsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-indigo-100 rounded-xl p-3">
-                <Calendar className="w-6 h-6 text-indigo-600" />
+                <Calendar className="w-6 h-6 text-[#1A1C23]" />
               </div>
               <div>
                 <p className="text-slate-600 text-sm font-medium">This Month</p>
@@ -279,7 +282,7 @@ export default function EarningsPage() {
             </div>
             <div className="text-right">
               <p className="text-slate-500 text-sm">Year to Date</p>
-              <p className="text-lg font-semibold text-indigo-600">₹{stats.total_earned?.toLocaleString()}</p>
+              <p className="text-lg font-semibold text-[#1A1C23]">₹{stats.total_earned?.toLocaleString()}</p>
             </div>
           </div>
         </div>

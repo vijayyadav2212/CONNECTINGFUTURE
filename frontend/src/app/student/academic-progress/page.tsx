@@ -129,39 +129,25 @@ const StatCard = ({ icon: Icon, value, label, color, delay, isVisible }: {
   icon: any;
   value: string | number;
   label: string;
-  color: "blue" | "green" | "purple" | "orange";
+  color: string;
   delay: string;
   isVisible: boolean;
 }) => {
-  const colorClasses = {
-    blue: 'bg-blue-500 shadow-blue-200',
-    green: 'bg-emerald-500 shadow-emerald-200',
-    purple: 'bg-purple-500 shadow-purple-200',
-    orange: 'bg-orange-500 shadow-orange-200'
-  };
-
-  const bgClasses = {
-    blue: 'bg-blue-50 hover:bg-blue-100/80',
-    green: 'bg-emerald-50 hover:bg-emerald-100/80',
-    purple: 'bg-purple-50 hover:bg-purple-100/80',
-    orange: 'bg-orange-50 hover:bg-orange-100/80'
-  };
-
   return (
     <div
-      className={`group relative p-6 rounded-2xl border-0 ${bgClasses[color]} transition-all duration-500 hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-xl
+      className={`group relative p-6 bg-white border border-gray-200 rounded-[32px] transition-all duration-500 hover:scale-[1.02] hover:shadow-xl shadow-sm
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-xl ${colorClasses[color]} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+        <div className="p-3 rounded-2xl bg-gray-100 text-[#11233f] group-hover:bg-[#11233f] group-hover:text-white transition-all duration-300">
           <Icon size={24} />
         </div>
         {color === 'green' && <div className="text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full text-xs font-bold">+0.2</div>}
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
-        <h3 className="text-3xl font-bold text-gray-800 tracking-tight">{value}</h3>
+        <p className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-1">{label}</p>
+        <h3 className="text-4xl font-black text-[#11233f] tracking-tight">{value}</h3>
       </div>
     </div>
   );
@@ -492,29 +478,10 @@ export default function AcademicProgress() {
 
   return (
     <StudentNavigation>
-      <div className="relative min-h-screen overflow-hidden bg-gray-50/50">
+      <div className="relative min-h-screen overflow-hidden bg-slate-50/30">
 
         {/* ANIMATED BACKGROUND BLOBS */}
-        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-          <div
-            className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-indigo-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float"
-            style={{ transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)` }}
-          />
-          <div
-            className="absolute top-[20%] right-[-10%] w-[35rem] h-[35rem] bg-purple-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float"
-            style={{
-              animationDelay: '2s',
-              transform: `translate(${-mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`
-            }}
-          />
-          <div
-            className="absolute bottom-[-10%] left-[20%] w-[45rem] h-[45rem] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float"
-            style={{
-              animationDelay: '4s',
-              transform: `translate(${mousePosition.x * 0.01}px, ${-mousePosition.y * 0.02}px)`
-            }}
-          />
-        </div>
+
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
 
@@ -525,41 +492,34 @@ export default function AcademicProgress() {
             transition={{ duration: 0.6 }}
             className="mb-8"
           >
-            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
-              {/* Subtle background pattern */}
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
-
+            <div className="bg-[#1A1C23] text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              <div className="relative z-10 flex flex-col gap-3">
+                <div className="inline-flex items-center gap-2 text-gray-300 font-bold text-[12px] bg-white/10 w-fit px-3 py-1.5 rounded-full border border-white/20 uppercase tracking-[0.15em]">
+                  <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422M12 14v7m-3-7v7m6-7v7" />
+                  </svg>
+                  Academic Journey
+                </div>
+                <h1 className="text-4xl md:text-[46px] font-extrabold text-white mb-4 tracking-tight leading-[1.05]">
+                  Academic Progress
+                </h1>
+                <p className="text-[#8F93A3] text-[16px] md:text-[17px] font-medium leading-[1.6] max-w-2xl mb-6">
+                  Track your journey and achievements.
+                </p>
+              </div>
               <div className="relative z-10">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    {/* Label */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <GraduationCap className="w-5 h-5 text-blue-600" />
-                      <span className="text-blue-700 font-semibold text-sm">Academic Journey</span>
-                    </div>
-
-                    {/* Main Title */}
-                    <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-                      Academic Progress
-                    </h1>
-
-                    {/* Subtitle */}
-                    <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">
-                      Track your journey and achievements.
-                    </p>
-                  </div>
-
-                  {/* Edit Button */}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setEditOpen(true)}
-                    className="hidden md:flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-white/40"
+                    className="flex items-center gap-2 bg-white text-slate-800 px-5 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
                   >
-                    <Pencil className="w-4 h-4 text-gray-700" />
-                    <span className="text-sm font-medium text-gray-700">Edit Goals</span>
+                    <Pencil className="w-4 h-4" />
+                    <span className="text-sm font-bold">Edit Goals</span>
                   </motion.button>
-                </div>
               </div>
             </div>
           </motion.div>

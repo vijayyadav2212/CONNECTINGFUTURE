@@ -52,7 +52,7 @@ function ProfilePage() {
           </h1>
           <a
             href="/api/auth/login"
-            className="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="mt-3 inline-block px-4 py-2 bg-[#1A1C23] text-white rounded hover:bg-black"
           >
             Login
           </a>
@@ -127,7 +127,7 @@ function ProfilePage() {
                     console.log('Camera button clicked');
                     setIsAvatarModalOpen(true);
                   }}
-                  className="absolute bottom-0 right-0 bg-blue-600 text-white p-3 rounded-full shadow-xl hover:bg-blue-700 transition-all hover:scale-110 active:scale-95"
+                  className="absolute bottom-0 right-0 bg-[#1A1C23] text-white p-3 rounded-full shadow-xl hover:bg-black transition-all hover:scale-110 active:scale-95"
                   title="Change Profile Photo"
                   type="button"
                 >

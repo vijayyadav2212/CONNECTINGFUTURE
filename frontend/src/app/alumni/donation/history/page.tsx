@@ -113,7 +113,10 @@ export default function DonationHistory() {
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#edf2ff] to-[#f5efff] rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
+        <div className="bg-[#1A1C23]  rounded-[32px] border border-indigo-100/60 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden text-white">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-100/60 blur-2xl pointer-events-none" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
@@ -150,7 +153,7 @@ export default function DonationHistory() {
         {/* Filters */}
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Filter className="w-4 h-4 text-indigo-600" />
+            <Filter className="w-4 h-4 text-[#1A1C23]" />
             <p className="text-sm font-bold text-slate-900">Filters</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -169,7 +172,7 @@ export default function DonationHistory() {
                 <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" value="failed">Failed</SelectItem>
               </SelectContent>
             </Select>
-            <button onClick={handleSearch} className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm">
+            <button onClick={handleSearch} className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-[#1A1C23] text-white hover:bg-black transition-colors shadow-sm">
               <Search className="w-4 h-4" />Search
             </button>
             {user?.email && (
@@ -186,7 +189,7 @@ export default function DonationHistory() {
         {/* Donation Records */}
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 bg-slate-50/60">
-            <Gift className="w-4 h-4 text-indigo-600" />
+            <Gift className="w-4 h-4 text-[#1A1C23]" />
             <h3 className="font-bold text-slate-900 text-sm">Donation Records</h3>
           </div>
           <div className="p-4">

@@ -437,7 +437,7 @@ export default function MentorshipRequests() {
 
   return (
     <StudentNavigation>
-      <div className="min-h-screen bg-[#f4f6fb]">
+      <div className="min-h-screen bg-[#F5F6FA]">
 
         <div className="p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
@@ -449,23 +449,22 @@ export default function MentorshipRequests() {
               transition={{ duration: 0.6 }}
               className="mb-8"
             >
-              <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-6 lg:p-8 shadow-xl border border-white/30">
-                <div className="absolute inset-0 bg-white/20 backdrop-blur-sm rounded-3xl"></div>
+                            <div className="bg-[#16161c] rounded-[32px] p-8 lg:p-12 relative overflow-hidden shadow-sm">
                 <div className="relative z-10">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">Student Mentorship</h1>
-                  <p className="text-base lg:text-lg text-gray-700 font-medium max-w-2xl mb-4">Find mentors, send requests, book sessions, and track your mentorship progress.</p>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="font-medium">{connectedMentorsCount} Connected Mentors</span>
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 tracking-tight">Student Mentorship</h1>
+                  <p className="text-lg text-gray-400 font-medium max-w-2xl mb-8">Find mentors, send requests, book sessions, and track your mentorship progress.</p>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                    <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10">
+                      <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                      <span className="font-semibold">{connectedMentorsCount} Connected Mentors</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="font-medium">{mentors.length} Mentors Found</span>
+                    <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <span className="font-semibold">{mentors.length} Mentors Found</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                      <span className="font-medium">{upcomingSessionsCount} Upcoming Sessions</span>
+                    <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10">
+                      <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                      <span className="font-semibold">{upcomingSessionsCount} Upcoming Sessions</span>
                     </div>
                   </div>
                 </div>
@@ -480,7 +479,7 @@ export default function MentorshipRequests() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mb-8"
             >
-              <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
                   <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
@@ -488,7 +487,7 @@ export default function MentorshipRequests() {
                   <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
                   <div className="flex gap-2 justify-end md:justify-start lg:justify-end">
                     <Button variant="outline" onClick={clearFilters} disabled={loading} className="h-12 rounded-[16px] border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-950 shadow-sm">Clear</Button>
-                    <Button onClick={loadMentors} disabled={loading} className="h-12 rounded-[16px] bg-[#4F46E5] hover:bg-indigo-600 text-white px-6">{loading ? "Searching..." : "Search"}</Button>
+                    <Button onClick={loadMentors} disabled={loading} className="h-12 rounded-[16px] bg-[#16161c] hover:bg-black text-white px-6">{loading ? "Searching..." : "Search"}</Button>
                   </div>
                 </div>
                 {appliedFilters.length > 0 ? (
@@ -560,9 +559,9 @@ export default function MentorshipRequests() {
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Upcoming Sessions</p>
                     <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{upcomingSessionsCount}</p>
-                    <p className="text-[13px] font-bold text-[#4F46E5]">Scheduled mentorship calls</p>
+                    <p className="text-[13px] font-bold text-[#16161c]">Scheduled mentorship calls</p>
                   </div>
-                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center">
                     <CalendarClock size={24} />
                   </div>
                 </div>
@@ -573,9 +572,9 @@ export default function MentorshipRequests() {
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Active Subscriptions</p>
                     <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{activeSubscriptionsCount}</p>
-                    <p className="text-[13px] font-bold text-[#4F46E5]">Recurring mentor access</p>
+                    <p className="text-[13px] font-bold text-[#16161c]">Recurring mentor access</p>
                   </div>
-                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center">
                     <Wallet size={24} />
                   </div>
                 </div>
@@ -584,7 +583,7 @@ export default function MentorshipRequests() {
  
 
             {/* My Mentors */}
-        <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8">
+        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentors</h2>
             <div className="text-[13px] font-semibold text-slate-500">
@@ -598,9 +597,9 @@ export default function MentorshipRequests() {
                   const prof = profiles[r.mentor_email];
                   const name = prof?.name || r.mentor_email;
                   return (
-                    <div key={`conn-${r.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300">
+                    <div key={`conn-${r.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300">
                       <div className="flex items-center space-x-6">
-                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                           {String(name).charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -645,7 +644,7 @@ export default function MentorshipRequests() {
         >
           {mentors.length === 0 ? (
             <div className="md:col-span-2 lg:col-span-3">
-              <div className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-8 text-center">
+              <div className="bg-white rounded-[28px] shadow-sm border border-gray-100 p-8 text-center">
                 <div className="text-4xl mb-2">🧭</div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">No mentors found</h3>
                 <p className="text-slate-500">Try adjusting filters or searching different skills/topics.</p>
@@ -680,7 +679,7 @@ export default function MentorshipRequests() {
               <motion.div
                 key={m.mentor_email}
                 whileHover={{ y: -5, scale: 1.02 }}
-                className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden flex flex-col min-h-[430px]"
+                className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden flex flex-col min-h-[430px]"
               >
                 {available && (
                   <div className="absolute top-4 right-4 z-10">
@@ -692,7 +691,7 @@ export default function MentorshipRequests() {
                 <div className="p-7 flex flex-col h-full">
                   <div className="flex items-start gap-4 mb-5">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-[#4F46E5] rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                      <div className="w-16 h-16 bg-[#16161c] rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                         {prof?.picture ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={prof.picture} alt={name} className="w-full h-full object-cover" />
@@ -701,7 +700,7 @@ export default function MentorshipRequests() {
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-[#4F46E5] transition-colors duration-200 mb-1">
+                      <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-[#16161c] transition-colors duration-200 mb-1">
                         {name}
                       </h3>
                       {prof?.job_title || prof?.company ? (
@@ -714,7 +713,7 @@ export default function MentorshipRequests() {
                       ) : null}
                     </div>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-100">
+                  <div className="bg-slate-50 p-4 rounded-2xl mb-4 border border-gray-100">
                     {skillChips.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {skillChips.map((s) => (
@@ -749,8 +748,8 @@ export default function MentorshipRequests() {
                       </p>
                     </div>
                   ) : null}
-                  <div className="grid grid-cols-1 gap-2 mt-auto pt-4 border-t border-slate-100">
-                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-[#4F46E5] text-white hover:bg-indigo-600 disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                  <div className="grid grid-cols-1 gap-2 mt-auto pt-4 border-t border-gray-100">
+                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-[#16161c] text-white hover:bg-black disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
                       {btnText}
                     </Button>
                     {(m.price || m.subscription_price) ? (
@@ -788,7 +787,7 @@ export default function MentorshipRequests() {
           animate="visible"
           variants={fadeInUp}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+          className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 mb-8"
         >
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">Daily Mentor Sessions</h2>
@@ -799,7 +798,7 @@ export default function MentorshipRequests() {
           ) : (
             <div className="space-y-3">
               {dailySessions.map((plan) => (
-                <div key={plan.id} className="p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div key={plan.id} className="p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div>
                     <p className="font-bold text-slate-900 text-[15px]">{plan.title}</p>
                     <p className="text-xs text-slate-500 mt-1">Mentor: {plan.mentor_email}</p>
@@ -813,7 +812,7 @@ export default function MentorshipRequests() {
                         href={normalizeExternalLink(plan.meeting_link)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center bg-[#4F46E5] hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-semibold"
+                        className="inline-flex items-center justify-center bg-[#16161c] hover:bg-black text-white px-4 py-2 rounded-md text-sm font-semibold"
                       >
                         Join Daily Session
                       </a>
@@ -833,7 +832,7 @@ export default function MentorshipRequests() {
           animate="visible"
           variants={fadeInUp}
           transition={{ duration: 0.6, delay: 0.55 }}
-          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+          className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 mb-8"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Subscriptions</h2>
@@ -850,7 +849,7 @@ export default function MentorshipRequests() {
                 const mentorName = prof?.name || sub.mentor_email;
                 const isActive = sub.status === 'active' && (!!sub.end_at ? new Date(sub.end_at).getTime() >= Date.now() : false);
                 return (
-                  <div key={sub.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300">
+                  <div key={sub.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300">
                     <div>
                       <p className="font-bold text-slate-900 text-[15px]">{mentorName}</p>
                       <p className="text-[12px] text-slate-500 mt-1">
@@ -875,7 +874,7 @@ export default function MentorshipRequests() {
           animate="visible"
           variants={fadeInUp}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white mb-8"
+          className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 mb-8"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Mentorship Requests</h2>
@@ -890,10 +889,10 @@ export default function MentorshipRequests() {
                     <motion.div
                       key={r.id}
                       whileHover={{ scale: 1.01 }}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                           {String(name).charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -921,7 +920,7 @@ export default function MentorshipRequests() {
           animate="visible"
           variants={fadeInUp}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-white"
+          className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">My Sessions</h2>
@@ -949,11 +948,11 @@ export default function MentorshipRequests() {
                     <motion.div
                       key={s.id}
                       whileHover={{ scale: 1.01 }}
-                      className="p-4 rounded-[24px] border border-slate-100 bg-[#f8fafc] hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-indigo-50 transition-all duration-300"
+                      className="p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#4F46E5] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                          <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                             {String(name).charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -970,7 +969,7 @@ export default function MentorshipRequests() {
                           const href = normalizeExternalLink(s.meeting_link || undefined);
                           return (
                             <div>
-                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-[#4F46E5] hover:bg-indigo-600 text-white px-4 py-2 rounded-md">Join</a>
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-[#16161c] hover:bg-black text-white px-4 py-2 rounded-md">Join</a>
                             </div>
                           );
                         })()}
@@ -992,7 +991,7 @@ export default function MentorshipRequests() {
                             onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
                           />
                           <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-[#4F46E5] hover:bg-indigo-600 text-white shadow-md hover:shadow-lg disabled:opacity-60"
+                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-[#16161c] hover:bg-black text-white shadow-md hover:shadow-lg disabled:opacity-60"
                             onClick={() => {
                               if (!ratingForm || ratingForm.session_id !== s.id) return;
                               const r = ratingForm.rating;

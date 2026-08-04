@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import { Download, CheckCircle, XCircle, MessageSquare, Loader, Sparkles, Award, FileText, Send } from 'lucide-react';
-import AluminaNavigation from '../AluminaNavigation';
+import { Download, CheckCircle, XCircle, MessageSquare, Loader, Sparkles, Award, FileText, Send, Clock, UserX } from 'lucide-react';
+import AluminaNavigation from '../AluminaNavigation/AlumniNavigation';
 import { toast } from 'sonner';
 
 interface ResumeRequest {
@@ -49,13 +49,10 @@ function AlumniResumeReviewsContent() {
 
   // Helper function to get display name - prioritize student_name field
   const getStudentDisplayName = (req: ResumeRequest) => {
-    console.log(`[STUDENT NAME DEBUG] ID: ${req.id}, Name: "${req.student_name}", Email: "${req.student_email}"`);
-    
     // Priority 1: Use student_name if it exists and is not empty/null
     if (req.student_name && typeof req.student_name === 'string' && req.student_name.trim().length > 0) {
       return req.student_name.trim();
     }
-    
     // Priority 2: Extract readable name from email
     const emailPart = req.student_email?.split('@')[0] || 'Student';
     return emailPart || 'Student';
@@ -68,7 +65,6 @@ function AlumniResumeReviewsContent() {
         setLoading(true);
         const response = await fetch(`/api/resume-reviews/alumni/${encodeURIComponent(userEmail)}`);
         const data = await response.json();
-        console.log('Alumni Requests Data:', data.reviews); // Debug log
         
         // Transform data to ensure clean student_name
         const transformedReviews = (data.reviews || []).map((req: ResumeRequest) => ({
@@ -76,7 +72,6 @@ function AlumniResumeReviewsContent() {
           student_name: req.student_name && req.student_name.trim() ? req.student_name.trim() : null
         }));
         
-        console.log('Transformed Reviews:', transformedReviews); // Debug log
         setRequests(transformedReviews);
 
         // Calculate stats
@@ -88,7 +83,6 @@ function AlumniResumeReviewsContent() {
         });
         setStats(newStats);
       } catch (error) {
-        console.error('Error fetching requests:', error);
         toast.error('Failed to load requests');
       } finally {
         setLoading(false);
@@ -117,7 +111,6 @@ function AlumniResumeReviewsContent() {
       setStats((prev) => ({ ...prev, pending: prev.pending - 1, accepted: prev.accepted + 1 }));
       toast.success('Request accepted!');
     } catch (error) {
-      console.error('Error accepting request:', error);
       toast.error('Failed to accept request');
     }
   };
@@ -139,7 +132,6 @@ function AlumniResumeReviewsContent() {
       setStats((prev) => ({ ...prev, pending: prev.pending - 1, rejected: prev.rejected + 1 }));
       toast.success('Request rejected');
     } catch (error) {
-      console.error('Error rejecting request:', error);
       toast.error('Failed to reject request');
     }
   };
@@ -174,7 +166,6 @@ function AlumniResumeReviewsContent() {
       setFeedbackText('');
       toast.success('Feedback submitted successfully!');
     } catch (error) {
-      console.error('Error submitting feedback:', error);
       toast.error('Failed to submit feedback');
     } finally {
       setSubmittingFeedback(false);
@@ -189,322 +180,286 @@ function AlumniResumeReviewsContent() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-6 md:p-8 font-sans">
+    <div className="space-y-8 max-w-[1400px] mx-auto h-full flex flex-col font-sans text-[#111111] mb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#fce7f3] to-[#dbeafe] rounded-[28px] p-8 md:p-10 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 text-pink-600 font-semibold text-[15px] mb-3">
-            <Sparkles size={18} className="text-pink-500" />
-            <span>Help Students Succeed</span>
-          </div>
-          <h1 className="text-3xl md:text-[44px] font-extrabold text-slate-900 mb-3 tracking-tight">
-            Resume Review Requests
+      <div className="bg-[#1A1C23] rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="relative z-10 max-w-2xl">
+          <h1 className="text-[32px] md:text-[38px] font-bold mb-2 tracking-tight">
+            Resume Reviews
           </h1>
-          <p className="text-slate-600 text-[16px] font-medium max-w-2xl">
+          <p className="text-[#8F93A3] text-[14px] font-medium leading-[1.6]">
             Review student resumes and provide valuable feedback to help shape the next generation of professionals.
           </p>
         </div>
+        {/* Abstract line art */}
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-[18px] p-5 border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pending</p>
-          <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-[28px] p-6 shadow-sm border border-gray-50 flex items-start justify-between hover:shadow-md transition-all">
+          <div>
+            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Pending</p>
+            <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.pending}</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+            <Clock size={20} strokeWidth={2.5} />
+          </div>
         </div>
-        <div className="bg-white rounded-[18px] p-5 border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Accepted</p>
-          <p className="text-3xl font-bold text-blue-600">{stats.accepted}</p>
+        <div className="bg-white rounded-[28px] p-6 shadow-sm border border-gray-50 flex items-start justify-between hover:shadow-md transition-all">
+          <div>
+            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Accepted</p>
+            <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.accepted}</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+            <CheckCircle size={20} strokeWidth={2.5} />
+          </div>
         </div>
-        <div className="bg-white rounded-[18px] p-5 border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Completed</p>
-          <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
+        <div className="bg-white rounded-[28px] p-6 shadow-sm border border-gray-50 flex items-start justify-between hover:shadow-md transition-all">
+          <div>
+            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Completed</p>
+            <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.completed}</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+            <Award size={20} strokeWidth={2.5} />
+          </div>
         </div>
-        <div className="bg-white rounded-[18px] p-5 border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Rejected</p>
-          <p className="text-3xl font-bold text-red-600">{stats.rejected}</p>
+        <div className="bg-white rounded-[28px] p-6 shadow-sm border border-gray-50 flex items-start justify-between hover:shadow-md transition-all">
+          <div>
+            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Rejected</p>
+            <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.rejected}</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+            <XCircle size={20} strokeWidth={2.5} />
+          </div>
         </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader className="w-8 h-8 animate-spin text-[#1A1C23]" />
         </div>
       ) : requests.length === 0 ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-[24px] p-12 text-center">
-          <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600 font-medium text-lg">No resume review requests yet.</p>
-          <p className="text-slate-500 text-sm mt-2">Students will see your profile when they request reviews.</p>
+        <div className="bg-white rounded-[32px] p-16 text-center border border-gray-50 shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-5">
+            <FileText size={24} strokeWidth={2} />
+          </div>
+          <p className="text-gray-900 font-bold text-[18px]">No resume review requests yet.</p>
+          <p className="text-gray-500 font-medium text-[14px] mt-2">Students will see your profile when they request reviews.</p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Pending Requests */}
-          {groupedRequests.pending.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-yellow-500 rounded-full"></div>
-                <h2 className="text-xl font-bold text-slate-900">Pending ({groupedRequests.pending.length})</h2>
-              </div>
-              <div className="space-y-4">
-                {groupedRequests.pending.map((req) => (
-                  <div key={req.id} className="bg-white border border-yellow-200 rounded-[18px] p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-xl mb-1">{getStudentDisplayName(req)}</p>
-                        <p className="text-xs text-slate-500 font-medium">{req.student_email}</p>
-                        <p className="text-xs text-slate-400 mt-2">{new Date(req.requested_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          
+          {/* Left Column: Pending & In Progress */}
+          <div className="space-y-8">
+            {groupedRequests.pending.length > 0 && (
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[22px] font-bold tracking-tight">Pending Requests</h3>
+                  <span className="text-[12px] font-bold bg-[#1A1C23] text-white px-3 py-1 rounded-full">
+                    {groupedRequests.pending.length} New
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  {groupedRequests.pending.map((req) => (
+                    <div key={req.id} className="bg-white border border-gray-100 rounded-[24px] p-5 hover:border-gray-200 transition-all shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                            {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-[16px] tracking-tight">{getStudentDisplayName(req)}</p>
+                            <p className="text-[13px] font-bold text-gray-400 mt-0.5">{new Date(req.requested_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs font-bold text-yellow-700 bg-yellow-100 px-3 py-1 rounded-full">New</span>
+
+                      {req.student_message && (
+                        <div className="bg-gray-50 rounded-[16px] p-4 mb-4 border border-gray-100">
+                          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Message</p>
+                          <p className="text-[14px] font-medium text-gray-800">{req.student_message}</p>
+                        </div>
+                      )}
+
+                      {req.resume_url ? (
+                        <div className="flex gap-2 mb-4">
+                          <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-[#F4F6FB] text-[#1A1C23] hover:bg-gray-200 transition-colors flex items-center gap-2">
+                            <FileText size={16} /> Open Resume
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-100 rounded-[12px] p-3 mb-4">
+                          <p className="text-[13px] font-bold text-gray-500">Resume not available</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button onClick={() => handleAccept(req.id)} className="flex-1 bg-[#1A1C23] hover:bg-black text-white font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
+                          Accept
+                        </button>
+                        <button onClick={() => handleReject(req.id)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
+                          Decline
+                        </button>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                    {req.student_message && (
-                      <div className="bg-yellow-50 rounded-[12px] p-3 mb-4 border border-yellow-100">
-                        <p className="text-xs font-bold text-yellow-900 mb-1">Message:</p>
-                        <p className="text-sm text-yellow-900">{req.student_message}</p>
+            {groupedRequests.accepted.length > 0 && (
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
+                <h3 className="text-[22px] font-bold tracking-tight mb-6">In Progress</h3>
+                <div className="space-y-4">
+                  {groupedRequests.accepted.map((req) => (
+                    <div key={req.id} className="bg-white border border-gray-100 rounded-[24px] p-5 hover:border-gray-200 transition-all shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                            {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-[16px] tracking-tight">{getStudentDisplayName(req)}</p>
+                            <p className="text-[13px] font-bold text-gray-400 mt-0.5">Accepted {new Date(req.accepted_at || '').toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-[8px] uppercase tracking-wider border border-gray-200">Reviewing</span>
                       </div>
-                    )}
 
-                    {req.resume_url ? (
-                      <div className="flex flex-wrap items-center gap-3 mb-4">
-                        <a
-                          href={getPreviewUrl(req.resume_url, req.filename)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Open Resume
-                        </a>
-                        <a
-                          href={req.download_url || req.resume_url}
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
-                        >
-                          <Download className="w-4 h-4" />
-                          {req.filename || 'Download Resume'}
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="bg-red-50 border border-red-200 rounded-[12px] p-3 mb-4">
-                        <p className="text-xs font-bold text-red-700">⚠️ Resume not available</p>
-                      </div>
-                    )}
+                      {req.resume_url && (
+                        <div className="flex gap-2 mb-4">
+                           <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-[#F4F6FB] text-[#1A1C23] hover:bg-gray-200 transition-colors flex items-center gap-2">
+                             <FileText size={16} /> Open Resume
+                           </a>
+                        </div>
+                      )}
 
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleAccept(req.id)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-[12px] transition flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(37,99,235,0.3)]"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Accept
+                      <button onClick={() => handleOpenFeedback(req.id)} className="w-full bg-[#1A1C23] hover:bg-black text-white font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
+                        <MessageSquare size={16} /> Provide Feedback
                       </button>
-                      <button
-                        onClick={() => handleReject(req.id)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-[12px] transition flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(220,38,38,0.3)]"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Reject
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </section>
-          )}
+            )}
+          </div>
 
-          {/* Accepted Requests - Waiting for Feedback */}
-          {groupedRequests.accepted.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
-                <h2 className="text-xl font-bold text-slate-900">In Progress ({groupedRequests.accepted.length})</h2>
-              </div>
-              <div className="space-y-4">
-                {groupedRequests.accepted.map((req) => (
-                  <div key={req.id} className="bg-white border border-blue-200 rounded-[18px] p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-xl mb-1">{getStudentDisplayName(req)}</p>
-                        <p className="text-xs text-slate-500 font-medium">{req.student_email}</p>
-                        <p className="text-xs text-slate-400 mt-2">Accepted {new Date(req.accepted_at || '').toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+          {/* Right Column: Completed & Rejected */}
+          <div className="space-y-8">
+            {groupedRequests.completed.length > 0 && (
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
+                <h3 className="text-[22px] font-bold tracking-tight mb-6">Completed History</h3>
+                <div className="space-y-4">
+                  {groupedRequests.completed.map((req) => (
+                    <div key={req.id} className="bg-gray-50 border border-gray-100 rounded-[24px] p-5">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                            {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-[16px] tracking-tight">{getStudentDisplayName(req)}</p>
+                            <p className="text-[13px] font-bold text-gray-400 mt-0.5">Completed {new Date(req.completed_at || '').toLocaleDateString()}</p>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full">In Review</span>
+
+                      {req.alumni_feedback && (
+                        <div className="bg-white rounded-[16px] p-4 mb-4 border border-gray-100">
+                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                            <Award size={14} className="text-[#1A1C23]" /> Your Feedback
+                          </p>
+                          <p className="text-[14px] font-medium text-gray-800">{req.alumni_feedback}</p>
+                        </div>
+                      )}
+
+                      {req.resume_url && (
+                        <div className="flex gap-2">
+                           <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                             <FileText size={16} /> Open Resume
+                           </a>
+                        </div>
+                      )}
                     </div>
-
-                    {req.resume_url ? (
-                      <div className="flex flex-wrap items-center gap-3 mb-4">
-                        <a
-                          href={getPreviewUrl(req.resume_url, req.filename)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Open Resume
-                        </a>
-                        <a
-                          href={req.download_url || req.resume_url}
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
-                        >
-                          <Download className="w-4 h-4" />
-                          {req.filename || 'Download Resume'}
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="bg-red-50 border border-red-200 rounded-[12px] p-3 mb-4">
-                        <p className="text-xs font-bold text-red-700">⚠️ Resume not available</p>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => handleOpenFeedback(req.id)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-[12px] transition flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(37,99,235,0.3)]"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      Provide Feedback
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </section>
-          )}
+            )}
 
-          {/* Completed Requests */}
-          {groupedRequests.completed.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-green-500 rounded-full"></div>
-                <h2 className="text-xl font-bold text-slate-900">Completed ({groupedRequests.completed.length})</h2>
-              </div>
-              <div className="space-y-4">
-                {groupedRequests.completed.map((req) => (
-                  <div key={req.id} className="bg-green-50 border border-green-200 rounded-[18px] p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-xl mb-1">{getStudentDisplayName(req)}</p>
-                        <p className="text-xs text-slate-500 font-medium">{req.student_email}</p>
-                        <p className="text-xs text-slate-400 mt-2">Completed {new Date(req.completed_at || '').toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            {groupedRequests.rejected.length > 0 && (
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[22px] font-bold tracking-tight text-gray-400">Declined</h3>
+                  <span className="text-[12px] font-bold text-gray-400">{groupedRequests.rejected.length} Total</span>
+                </div>
+                <div className="space-y-4 opacity-75">
+                  {groupedRequests.rejected.map((req) => (
+                    <div key={req.id} className="bg-gray-50 border border-gray-100 rounded-[20px] p-5">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-2xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-bold text-[14px] shrink-0">
+                            {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-500 text-[15px] tracking-tight">{getStudentDisplayName(req)}</p>
+                            <p className="text-[12px] font-bold text-gray-400 mt-0.5">Declined {new Date(req.rejected_at || '').toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-[8px] uppercase tracking-wider border border-gray-200">Declined</span>
                       </div>
-                      <span className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1 rounded-full flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" /> Complete
-                      </span>
                     </div>
-
-                    {req.alumni_feedback && (
-                      <div className="bg-white rounded-[12px] p-4 mb-4 border border-green-200">
-                        <p className="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1">
-                          <Award className="w-4 h-4 text-green-600" />
-                          Your Feedback
-                        </p>
-                        <p className="text-sm text-slate-700 leading-relaxed">{req.alumni_feedback}</p>
-                      </div>
-                    )}
-
-                    {req.resume_url ? (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <a
-                          href={getPreviewUrl(req.resume_url, req.filename)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold text-sm transition"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Open Resume
-                        </a>
-                        <a
-                          href={req.download_url || req.resume_url}
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
-                        >
-                          <Download className="w-4 h-4" />
-                          {req.filename || 'Download Resume'}
-                        </a>
-                      </div>
-                    ) : (
-                      <span className="inline-flex items-center text-xs font-bold text-red-600\">⚠️ Resume not available</span>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </section>
-          )}
-
-          {/* Rejected Requests */}
-          {groupedRequests.rejected.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-red-500 rounded-full"></div>
-                <h2 className="text-xl font-bold text-slate-900">Rejected ({groupedRequests.rejected.length})</h2>
-              </div>
-              <div className="space-y-4">
-                {groupedRequests.rejected.map((req) => (
-                  <div key={req.id} className="bg-red-50 border border-red-200 rounded-[18px] p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-xl mb-1">{getStudentDisplayName(req)}</p>
-                        <p className="text-xs text-slate-500 font-medium">{req.student_email}</p>
-                        <p className="text-xs text-slate-400 mt-2">Rejected {new Date(req.rejected_at || '').toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-                      <span className="text-xs font-bold text-red-700 bg-red-100 px-3 py-1 rounded-full">Declined</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+            )}
+          </div>
         </div>
       )}
 
       {/* Feedback Modal */}
       {feedbackModal.visible && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setFeedbackModal({ visible: false })}>
-          <div className="bg-white rounded-[32px] max-w-md w-full shadow-[0_20px_60px_rgb(0,0,0,0.1)] overflow-hidden border border-white relative" onClick={e => e.stopPropagation()}>
-            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-50/80 rounded-full blur-[40px] -mt-10 -mr-10 pointer-events-none" />
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-8 py-7 border-b border-slate-200 relative z-10">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
-                <h3 className="text-2xl font-bold text-slate-900">Provide Feedback</h3>
-              </div>
-              <p className="text-sm text-slate-600 ml-5">Share constructive feedback to help the student improve their resume</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111111]/40 backdrop-blur-sm p-4" onClick={() => setFeedbackModal({ visible: false })}>
+          <div className="bg-white rounded-[32px] max-w-md w-full p-8 shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[22px] font-bold tracking-tight">Provide Feedback</h3>
+              <button onClick={() => setFeedbackModal({ visible: false })} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
+                <UserX size={16} />
+              </button>
             </div>
+            
+            <p className="text-[14px] font-medium text-gray-500 mb-4">Share constructive feedback to help the student improve their resume. Be specific about strengths and areas to improve.</p>
 
-            {/* Content */}
-            <div className="p-8 space-y-5 relative z-10">
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-slate-900">Your Feedback</label>
-                <textarea
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  placeholder="What are their strengths? Areas to improve? Specific suggestions?"
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-[14px] bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:bg-white text-slate-700 font-medium resize-none transition placeholder-slate-400"
-                  rows={6}
-                />
-              </div>
+            <div className="space-y-4">
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="What are their strengths? Areas to improve? Specific suggestions?"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-[16px] bg-gray-50 focus:outline-none focus:border-gray-400 focus:bg-white text-gray-900 font-medium resize-none transition-all placeholder-gray-400"
+                rows={6}
+              />
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setFeedbackModal({ visible: false })}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-3 rounded-[12px] transition text-sm"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-[16px] transition-colors text-[14px]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitFeedback}
                   disabled={submittingFeedback || !feedbackText.trim()}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-[12px] transition text-sm flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(34,197,94,0.3)]"
+                  className="flex-1 bg-[#1A1C23] hover:bg-black disabled:bg-gray-300 text-white font-bold py-3.5 rounded-[16px] transition-colors text-[14px] flex items-center justify-center gap-2"
                 >
                   {submittingFeedback ? (
                     <>
-                      <Loader className="w-4 h-4 animate-spin" />
-                      <span>Submitting...</span>
+                      <Loader className="w-4 h-4 animate-spin" /> Submitting...
                     </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4" />
-                      <span>Submit</span>
+                      <Send className="w-4 h-4" /> Submit
                     </>
                   )}
                 </button>

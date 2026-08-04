@@ -179,119 +179,68 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
         </button>
       </div>
 
-      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[300px] h-screen bg-[#f4f5f7] shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-[#e6e9ef] flex-col">
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[220px] h-screen bg-[#1A1C23] text-gray-400 flex-col py-8 rounded-r-[32px] shadow-2xl">
         {/* Logo & Branding */}
-        <div className="px-6 py-5 bg-white border-b border-[#eaecf0] shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
-              <img
-                src="/NEWCNLOGO.png"
-                className="w-8 h-8 object-contain"
-                alt="CF Logo"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://ui-avatars.com/api/?name=CF&background=0284c7&color=fff";
-                }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Alumnex</h1>
-              <p className="text-sm text-gray-500 font-medium mt-0.5">VPPCOE & VA</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Alumni Profile Summary */}
-        <div className="px-4 py-5 bg-white border-b border-[#eaecf0] shrink-0">
-          <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
-              <div className="flex items-start space-x-3.5">
-              <div className="relative mt-0.5">
-                {alumniData.avatar ? (
-                  <img
-                    src={alumniData.avatar}
-                    alt={alumniData.name}
-                    className="w-[56px] h-[56px] rounded-full object-cover shadow-sm bg-gray-50"
-                  />
-                ) : (
-                  <div className="w-[56px] h-[56px] bg-[#F19B86] rounded-full flex items-center justify-center shadow-sm">
-                    <span className="text-white font-medium text-lg tracking-wider">
-                      {String(alumniData.name).split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#2563eb] rounded-full flex items-center justify-center border-[2.5px] border-white shadow-sm">
-                  <span className="text-white text-[10px] font-bold leading-none">✓</span>
-                </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-gray-900 text-[16px] truncate">{alumniData.name}</h3>
-                <p className="text-[14px] text-gray-600 mt-0.5">Class of {alumniData.graduationYear}</p>
-                {!profileLoading && alumniData.position !== 'Not specified' ? (
-                  <p className="text-[14px] text-gray-500 mt-0.5 truncate">{alumniData.position} {alumniData.company !== 'Not specified' && `at ${alumniData.company}`}</p>
-                ) : (
-                  <p className="text-[14px] text-gray-500 mt-0.5">Not specified</p>
-                )}
-              </div>
-            </div>
-            <div className="mt-3 flex justify-center">
-              <span className="text-[12px] bg-[#e9efff] text-[#2563eb] px-3.5 py-1.5 rounded-full font-semibold inline-block">
-                Verified Alumni
-              </span>
-            </div>
-            <div className="mt-4 flex gap-2.5">
-              <Link
-                href="/alumni/network"
-                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-blue-50 text-blue-700 border border-blue-100 text-[12px] font-semibold hover:bg-blue-100 transition-colors"
-              >
-                <Users size={13} />
-                <span>Network</span>
-              </Link>
-              <Link
-                href="/alumni/mentorship"
-                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-blue-50 text-blue-700 border border-blue-100 text-[12px] font-semibold hover:bg-blue-100 transition-colors"
-              >
-                <Zap size={13} />
-                <span>Mentor</span>
-              </Link>
+        <div className="px-10 mb-12 shrink-0">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/alumni/dashboard')}>
+            {/* Minimalist Logo like image */}
+            <div className="relative w-8 h-8 flex items-center justify-center">
+               <div className="absolute w-5 h-7 bg-white rounded-sm -ml-3 z-10 shadow-sm" />
+               <div className="absolute w-5 h-5 bg-gray-500 rounded-sm ml-2 mt-2 opacity-80" />
             </div>
           </div>
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5">
-              <ul className="space-y-2.5">
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-6">
+              <ul className="space-y-2">
                 {navigationItems.map((item) => {
                   const isActive = isActiveRoute(item.route);
                   return (
-                    <li key={item.id}>
+                    <li key={item.id} className="relative">
                       <Link
                         href={item.route}
-                        className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 group ${
+                        className={`flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 group ${
                           isActive
-                            ? 'bg-[#e8efff] text-[#1e3a8a] border-[#bfdbfe] shadow-[0_1px_3px_rgba(37,99,235,0.18)]'
-                            : 'text-[#344054] border-transparent hover:bg-white hover:border-[#e5e7eb] hover:shadow-sm'
+                            ? 'text-white font-medium'
+                            : 'text-[#8F93A3] hover:text-white hover:bg-white/5'
                         }`}
                       >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-transparent'}`} />
-                          <span className={`shrink-0 ${isActive ? 'text-blue-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
-                            {item.icon}
+                        <div className="flex items-center gap-4 min-w-0">
+                          <span className={`shrink-0 ${isActive ? 'text-white' : 'text-[#8F93A3] group-hover:text-white'}`}>
+                            {React.cloneElement(item.icon as React.ReactElement, { strokeWidth: isActive ? 2.5 : 2 })}
                           </span>
-                          <span className={`text-[15px] truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                          <span className="text-[15px]">
                             {item.label}
                           </span>
                         </div>
                         {item.badge ? (
-                          <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold bg-[#ef4444] text-white shadow-sm">
+                          <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] font-bold bg-white text-[#1A1C23]">
                             {item.badge}
                           </div>
                         ) : null}
                       </Link>
+                      {/* Active indicator on the right edge of sidebar */}
+                      {isActive && (
+                         <div className="absolute right-[-24px] top-1/2 -translate-y-1/2 w-1.5 h-8 bg-white rounded-l-full shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                      )}
                     </li>
                   );
                 })}
               </ul>
         </nav>
+
+        {/* Bottom Actions */}
+        <div className="px-6 mt-auto pt-8 shrink-0 space-y-2">
+           <Link href="/alumni/settings" className="flex items-center gap-4 px-4 py-3 text-[#8F93A3] hover:text-white hover:bg-white/5 rounded-xl transition-all">
+              <MessageSquare size={20} strokeWidth={2} />
+              <span className="text-[15px]">Support</span>
+           </Link>
+           <button onClick={() => router.push('/api/auth/logout')} className="flex items-center w-full gap-4 px-4 py-3 text-[#8F93A3] hover:text-white hover:bg-white/5 rounded-xl transition-all">
+              <LogOut size={20} strokeWidth={2} />
+              <span className="text-[15px]">Log Out</span>
+           </button>
+        </div>
       </aside>
 
       {isMobileMenuOpen && (
@@ -404,8 +353,8 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
         </div>
       )}
 
-      <main className="lg:ml-[300px] min-h-screen">
-        <div className="p-4 sm:p-6 lg:p-8">
+      <main className="lg:ml-[220px] min-h-screen bg-[#F4F6FB] rounded-tl-[40px] shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
+        <div className="p-8 lg:p-12">
           {children}
         </div>
       </main>

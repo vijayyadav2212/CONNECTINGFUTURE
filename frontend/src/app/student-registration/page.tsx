@@ -165,7 +165,7 @@ export default function StudentRegistrationPage() {
                 skills: formData.skills,
             };
 
-            const resp = await fetch(`${base}/users/profile`, {
+            const resp = await fetch(`${base}/v2/users/profile`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

@@ -64,7 +64,7 @@ const RoadmapFormModal = ({ formData, setFormData, onSubmit, title, submitLabel,
         <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-4">
             <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-indigo-500" />
+              <Sparkles className="w-5 h-5 text-[#1A1C23]" />
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-800 tracking-tight">{title}</h2>
@@ -125,7 +125,7 @@ const RoadmapFormModal = ({ formData, setFormData, onSubmit, title, submitLabel,
 
           <div className="flex items-center justify-end gap-3 pt-6">
             <button type="button" onClick={onClose} className="px-6 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
-            <button type="submit" className="px-8 py-3 text-sm font-black bg-indigo-500 text-white rounded-2xl hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-200">{submitLabel}</button>
+            <button type="submit" className="px-8 py-3 text-sm font-black bg-[#1A1C23] text-white rounded-2xl hover:bg-[#1A1C23] transition-all shadow-lg shadow-indigo-200">{submitLabel}</button>
           </div>
         </form>
       </div>
@@ -190,7 +190,7 @@ function RoadmapPage() {
       setRoadmaps(prev => [created, ...prev]);
       setShowCreateModal(false);
       resetForm();
-      toast({ title: "Roadmap Created!", className: "bg-indigo-500 text-white rounded-2xl" });
+      toast({ title: "Roadmap Created!", className: "bg-[#1A1C23] text-white rounded-2xl" });
     } catch {
       toast({ title: "Error creating roadmap", variant: "destructive" });
     }
@@ -229,20 +229,23 @@ function RoadmapPage() {
       <div className="space-y-8 max-w-7xl mx-auto pb-20">
 
         {/* Dashboard Header Style */}
-        <div className="bg-gradient-to-r from-[#e7eaff] to-[#eaddff] rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
+        <div className="bg-[#1A1C23]  rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)] text-white">
+        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
           <div className="relative z-10 max-w-2xl">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold text-[15px] mb-3">
+            <div className="flex items-center gap-2 text-[#1A1C23] font-semibold text-[15px] mb-3">
               <Sparkles className="w-5 h-5" /> <span>Career Nav</span>
             </div>
-            <h1 className="text-4xl md:text-[44px] font-extrabold text-[#1e293b] mb-4 tracking-tight leading-tight">Career Roadmaps</h1>
+            <h1 className="text-4xl md:text-[44px] font-extrabold text-white mb-4 tracking-tight leading-tight">Career Roadmaps</h1>
             <p className="text-slate-600 text-[17px] font-medium opacity-90 mt-2">Create and share career paths to guide students and fellow alumni.</p>
           </div>
           <button
             onClick={() => { resetForm(); setShowCreateModal(true); }}
-            className="absolute top-1/2 right-8 md:right-12 -translate-y-1/2 bg-white/50 hover:bg-white text-indigo-500 p-4 rounded-2xl backdrop-blur-sm shadow-[0_8px_20px_rgb(0,0,0,0.03)] border border-white/60 transition-all duration-300 group"
+            className="absolute top-1/2 right-8 md:right-12 -translate-y-1/2 bg-white/50 hover:bg-white text-[#1A1C23] p-4 rounded-2xl backdrop-blur-sm shadow-[0_8px_20px_rgb(0,0,0,0.03)] border border-white/60 transition-all duration-300 group"
             title="Create New Roadmap"
           >
-            <Plus className="w-8 h-8 text-indigo-500 stroke-[2.5]" />
+            <Plus className="w-8 h-8 text-[#1A1C23] stroke-[2.5]" />
           </button>
         </div>
 
@@ -255,7 +258,7 @@ function RoadmapPage() {
               <p className="text-sm font-bold text-slate-500 mt-1">Roadmaps Created</p>
             </div>
             <div className="w-16 h-16 bg-[#f0edff] rounded-3xl flex items-center justify-center">
-              <BookOpen className="w-8 h-8 text-indigo-500" />
+              <BookOpen className="w-8 h-8 text-[#1A1C23]" />
             </div>
           </div>
           <div className="bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] p-8 rounded-[32px] shadow-lg shadow-violet-500/20 text-white flex flex-col justify-between">
@@ -295,18 +298,18 @@ function RoadmapPage() {
             {roadmaps.map(rm => (
               <div key={rm.id} className="group p-6 rounded-[28px] border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all flex flex-col md:flex-row items-center gap-6">
                 <div className="w-16 h-16 rounded-[20px] bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <Map className="w-8 h-8 text-indigo-500" />
+                  <Map className="w-8 h-8 text-[#1A1C23]" />
                 </div>
                 <div className="flex-1 text-center md:text-left">
                   <h4 className="text-lg font-black text-slate-800">{rm.title}</h4>
                   <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
                     <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-white rounded-full border border-slate-200 text-slate-500">{rm.level}</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-indigo-50 rounded-full text-indigo-600">{rm.category}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-indigo-50 rounded-full text-[#1A1C23]">{rm.category}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Link href={`/alumni/roadmap/${rm.id}`} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 text-xs font-black rounded-2xl hover:bg-slate-50 transition-all uppercase tracking-widest">View</Link>
-                  <button onClick={() => openEdit(rm)} className="px-6 py-3 bg-indigo-50 text-indigo-600 text-xs font-black rounded-2xl hover:bg-indigo-100 transition-all uppercase tracking-widest">Edit</button>
+                  <button onClick={() => openEdit(rm)} className="px-6 py-3 bg-indigo-50 text-[#1A1C23] text-xs font-black rounded-2xl hover:bg-indigo-100 transition-all uppercase tracking-widest">Edit</button>
                 </div>
               </div>
             ))}
