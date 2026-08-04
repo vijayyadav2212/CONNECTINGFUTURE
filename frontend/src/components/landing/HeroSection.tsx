@@ -70,7 +70,7 @@ export default function HeroSection() {
           {/* Floating Widget 2: Referral accepted (Bottom Left - Higher Up & Closer) */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0, y: [0, 6, 0] }}
+            animate={{ opacity: 1, y: [0, 6, 0] }}
             transition={{ 
               y: { repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 0.2 }
             }}

@@ -1,4 +1,5 @@
 const { dbQuery } = require('../config/db');
+const bcrypt = require('bcryptjs');
 const { fetchAuth0User } = require('../services/auth0Service');
 const {
   deriveRole,
@@ -9,9 +10,6 @@ const {
 
 // GET current user's profile
 async function getUserProfile(req, res) {
-  try {
-    console.log('Profile request auth:', req.auth);
-  } catch { }
   const auth0Id = req.auth && req.auth.sub;
   const email = req.auth && req.auth["https://schemas.quickstart/email"] || req.auth && req.auth.email;
   if (!auth0Id) return res.status(401).json({ error: 'Unauthorized' });
@@ -262,8 +260,55 @@ async function listUsers(req, res) {
   }
 }
 
+// POST change password for current user
+async function changePassword(req, res) {
+  try {
+    const auth0Id = req.auth && req.auth.sub;
+    if (!auth0Id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { currentPassword, newPassword } = req.body || {};
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    // Fetch user from database
+    const { rows } = await dbQuery('SELECT * FROM users WHERE auth0_id = ? LIMIT 1', [auth0Id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = rows[0];
+
+    // If user has an existing password, check current password
+    if (user.password_hash) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to change password' });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!isMatch) {
+        return res.status(400).json({ error: 'Incorrect current password' });
+      }
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password in database
+    await dbQuery('UPDATE users SET password_hash = ? WHERE auth0_id = ?', [passwordHash, auth0Id]);
+
+    return res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
-  listUsers
+  listUsers,
+  changePassword
 };

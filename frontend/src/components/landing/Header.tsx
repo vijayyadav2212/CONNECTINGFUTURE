@@ -5,12 +5,14 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { useMockAuth } from "@auth0/nextjs-auth0/client";
 
 interface HeaderProps {
   user: any;
 }
 
 export default function Header({ user }: HeaderProps) {
+  const { logout } = useMockAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -40,23 +42,25 @@ export default function Header({ user }: HeaderProps) {
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <>
-              <Link href="/api/auth/login?returnTo=/post-login">
+              <Link href="/post-login">
                 <Button className="bg-[#0f4c5c] hover:bg-[#0b3a47] text-white rounded-lg px-6 py-5 font-semibold text-sm shadow-md">
                   Dashboard
                 </Button>
               </Link>
-              <a href="/api/auth/logout">
-                <Button variant="outline" className="border-teal-900/10 text-teal-950 rounded-lg hover:bg-teal-950/5">
-                  Logout
-                </Button>
-              </a>
+              <Button 
+                onClick={() => logout()}
+                variant="outline" 
+                className="border-2 border-[#0f4c5c] text-[#0f4c5c] bg-white rounded-lg px-6 py-5 font-semibold text-sm shadow-sm hover:bg-[#0f4c5c] hover:text-white transition-colors"
+              >
+                Logout
+              </Button>
             </>
           ) : (
-            <a href="/api/auth/login">
+            <Link href="/login">
               <Button className="bg-[#0f4c5c] hover:bg-[#0b3a47] text-white rounded-lg px-6 py-5 font-semibold text-sm shadow-md">
-                Contact Us
+                Login
               </Button>
-            </a>
+            </Link>
           )}
         </div>
 
@@ -113,23 +117,28 @@ export default function Header({ user }: HeaderProps) {
             <div className="pt-4 border-t border-teal-900/10 flex flex-col gap-3">
               {user ? (
                 <>
-                  <Link href="/api/auth/login?returnTo=/post-login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/post-login" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full bg-[#0f4c5c] hover:bg-[#0b3a47] text-white rounded-lg py-5 font-semibold text-sm shadow-md">
                       Dashboard
                     </Button>
                   </Link>
-                  <a href="/api/auth/logout" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full border-teal-900/20 text-teal-950 rounded-lg py-5 hover:bg-teal-950/5">
-                      Logout
-                    </Button>
-                  </a>
+                  <Button 
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      logout();
+                    }}
+                    variant="outline" 
+                    className="w-full border-2 border-[#0f4c5c] text-[#0f4c5c] bg-white rounded-lg py-5 font-semibold text-sm shadow-sm hover:bg-[#0f4c5c] hover:text-white transition-colors"
+                  >
+                    Logout
+                  </Button>
                 </>
               ) : (
-                <a href="/api/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                   <Button className="w-full bg-[#0f4c5c] hover:bg-[#0b3a47] text-white rounded-lg py-5 font-semibold text-sm shadow-md">
-                    Contact Us
+                    Login
                   </Button>
-                </a>
+                </Link>
               )}
             </div>
           </motion.div>

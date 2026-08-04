@@ -53,6 +53,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [passwordFields, setPasswordFields] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwdMessage, setPwdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   React.useEffect(() => {
     fetchProfile();
@@ -180,6 +183,51 @@ export default function SettingsPage() {
   const handlePhotoSelect = (photoUrl: string) => {
     setProfileData(p => ({ ...p, profileImage: photoUrl }));
     setIsAvatarModalOpen(false);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordFields(prev => ({ ...prev, [name]: value }));
+  };
+
+  const submitPasswordChange = async () => {
+    setPwdMessage(null);
+    if (!passwordFields.newPassword) {
+      setPwdMessage({ type: 'error', text: 'New password is required.' });
+      return;
+    }
+    if (passwordFields.newPassword !== passwordFields.confirmPassword) {
+      setPwdMessage({ type: 'error', text: 'New passwords do not match.' });
+      return;
+    }
+    if (passwordFields.newPassword.length < 6) {
+      setPwdMessage({ type: 'error', text: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordFields.currentPassword,
+          newPassword: passwordFields.newPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPwdMessage({ type: 'success', text: 'Password reset successfully!' });
+        setPasswordFields({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => setPwdMessage(null), 3000);
+      } else {
+        throw new Error(data.error || 'Failed to update password');
+      }
+    } catch (e) {
+      setPwdMessage({ type: 'error', text: e instanceof Error ? e.message : 'Error resetting password' });
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all";
@@ -427,6 +475,58 @@ export default function SettingsPage() {
                           <Toggle checked={privacy[key]} onChange={() => setPrivacy(p => ({ ...p, [key]: !p[key] }))} />
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-black text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">Reset Password</p>
+                    <div className="space-y-4 max-w-md mt-4">
+                      <div>
+                        <label className={labelCls}>Current Password</label>
+                        <input
+                          type="password"
+                          name="currentPassword"
+                          value={passwordFields.currentPassword}
+                          onChange={handlePasswordChange}
+                          placeholder="••••••••"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>New Password</label>
+                        <input
+                          type="password"
+                          name="newPassword"
+                          value={passwordFields.newPassword}
+                          onChange={handlePasswordChange}
+                          placeholder="••••••••"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Confirm New Password</label>
+                        <input
+                          type="password"
+                          name="confirmPassword"
+                          value={passwordFields.confirmPassword}
+                          onChange={handlePasswordChange}
+                          placeholder="••••••••"
+                          className={inputCls}
+                        />
+                      </div>
+                      {pwdMessage && (
+                        <p className={`text-xs font-semibold ${pwdMessage.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {pwdMessage.text}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={submitPasswordChange}
+                        disabled={passwordSaving}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors shadow-sm"
+                      >
+                        {passwordSaving ? 'Updating…' : 'Update Password'}
+                      </button>
                     </div>
                   </div>
                 </div>
