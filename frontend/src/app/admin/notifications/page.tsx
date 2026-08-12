@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import AdminNavigation from '../AdminNavigation/AdminNavigation';
+
 import {
   Bell, BellRing, BellOff, Check, CheckCheck, Trash2,
   Filter, Search, Send, X, AlertCircle, Info,
@@ -35,11 +35,11 @@ const typeIcon = (type: Notification['type']) => ({
 }[type]);
 
 const typeColor = (type: Notification['type']) => ({
-  info:    { bg: 'bg-blue-100',   text: 'text-blue-700'   },
-  success: { bg: 'bg-purple-100',   text: 'text-red-700'   },
+  info:    { bg: 'bg-teal-100',   text: 'text-teal-700'   },
+  success: { bg: 'bg-teal-100',   text: 'text-red-700'   },
   warning: { bg: 'bg-amber-100',  text: 'text-amber-700'  },
   error:   { bg: 'bg-red-100',    text: 'text-red-700'    },
-  alert:   { bg: 'bg-purple-100', text: 'text-purple-700' },
+  alert:   { bg: 'bg-teal-100', text: 'text-teal-700' },
 }[type]);
 
 const catIcon = (cat: Notification['category']) => ({
@@ -54,10 +54,10 @@ const catIcon = (cat: Notification['category']) => ({
 const priorityStyle = (p: Notification['priority']) => ({
   high:   'bg-red-50 text-red-700 border-red-200',
   medium: 'bg-amber-50 text-amber-700 border-amber-200',
-  low:    'bg-gray-100 text-gray-600 border-gray-200',
+  low:    'bg-[#f6f3eb] text-teal-800 border-teal-900/10',
 }[p]);
 
-const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400";
+const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-teal-900/10 bg-white text-teal-950 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400";
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 const SEED: Notification[] = [
@@ -171,19 +171,19 @@ export default function NotificationsPage() {
     const isActive = activeId === n.id;
     return (
       <div role="button" tabIndex={0} onClick={() => { setActiveId(n.id); setMobileOpen(true); }} onKeyDown={e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); setActiveId(n.id); setMobileOpen(true); }}}
-        className={`px-4 py-3.5 flex items-start gap-3 cursor-pointer transition-colors border-l-2 ${isActive ? 'bg-purple-50 border-red-500' : 'hover:bg-gray-50 border-transparent'}`}>
+        className={`px-4 py-3.5 flex items-start gap-3 cursor-pointer transition-colors border-l-2 ${isActive ? 'bg-teal-950/10 border-red-500' : 'hover:bg-[#f6f3eb] border-transparent'}`}>
         <input type="checkbox" checked={selectedIds.includes(n.id)} onChange={e => { e.stopPropagation(); toggleOne(n.id); }} className="mt-0.5 w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-400" />
         <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.text}`}>{typeIcon(n.type)}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
-            <p className={`text-xs font-bold truncate ${n.read ? 'text-gray-600' : 'text-gray-900'}`}>{n.title}</p>
+            <p className={`text-xs font-bold truncate ${n.read ? 'text-teal-800' : 'text-teal-950'}`}>{n.title}</p>
           </div>
-          <p className="text-[11px] text-gray-500 line-clamp-2">{n.message}</p>
+          <p className="text-[11px] text-teal-700 line-clamp-2">{n.message}</p>
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             <span className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full border ${priorityStyle(n.priority)}`}>{n.priority}</span>
-            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-semibold rounded-full capitalize">{catIcon(n.category)}{n.category}</span>
-            <span className="text-[10px] text-gray-400 ml-auto">{n.timestamp}</span>
+            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#f6f3eb] text-teal-700 text-[10px] font-semibold rounded-full capitalize">{catIcon(n.category)}{n.category}</span>
+            <span className="text-[10px] text-teal-600 ml-auto">{n.timestamp}</span>
           </div>
         </div>
       </div>
@@ -195,28 +195,28 @@ export default function NotificationsPage() {
     const c = typeColor(n.type);
     return (
       <div className="flex flex-col h-full">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
+        <div className="px-5 py-4 border-b border-teal-900/10 flex items-start gap-3">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.text}`}>{typeIcon(n.type)}</div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <p className="text-sm font-black text-gray-900">{n.title}</p>
+              <p className="text-sm font-black text-teal-950">{n.title}</p>
               <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full border ${priorityStyle(n.priority)}`}>{n.priority}</span>
-              {!n.read && <span className="px-1.5 py-0.5 bg-purple-50 text-red-700 border border-purple-200 text-[10px] font-bold rounded-full">Unread</span>}
+              {!n.read && <span className="px-1.5 py-0.5 bg-teal-950/10 text-red-700 border border-teal-200 text-[10px] font-bold rounded-full">Unread</span>}
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-teal-700">
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.timestamp}</span>
               {n.sender && <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] font-bold">{n.sender.avatar}</span>{n.sender.name}</span>}
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {!n.read
-              ? <button onClick={() => markRead(n.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"><Check className="w-3 h-3" />Mark read</button>
+              ? <button onClick={() => markRead(n.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 bg-teal-950/10 border border-teal-200 rounded-xl hover:bg-teal-100 transition-colors"><Check className="w-3 h-3" />Mark read</button>
               : <button onClick={() => markUnread(n.id)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"><Mail className="w-3 h-3" />Unread</button>}
             <button onClick={() => { del(n.id); onClose?.(); }} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors"><Trash2 className="w-3 h-3" />Delete</button>
           </div>
         </div>
         <div className="p-5 flex-1 overflow-auto">
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4"><p className="text-sm text-gray-700 leading-relaxed">{n.message}</p></div>
+          <div className="bg-[#f6f3eb] border border-teal-900/10 rounded-2xl p-4"><p className="text-sm text-teal-900 leading-relaxed">{n.message}</p></div>
           {n.action && (
             <div className="mt-4 flex justify-end">
               <Link href={n.action.link} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors shadow-sm">
@@ -232,25 +232,25 @@ export default function NotificationsPage() {
   const hasFilters = selectedFilter !== 'all' || selectedCategory !== 'all' || !!searchQuery;
 
   return (
-    <AdminNavigation>
+    <>
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-purple-100 gap-5">
+        <div className="bg-teal-950/10 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-teal-900/10 gap-5">
           <div>
             <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
               <Bell className="w-[18px] h-[18px]" />
               <span className="text-sm tracking-wide">Admin Actions</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Notifications</h1>
-            <p className="text-gray-600 text-[15px] sm:text-base">Manage and monitor all system notifications</p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-teal-950 tracking-tight mb-2">Notifications</h1>
+            <p className="text-teal-800 text-[15px] sm:text-base">Manage and monitor all system notifications</p>
           </div>
           <div className="flex items-center gap-3">
             {[
-              { label:'Unread', value: unreadCount,         bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-rose-600'   },
-              { label:'Today',  value: todayCount,           bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-amber-700'  },
-              { label:'Week',   value: weekCount,            bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-blue-700'   },
-              { label:'Total',  value: notifications.length, bg:'bg-white/60 border-white/50 shadow-sm', txt:'text-gray-700'   },
+              { label:'Unread', value: unreadCount,         bg:'bg-white/60 border-teal-950/100 shadow-sm', txt:'text-teal-950'   },
+              { label:'Today',  value: todayCount,           bg:'bg-white/60 border-teal-950/100 shadow-sm', txt:'text-amber-700'  },
+              { label:'Week',   value: weekCount,            bg:'bg-white/60 border-teal-950/100 shadow-sm', txt:'text-teal-700'   },
+              { label:'Total',  value: notifications.length, bg:'bg-white/60 border-teal-950/100 shadow-sm', txt:'text-teal-900'   },
             ].map(s => (
               <div key={s.label} className={`px-5 py-3 rounded-2xl border ${s.bg} text-center min-w-[70px] hidden sm:block`}>
                 <p className={`text-2xl font-black ${s.txt}`}>{s.value}</p>
@@ -264,10 +264,10 @@ export default function NotificationsPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4 flex flex-wrap gap-3 items-center">
           {/* Search */}
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" />
             <input type="text" placeholder="Search notifications…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`${inputCls} pl-9`} />
           </div>
 
@@ -275,7 +275,7 @@ export default function NotificationsPage() {
           <div className="flex gap-1.5">
             {([['all','All'], ['unread','Unread'], ['read','Read']] as const).map(([v, l]) => (
               <button key={v} onClick={() => setSelectedFilter(v)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${selectedFilter===v ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${selectedFilter===v ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-[#f6f3eb] text-teal-800 hover:bg-teal-100'}`}>
                 {l}{v==='all' ? ` (${notifications.length})` : v==='unread' ? ` (${unreadCount})` : ` (${notifications.length-unreadCount})`}
               </button>
             ))}
@@ -283,14 +283,14 @@ export default function NotificationsPage() {
 
           {/* Category dropdown */}
           <div className="relative" ref={catMenuRef}>
-            <button onClick={() => setShowCatMenu(s => !s)} className="flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
+            <button onClick={() => setShowCatMenu(s => !s)} className="flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl border border-teal-900/10 bg-white text-teal-900 hover:bg-[#f6f3eb] transition-colors">
               <Filter className="w-3.5 h-3.5" /><span className="capitalize">{selectedCategory === 'all' ? 'Category' : selectedCategory}</span><ChevronDown className="w-3.5 h-3.5" />
             </button>
             {showCatMenu && (
-              <div className="absolute left-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-20">
+              <div className="absolute left-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-teal-900/10 py-1.5 z-20">
                 {['all','approval','system','user','job','event','message'].map(cat => (
                   <button key={cat} onClick={() => { setSelectedCategory(cat); setShowCatMenu(false); }}
-                    className={`w-full px-4 py-2 text-left flex items-center gap-2 text-xs font-bold hover:bg-gray-50 transition-colors capitalize ${selectedCategory===cat ? 'text-red-700 bg-purple-50' : 'text-gray-700'}`}>
+                    className={`w-full px-4 py-2 text-left flex items-center gap-2 text-xs font-bold hover:bg-[#f6f3eb] transition-colors capitalize ${selectedCategory===cat ? 'text-red-700 bg-teal-950/10' : 'text-teal-900'}`}>
                     {cat !== 'all' && catIcon(cat as any)}{cat}
                   </button>
                 ))}
@@ -300,19 +300,19 @@ export default function NotificationsPage() {
 
           {/* Mark all / clear */}
           <div className="flex gap-1.5 ml-auto">
-            <button onClick={markAllRead} className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1"><CheckCheck className="w-3.5 h-3.5" />Mark all read</button>
-            {hasFilters && <button onClick={() => { setSelectedFilter('all'); setSelectedCategory('all'); setSearchQuery(''); }} className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1"><X className="w-3.5 h-3.5" />Clear</button>}
+            <button onClick={markAllRead} className="px-3 py-1.5 text-xs font-bold rounded-xl border border-teal-900/10 text-teal-900 hover:bg-[#f6f3eb] transition-colors flex items-center gap-1"><CheckCheck className="w-3.5 h-3.5" />Mark all read</button>
+            {hasFilters && <button onClick={() => { setSelectedFilter('all'); setSelectedCategory('all'); setSearchQuery(''); }} className="px-3 py-1.5 text-xs font-bold rounded-xl border border-teal-900/10 text-teal-900 hover:bg-[#f6f3eb] transition-colors flex items-center gap-1"><X className="w-3.5 h-3.5" />Clear</button>}
           </div>
         </div>
 
         {/* Bulk bar */}
         {selectedIds.length > 0 && (
-          <div className="bg-purple-50 border border-purple-200 rounded-2xl px-4 py-2.5 flex items-center gap-3 flex-wrap text-xs font-bold">
+          <div className="bg-teal-950/10 border border-teal-200 rounded-2xl px-4 py-2.5 flex items-center gap-3 flex-wrap text-xs font-bold">
             <span className="text-red-800">{selectedIds.length} selected</span>
-            <button onClick={() => bulk('read')}   className="flex items-center gap-1 px-3 py-1.5 bg-white border border-purple-200 text-red-700 rounded-xl hover:bg-purple-100 transition-colors"><CheckCheck className="w-3.5 h-3.5" />Mark read</button>
+            <button onClick={() => bulk('read')}   className="flex items-center gap-1 px-3 py-1.5 bg-white border border-teal-200 text-red-700 rounded-xl hover:bg-teal-100 transition-colors"><CheckCheck className="w-3.5 h-3.5" />Mark read</button>
             <button onClick={() => bulk('unread')} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-amber-200 text-amber-700 rounded-xl hover:bg-amber-50 transition-colors"><Mail className="w-3.5 h-3.5" />Mark unread</button>
             <button onClick={() => bulk('delete')} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5" />Delete</button>
-            <button onClick={() => setSelectedIds([])} className="ml-auto text-gray-500 hover:text-gray-900 transition-colors">Clear</button>
+            <button onClick={() => setSelectedIds([])} className="ml-auto text-teal-700 hover:text-teal-950 transition-colors">Clear</button>
           </div>
         )}
 
@@ -320,37 +320,37 @@ export default function NotificationsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
 
           {/* Left: List */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <div><p className="text-sm font-black text-gray-900">Inbox</p><p className="text-[11px] text-gray-400">{filtered.length} shown · {unread.length} unread</p></div>
-              <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-teal-900/10 flex items-center justify-between">
+              <div><p className="text-sm font-black text-teal-950">Inbox</p><p className="text-[11px] text-teal-600">{filtered.length} shown · {unread.length} unread</p></div>
+              <label className="flex items-center gap-2 text-xs font-bold text-teal-800 cursor-pointer">
                 <input type="checkbox" checked={filtered.length>0 && selectedIds.length===filtered.length} onChange={toggleAll} className="w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-400" />Select all
               </label>
             </div>
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-2"><BellOff className="w-5 h-5 text-gray-300" /></div>
-                <p className="text-sm font-bold text-gray-900">No notifications found</p>
-                <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+                <div className="w-10 h-10 rounded-full bg-[#f6f3eb] flex items-center justify-center mb-2"><BellOff className="w-5 h-5 text-gray-300" /></div>
+                <p className="text-sm font-bold text-teal-950">No notifications found</p>
+                <p className="text-xs text-teal-600 mt-1">Try adjusting your search or filters</p>
               </div>
             ) : (
               <div className="max-h-[640px] overflow-auto divide-y divide-gray-50">
-                {unread.length > 0 && <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-black text-gray-400 tracking-widest">UNREAD</div>}
+                {unread.length > 0 && <div className="px-4 py-1.5 bg-[#f6f3eb] text-[10px] font-black text-teal-600 tracking-widest">UNREAD</div>}
                 {unread.map(n => <NotifRow key={n.id} n={n} />)}
-                {read.length > 0 && <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-black text-gray-400 tracking-widest border-t border-gray-100">READ</div>}
+                {read.length > 0 && <div className="px-4 py-1.5 bg-[#f6f3eb] text-[10px] font-black text-teal-600 tracking-widest border-t border-teal-900/10">READ</div>}
                 {read.map(n => <NotifRow key={n.id} n={n} />)}
               </div>
             )}
           </div>
 
           {/* Right: Detail (desktop) */}
-          <div className="hidden lg:flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
+          <div className="hidden lg:flex flex-col bg-white rounded-2xl border border-teal-900/10 shadow-sm overflow-hidden min-h-[400px]">
             {activeNotif
               ? <DetailPanel n={activeNotif} />
               : <div className="flex flex-col items-center justify-center flex-1 py-12 text-center">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-2"><Bell className="w-5 h-5 text-gray-300" /></div>
-                  <p className="text-sm font-bold text-gray-900">Select a notification</p>
-                  <p className="text-xs text-gray-400 mt-1">Choose an item from the inbox to view details</p>
+                  <div className="w-10 h-10 rounded-full bg-[#f6f3eb] flex items-center justify-center mb-2"><Bell className="w-5 h-5 text-gray-300" /></div>
+                  <p className="text-sm font-bold text-teal-950">Select a notification</p>
+                  <p className="text-xs text-teal-600 mt-1">Choose an item from the inbox to view details</p>
                 </div>}
           </div>
         </div>
@@ -358,9 +358,9 @@ export default function NotificationsPage() {
         {/* Mobile detail overlay */}
         {mobileOpen && activeNotif && (
           <div className="fixed inset-0 bg-white z-50 lg:hidden flex flex-col">
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
-              <button onClick={() => setMobileOpen(false)} className="text-sm font-bold text-gray-600 hover:text-gray-900">← Back</button>
-              <p className="text-sm font-black text-gray-900 flex-1 text-center">Notification</p>
+            <div className="px-4 py-3 border-b border-teal-900/10 flex items-center gap-3">
+              <button onClick={() => setMobileOpen(false)} className="text-sm font-bold text-teal-800 hover:text-teal-950">← Back</button>
+              <p className="text-sm font-black text-teal-950 flex-1 text-center">Notification</p>
               <div className="w-12" />
             </div>
             <div className="flex-1 overflow-auto"><DetailPanel n={activeNotif} onClose={() => setMobileOpen(false)} /></div>
@@ -369,45 +369,45 @@ export default function NotificationsPage() {
 
         {/* Send modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
-              <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-                <p className="text-sm font-black text-gray-900">Send Notification</p>
-                <button onClick={() => setShowModal(false)} className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X className="w-4 h-4" /></button>
+          <div className="fixed inset-0 bg-teal-950/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-teal-900/10">
+              <div className="sticky top-0 bg-white border-b border-teal-900/10 px-5 py-4 flex items-center justify-between">
+                <p className="text-sm font-black text-teal-950">Send Notification</p>
+                <button onClick={() => setShowModal(false)} className="w-7 h-7 rounded-lg bg-[#f6f3eb] flex items-center justify-center text-teal-700 hover:bg-teal-100 transition-colors"><X className="w-4 h-4" /></button>
               </div>
               <div className="p-5 space-y-4">
                 <div className="grid grid-cols-3 gap-3">
-                  <div><label className="block text-[11px] font-bold text-gray-600 mb-1.5">Type</label>
+                  <div><label className="block text-[11px] font-bold text-teal-800 mb-1.5">Type</label>
                     <select value={form.type} onChange={e => formChange('type', e.target.value)} className={inputCls}>
                       {['info','success','warning','error','alert'].map(v => <option key={v} value={v} className="capitalize">{v}</option>)}
                     </select>
                   </div>
-                  <div><label className="block text-[11px] font-bold text-gray-600 mb-1.5">Category</label>
+                  <div><label className="block text-[11px] font-bold text-teal-800 mb-1.5">Category</label>
                     <select value={form.category} onChange={e => formChange('category', e.target.value)} className={inputCls}>
                       {['system','user','approval','job','event','message'].map(v => <option key={v} value={v} className="capitalize">{v}</option>)}
                     </select>
                   </div>
-                  <div><label className="block text-[11px] font-bold text-gray-600 mb-1.5">Priority</label>
+                  <div><label className="block text-[11px] font-bold text-teal-800 mb-1.5">Priority</label>
                     <select value={form.priority} onChange={e => formChange('priority', e.target.value)} className={inputCls}>
                       {['low','medium','high'].map(v => <option key={v} value={v} className="capitalize">{v}</option>)}
                     </select>
                   </div>
                 </div>
-                <div><label className="block text-[11px] font-bold text-gray-600 mb-1.5">Title *</label>
+                <div><label className="block text-[11px] font-bold text-teal-800 mb-1.5">Title *</label>
                   <input type="text" value={form.title} onChange={e => formChange('title', e.target.value)} placeholder="Notification title" className={`${inputCls} ${formErrors.title ? 'border-red-400 focus:ring-red-200' : ''}`} />
                   {formErrors.title && <p className="flex items-center gap-1 text-[10px] text-red-600 mt-1"><AlertCircle className="w-3 h-3" />{formErrors.title}</p>}
                 </div>
-                <div><label className="block text-[11px] font-bold text-gray-600 mb-1.5">Message *</label>
+                <div><label className="block text-[11px] font-bold text-teal-800 mb-1.5">Message *</label>
                   <textarea rows={4} value={form.message} onChange={e => formChange('message', e.target.value)} placeholder="Notification message" className={`${inputCls} resize-none ${formErrors.message ? 'border-red-400 focus:ring-red-200' : ''}`} />
                   {formErrors.message && <p className="flex items-center gap-1 text-[10px] text-red-600 mt-1"><AlertCircle className="w-3 h-3" />{formErrors.message}</p>}
                 </div>
-                <div><label className="block text-[11px] font-bold text-gray-600 mb-1.5">Recipients</label>
+                <div><label className="block text-[11px] font-bold text-teal-800 mb-1.5">Recipients</label>
                   <select value={form.recipients} onChange={e => formChange('recipients', e.target.value)} className={inputCls}>
                     <option value="all">All Users</option><option value="alumni">Alumni Only</option><option value="students">Students Only</option><option value="admins">Admins Only</option>
                   </select>
                 </div>
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-                  <button onClick={() => { setShowModal(false); setFormErrors({}); }} disabled={isSending} className="px-4 py-2.5 text-sm font-bold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors">Cancel</button>
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-teal-900/10">
+                  <button onClick={() => { setShowModal(false); setFormErrors({}); }} disabled={isSending} className="px-4 py-2.5 text-sm font-bold rounded-xl border border-teal-900/10 text-teal-900 hover:bg-[#f6f3eb] disabled:opacity-50 transition-colors">Cancel</button>
                   <button onClick={handleSend} disabled={isSending} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors">
                     {isSending ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Sending…</> : <><Send className="w-4 h-4" />Send</>}
                   </button>
@@ -420,17 +420,17 @@ export default function NotificationsPage() {
         {/* Success toast */}
         {showSuccess && (
           <div className="fixed top-4 right-4 z-[60]">
-            <div className="bg-white rounded-2xl shadow-2xl border border-purple-200 p-4 flex items-center gap-3 max-w-sm">
+            <div className="bg-white rounded-2xl shadow-2xl border border-teal-200 p-4 flex items-center gap-3 max-w-sm">
               <div className="w-9 h-9 rounded-xl bg-red-100 border border-red-200 text-red-600 flex items-center justify-center shrink-0"><CheckCircle className="w-4 h-4" /></div>
               <div className="flex-1">
-                <p className="text-sm font-black text-gray-900">Sent successfully!</p>
-                <p className="text-xs text-gray-500">Notification sent to {form.recipients === 'all' ? 'all users' : form.recipients}.</p>
+                <p className="text-sm font-black text-teal-950">Sent successfully!</p>
+                <p className="text-xs text-teal-700">Notification sent to {form.recipients === 'all' ? 'all users' : form.recipients}.</p>
               </div>
-              <button onClick={() => setShowSuccess(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowSuccess(false)} className="text-teal-600 hover:text-teal-800 transition-colors"><X className="w-4 h-4" /></button>
             </div>
           </div>
         )}
       </div>
-    </AdminNavigation>
+    </>
   );
 }

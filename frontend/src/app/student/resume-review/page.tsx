@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { Upload, CheckCircle, Loader, Sparkles, FileText, Send, BookOpen } from 'lucide-react';
-import StudentNavigation from '../StudentNavigation';
+
 import { toast } from 'sonner';
 
 interface Alumni {
@@ -176,13 +176,13 @@ function StudentResumeReviewContent() {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto p-6 md:p-8 font-sans">
+    <div className="space-y-8 max-w-7xl mx-auto p-6 md:p-8 font-sans">
       {/* Header Banner */}
-      <div className="bg-[#1A1B23] rounded-[32px] p-8 md:p-10 relative overflow-hidden shadow-2xl border border-white/5">
+      <div className="bg-teal-950 rounded-[32px] p-8 md:p-10 relative overflow-hidden shadow-2xl border border-teal-900/10">
         {/* Subtle background wave/gradient */}
         <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+          <div className="flex items-center gap-2 text-teal-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
             <Sparkles size={16} />
             <span>Get Professional Feedback</span>
           </div>
@@ -201,9 +201,9 @@ function StudentResumeReviewContent() {
         <div className="lg:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-[#11233f]" />
+              <FileText className="w-5 h-5 text-teal-950" />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#11233f]">Submit Request</h2>
+            <h2 className="text-2xl font-extrabold text-teal-950">Submit Request</h2>
           </div>
 
           {/* Mentor Selection - Two Dropdowns */}
@@ -213,7 +213,7 @@ function StudentResumeReviewContent() {
               {myMentors.length > 0 && (
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#11233f]" />
+                    <CheckCircle className="w-3.5 h-3.5 text-teal-950" />
                     Your Mentors (Direct Access)
                   </label>
                   <select
@@ -239,7 +239,7 @@ function StudentResumeReviewContent() {
                     {restMentors.length > 5 && (
                       <button
                         onClick={() => setShowMoreRestAlumni(!showMoreRestAlumni)}
-                        className="text-[11px] font-bold text-blue-600 uppercase tracking-wider hover:text-blue-800 transition"
+                        className="text-[11px] font-bold text-teal-600 uppercase tracking-wider hover:text-teal-800 transition"
                       >
                         {showMoreRestAlumni ? `Show Less (${restMentors.length})` : `Show More (${restMentors.length})`}
                       </button>
@@ -267,7 +267,7 @@ function StudentResumeReviewContent() {
               )}
             </div>
           ) : (
-            <div className="p-4 bg-slate-50 border border-gray-100 rounded-[14px]">
+            <div className="p-4 bg-[#f6f3eb] border border-gray-100 rounded-[14px]">
               <p className="text-slate-600 text-sm font-medium">Loading mentors...</p>
             </div>
           )}
@@ -275,7 +275,7 @@ function StudentResumeReviewContent() {
           {/* Resume Upload */}
           <div className="space-y-2 mt-6">
             <label className="block text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Upload Resume</label>
-            <div className="border-2 border-dashed border-gray-200 rounded-[20px] p-10 text-center hover:border-gray-300 hover:bg-gray-50 transition cursor-pointer">
+            <div className="border-2 border-dashed border-gray-200 rounded-[20px] p-10 text-center hover:border-gray-300 hover:bg-[#f6f3eb] transition cursor-pointer">
               <input
                 type="file"
                 accept=".pdf"
@@ -319,7 +319,7 @@ function StudentResumeReviewContent() {
           <button
             onClick={handleSubmitRequest}
             disabled={loading || !selectedAlumni || !resume}
-            className="w-full bg-[#16161c] hover:bg-black disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-[14px] transition flex items-center justify-center gap-2 shadow-sm"
+            className="w-full bg-teal-950 hover:bg-teal-900 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-[14px] transition flex items-center justify-center gap-2 shadow-sm"
           >
             {loading ? <Loader className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             {loading ? 'Submitting...' : 'Submit Request'}
@@ -330,9 +330,9 @@ function StudentResumeReviewContent() {
         <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.03)] h-fit">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-[#11233f]" />
+              <BookOpen className="w-5 h-5 text-teal-950" />
             </div>
-            <h3 className="text-xl font-extrabold text-[#11233f]">Your Reviews</h3>
+            <h3 className="text-xl font-extrabold text-teal-950">Your Reviews</h3>
           </div>
           <div className="space-y-4">
             {requests.length === 0 ? (
@@ -383,7 +383,7 @@ function StudentResumeReviewContent() {
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ml-2 ${
                     req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    req.status === 'accepted' ? 'bg-blue-100 text-blue-700' :
+                    req.status === 'accepted' ? 'bg-teal-100 text-teal-700' :
                     req.status === 'completed' ? 'bg-green-100 text-green-700' :
                     'bg-red-100 text-red-700'
                   }`}>
@@ -407,8 +407,8 @@ function StudentResumeReviewContent() {
 
 export default function StudentResumeReview() {
   return (
-    <StudentNavigation>
+    <>
       <StudentResumeReviewContent />
-    </StudentNavigation>
+    </>
   );
 }

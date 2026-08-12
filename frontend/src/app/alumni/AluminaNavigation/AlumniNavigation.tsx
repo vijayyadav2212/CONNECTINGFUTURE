@@ -124,9 +124,9 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f3eb]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-teal-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -150,7 +150,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#f6f3eb] font-sans overflow-x-hidden">
       <div className="lg:hidden sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-sm overflow-hidden shrink-0">
@@ -179,14 +179,16 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
         </button>
       </div>
 
-      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[220px] h-screen bg-[#1A1C23] text-gray-400 flex-col py-8 rounded-r-[32px] shadow-2xl">
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[220px] h-screen bg-teal-950 text-gray-400 flex-col py-8 rounded-r-[32px] shadow-2xl">
         {/* Logo & Branding */}
-        <div className="px-10 mb-12 shrink-0">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/alumni/dashboard')}>
-            {/* Minimalist Logo like image */}
-            <div className="relative w-8 h-8 flex items-center justify-center">
-               <div className="absolute w-5 h-7 bg-white rounded-sm -ml-3 z-10 shadow-sm" />
-               <div className="absolute w-5 h-5 bg-gray-500 rounded-sm ml-2 mt-2 opacity-80" />
+        <div className="px-6 mb-10 shrink-0">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/alumni/dashboard')}>
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-1.5 shadow-md shrink-0 overflow-hidden">
+              <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold text-white leading-none">Alumnex</h1>
+              <span className="text-[10px] text-teal-200/80 font-medium tracking-wide mt-1">Connecting Future</span>
             </div>
           </div>
         </div>
@@ -198,8 +200,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                   const isActive = isActiveRoute(item.route);
                   return (
                     <li key={item.id} className="relative">
-                      <Link
-                        href={item.route}
+                      <Link href={item.route} prefetch={true}
                         className={`flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 group ${
                           isActive
                             ? 'text-white font-medium'
@@ -208,14 +209,14 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                       >
                         <div className="flex items-center gap-4 min-w-0">
                           <span className={`shrink-0 ${isActive ? 'text-white' : 'text-[#8F93A3] group-hover:text-white'}`}>
-                            {React.cloneElement(item.icon as React.ReactElement, { strokeWidth: isActive ? 2.5 : 2 })}
+                            {React.cloneElement(item.icon as React.ReactElement<any>, { strokeWidth: isActive ? 2.5 : 2 })}
                           </span>
                           <span className="text-[15px]">
                             {item.label}
                           </span>
                         </div>
                         {item.badge ? (
-                          <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] font-bold bg-white text-[#1A1C23]">
+                          <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] font-bold bg-white text-teal-950">
                             {item.badge}
                           </div>
                         ) : null}
@@ -248,11 +249,11 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
           <button
             type="button"
             aria-label="Close alumni menu"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-teal-950/40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-2xl border-r border-gray-200 overflow-y-auto">
-            <div className="px-4 py-4 bg-[#f4f5f7] border-b border-[#e6e9ef] flex items-center justify-between">
+            <div className="px-4 py-4 bg-[#f6f3eb] border-b border-[#e6e9ef] flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-lg border border-[#e5e7eb] bg-white flex items-center justify-center shadow-sm overflow-hidden shrink-0">
                   <img
@@ -281,14 +282,14 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
             </div>
 
             <div className="px-4 py-4 bg-white border-b border-[#eaecf0]">
-              <div className="rounded-[14px] border border-[#d8e0ea] bg-[#f6f8fb] p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
+              <div className="rounded-[14px] border border-[#d8e0ea] bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
                 <div className="flex items-start space-x-3.5">
                   <div className="relative mt-0.5">
                     {alumniData.avatar ? (
                       <img
                         src={alumniData.avatar}
                         alt={alumniData.name}
-                        className="w-[56px] h-[56px] rounded-full object-cover shadow-sm bg-gray-50"
+                        className="w-[56px] h-[56px] rounded-full object-cover shadow-sm bg-[#f6f3eb]"
                       />
                     ) : (
                       <div className="w-[56px] h-[56px] bg-[#F19B86] rounded-full flex items-center justify-center shadow-sm">
@@ -320,18 +321,17 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
                   const isActive = isActiveRoute(item.route);
                   return (
                     <li key={item.id}>
-                      <Link
-                        href={item.route}
+                      <Link href={item.route} prefetch={true}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 group ${
                           isActive
                             ? 'bg-[#e8efff] text-[#1e3a8a] border-[#bfdbfe] shadow-[0_1px_3px_rgba(37,99,235,0.18)]'
-                            : 'text-[#344054] border-transparent hover:bg-gray-50 hover:border-[#e5e7eb] hover:shadow-sm'
+                            : 'text-[#344054] border-transparent hover:bg-[#f6f3eb] hover:border-[#e5e7eb] hover:shadow-sm'
                         }`}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
-                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-transparent'}`} />
-                          <span className={`shrink-0 ${isActive ? 'text-blue-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
+                          <span className={`h-6 w-1.5 rounded-full ${isActive ? 'bg-teal-500' : 'bg-transparent'}`} />
+                          <span className={`shrink-0 ${isActive ? 'text-teal-700' : 'text-[#667085] group-hover:text-gray-700'}`}>
                             {item.icon}
                           </span>
                           <span className={`text-[15px] truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>
@@ -353,7 +353,7 @@ export default function AlumniNavigation({ children }: AlumniNavigationProps) {
         </div>
       )}
 
-      <main className="lg:ml-[220px] min-h-screen bg-[#F4F6FB] rounded-tl-[40px] shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
+      <main className="lg:ml-[220px] min-h-screen bg-[#f6f3eb] rounded-tl-[40px] shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
         <div className="p-8 lg:p-12">
           {children}
         </div>
@@ -373,10 +373,10 @@ function StatusOverlay({ icon, title, message, color, isError }: any) {
   const router = useRouter();
   const bgClasses = color === 'yellow' ? 'bg-yellow-100' : 'bg-red-100';
   const textClasses = color === 'yellow' ? 'text-yellow-900' : 'text-red-900';
-  const btnClasses = color === 'yellow' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700';
+  const btnClasses = color === 'yellow' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-red-600 hover:bg-red-700';
 
   return (
-    <div className={`min-h-screen flex items-center justify-center bg-gray-50 p-4`}>
+    <div className={`min-h-screen flex items-center justify-center bg-[#f6f3eb] p-4`}>
       <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center border border-gray-100">
         <div className={`w-24 h-24 ${bgClasses} rounded-full flex items-center justify-center mx-auto mb-6`}>
           {icon}
@@ -390,8 +390,8 @@ function StatusOverlay({ icon, title, message, color, isError }: any) {
           </div>
         )}
         <div className={`bg-${color === 'yellow' ? 'blue' : 'red'}-50 border border-${color === 'yellow' ? 'blue' : 'red'}-100 rounded-xl p-6 mb-8 text-left`}>
-           <h3 className={`font-semibold ${color === 'yellow' ? 'text-blue-900' : 'text-red-900'} mb-3`}>What happens next?</h3>
-           <ul className={`${color === 'yellow' ? 'text-blue-800' : 'text-red-800'} space-y-2`}>
+           <h3 className={`font-semibold ${color === 'yellow' ? 'text-teal-900' : 'text-red-900'} mb-3`}>What happens next?</h3>
+           <ul className={`${color === 'yellow' ? 'text-teal-800' : 'text-red-800'} space-y-2`}>
               <li className="flex items-center space-x-2"><span className="text-xl leading-none">•</span> <span>{isError ? 'Review and update your profile information' : 'Our admin team will verify your information'}</span></li>
               <li className="flex items-center space-x-2"><span className="text-xl leading-none">•</span> <span>{isError ? 'Contact our admin team for more details' : 'You\'ll receive an email notification once approved'}</span></li>
               <li className="flex items-center space-x-2"><span className="text-xl leading-none">•</span> <span>{isError ? 'You may reapply after updating your information' : 'Approval typically takes 1-2 business days'}</span></li>

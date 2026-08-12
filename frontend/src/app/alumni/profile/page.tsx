@@ -34,9 +34,9 @@ function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+      <div className="flex items-center justify-center min-h-screen bg-[#f6f3eb]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600 mx-auto mb-4"></div>
           <p className="text-gray-700 font-medium">Loading profile...</p>
         </div>
       </div>
@@ -52,7 +52,7 @@ function ProfilePage() {
           </h1>
           <a
             href="/api/auth/login"
-            className="mt-3 inline-block px-4 py-2 bg-[#1A1C23] text-white rounded hover:bg-black"
+            className="mt-3 inline-block px-4 py-2 bg-teal-950 text-white rounded hover:bg-teal-900"
           >
             Login
           </a>
@@ -62,7 +62,7 @@ function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f6f3eb]">
 
       {/* ---------- HEADER ---------- */}
       <nav className="bg-white border-b shadow-sm">
@@ -71,7 +71,7 @@ function ProfilePage() {
           <div className="flex items-center gap-6">
             <Link
               href="/alumni/dashboard"
-              className="flex items-center text-blue-600 hover:underline"
+              className="flex items-center text-teal-600 hover:underline"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Dashboard
@@ -106,7 +106,7 @@ function ProfilePage() {
 
               <div className="relative group">
                 <div 
-                  className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-blue-100 cursor-pointer hover:ring-blue-300 transition-all bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center"
+                  className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-teal-100 cursor-pointer hover:ring-teal-300 transition-all bg-gradient-to-br from-teal-50 to-teal-100 flex items-center justify-center"
                   onClick={() => {
                     console.log('Avatar clicked'); 
                     setIsAvatarModalOpen(true);
@@ -117,7 +117,7 @@ function ProfilePage() {
                       src={profileAvatar}
                       alt={user.name || 'Profile'}
                     />
-                    <AvatarFallback className="text-2xl font-bold text-blue-600">
+                    <AvatarFallback className="text-2xl font-bold text-teal-600">
                       {user.name?.[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -127,7 +127,7 @@ function ProfilePage() {
                     console.log('Camera button clicked');
                     setIsAvatarModalOpen(true);
                   }}
-                  className="absolute bottom-0 right-0 bg-[#1A1C23] text-white p-3 rounded-full shadow-xl hover:bg-black transition-all hover:scale-110 active:scale-95"
+                  className="absolute bottom-0 right-0 bg-teal-950 text-white p-3 rounded-full shadow-xl hover:bg-teal-900 transition-all hover:scale-110 active:scale-95"
                   title="Change Profile Photo"
                   type="button"
                 >
@@ -151,22 +151,22 @@ function ProfilePage() {
                     <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm text-gray-600">
 
                       <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-blue-600" />
+                        <Mail className="w-4 h-4 text-teal-600" />
                         {user.email}
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-blue-600" />
+                        <MapPin className="w-4 h-4 text-teal-600" />
                         Bangalore, India
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <Calendar className="w-4 h-4 text-teal-600" />
                         Class of 2016
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-blue-600" />
+                        <Building className="w-4 h-4 text-teal-600" />
                         TechCorp Solutions
                       </div>
 
@@ -305,7 +305,7 @@ function InfoCard({ title, items, badges }: any) {
 
 function Activity({ text }: any) {
   return (
-    <div className="p-3 bg-slate-100 rounded-lg text-sm text-gray-700">
+    <div className="p-3 bg-[#f6f3eb] rounded-lg text-sm text-gray-700">
       {text}
     </div>
   );

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useAuth0Token } from '../../../hooks/useAuth0Token';
-import AdminNavigation from '../AdminNavigation/AdminNavigation';
+
 import {
   ArrowLeft,
   BookOpen,
@@ -97,7 +97,7 @@ const specializationPresets: Record<string, string[]> = {
   'Mobile Development': ['Flutter', 'React Native', 'Android Development'],
 };
 
-const inputCls = 'w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 transition-all';
+const inputCls = 'w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-teal-500/15 focus:border-teal-400 transition-all';
 const labelCls = 'block text-xs font-black uppercase tracking-[0.16em] text-slate-500 mb-2';
 
 function Pill({ children }: { children: React.ReactNode }) {
@@ -106,10 +106,10 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function ResourceLink({ item, icon }: { item: ResourceItem; icon: React.ReactNode }) {
   return (
-    <a href={item.url} target="_blank" rel="noreferrer" className="group flex items-start gap-3 p-3 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 transition-all">
+    <a href={item.url} target="_blank" rel="noreferrer" className="group flex items-start gap-3 p-3 rounded-2xl border border-slate-200 bg-[#f6f3eb] hover:bg-white hover:border-slate-300 transition-all">
       <div className="mt-0.5 text-slate-500 group-hover:text-slate-700">{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-900 group-hover:text-indigo-700">{item.label}</p>
+        <p className="text-sm font-bold text-slate-900 group-hover:text-teal-700">{item.label}</p>
         <p className="text-[11px] text-slate-400 break-all">{item.url}</p>
       </div>
       <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0" />
@@ -317,10 +317,10 @@ export default function AdminRoadmapsPage() {
   const collapseAll = () => setExpandedIds([]);
 
   return (
-    <AdminNavigation>
+    <>
       <div className="max-w-[1600px] mx-auto space-y-6 pb-12">
         {/* Header Section */}
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-200 bg-slate-900 text-white shadow-2xl">
+        <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-200 bg-teal-950 text-white shadow-2xl">
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.5),_transparent_40%)]" />
           <div className="relative p-8 sm:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             <div className="space-y-4">
@@ -344,7 +344,7 @@ export default function AdminRoadmapsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+                  <div className="p-2 rounded-lg bg-teal-50 text-teal-600">
                     <BarChart3 className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Created</span>
@@ -353,7 +353,7 @@ export default function AdminRoadmapsPage() {
               </div>
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                  <div className="p-2 rounded-lg bg-[#f6f3eb] text-teal-950">
                     <Rocket className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Paths</span>
@@ -364,7 +364,7 @@ export default function AdminRoadmapsPage() {
 
             <form onSubmit={handleGenerate} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                <div className="p-2 rounded-xl bg-teal-50 text-teal-600">
                   <Target className="w-5 h-5" />
                 </div>
                 <h2 className="text-lg font-black text-slate-900">Configuration</h2>
@@ -419,7 +419,7 @@ export default function AdminRoadmapsPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-teal-600 text-white font-black shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all disabled:opacity-60"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Rocket className="w-5 h-5" />}
                 {loading ? 'Building Roadmap...' : 'Generate Roadmap'}
@@ -445,14 +445,14 @@ export default function AdminRoadmapsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={handleSave} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50">
+                  <button onClick={handleSave} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-teal-950 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50">
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Save Draft
                   </button>
                   <button 
                     onClick={handlePublish} 
                     disabled={publishing || !draft.id || draft.is_published}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-xs font-bold transition-all disabled:opacity-50 ${draft.is_published ? 'bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-xs font-bold transition-all disabled:opacity-50 ${draft.is_published ? 'bg-[#f6f3eb]0' : 'bg-teal-600 hover:bg-teal-700'}`}
                   >
                     {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : (draft.is_published ? <CheckCircle2 className="w-4 h-4" /> : <Rocket className="w-4 h-4" />)}
                     {draft.is_published ? 'Live' : 'Publish'}
@@ -462,12 +462,12 @@ export default function AdminRoadmapsPage() {
             )}
 
             {error && (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 font-medium animate-in fade-in slide-in-from-top-2">
+              <div className="rounded-2xl border border-rose-200 bg-teal-50 p-4 text-sm text-rose-800 font-medium animate-in fade-in slide-in-from-top-2">
                 {error}
               </div>
             )}
             {message && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 font-medium animate-in fade-in slide-in-from-top-2">
+              <div className="rounded-2xl border border-emerald-200 bg-[#f6f3eb] p-4 text-sm text-emerald-800 font-medium animate-in fade-in slide-in-from-top-2">
                 {message}
               </div>
             )}
@@ -479,7 +479,7 @@ export default function AdminRoadmapsPage() {
                 className="w-full flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-slate-50 text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                  <div className="p-2 rounded-xl bg-[#f6f3eb] text-slate-600 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                     <History className="w-5 h-5" />
                   </div>
                   <h2 className="text-lg font-black text-slate-900">Recent Library</h2>
@@ -493,7 +493,7 @@ export default function AdminRoadmapsPage() {
                     <button 
                       key={item.id} 
                       onClick={() => setDraft(item)}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all ${draft?.id === item.id ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-100 bg-slate-50/30 hover:bg-slate-50'}`}
+                      className={`w-full text-left p-4 rounded-2xl border transition-all ${draft?.id === item.id ? 'border-teal-200 bg-teal-50/50' : 'border-slate-100 bg-[#f6f3eb] hover:bg-[#f6f3eb]'}`}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <p className="text-[13px] font-black text-slate-900 truncate pr-2">{item.title}</p>
@@ -531,27 +531,27 @@ export default function AdminRoadmapsPage() {
                   </div>
                   <div className="p-4 rounded-3xl border border-slate-200 bg-white shadow-sm">
                     <p className={labelCls}>Progress</p>
-                    <p className="text-2xl font-black text-slate-900 text-indigo-600">{completionPercent}%</p>
+                    <p className="text-2xl font-black text-slate-900 text-teal-600">{completionPercent}%</p>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden shadow-inner">
-                  <div className="h-full bg-gradient-to-r from-indigo-500 to-sky-500 transition-all duration-700" style={{ width: `${completionPercent}%` }} />
+                <div className="h-1.5 rounded-full bg-[#f6f3eb] overflow-hidden shadow-inner">
+                  <div className="h-full bg-gradient-to-r from-teal-500 to-teal-500 transition-all duration-700" style={{ width: `${completionPercent}%` }} />
                 </div>
 
                 {/* Milestone Flow */}
                 <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 shadow-sm space-y-8">
                   <div className="flex items-center justify-between gap-4">
                     <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-200">
+                      <div className="p-2 rounded-xl bg-teal-500 text-white shadow-lg shadow-teal-200">
                         <ListChecks className="w-5 h-5" />
                       </div>
                       Learning Experience
                     </h2>
                     <div className="flex gap-2">
-                       <button type="button" onClick={expandAll} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">Expand All</button>
-                       <button type="button" onClick={collapseAll} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">Collapse All</button>
+                       <button type="button" onClick={expandAll} className="px-4 py-2 rounded-xl bg-[#f6f3eb] text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">Expand All</button>
+                       <button type="button" onClick={collapseAll} className="px-4 py-2 rounded-xl bg-[#f6f3eb] text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">Collapse All</button>
                     </div>
                   </div>
 
@@ -561,27 +561,27 @@ export default function AdminRoadmapsPage() {
                       const isCompleted = completedIds.includes(milestone.order);
 
                       return (
-                        <div key={milestone.order} className={`rounded-3xl border transition-all duration-300 ${isCompleted ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                        <div key={milestone.order} className={`rounded-3xl border transition-all duration-300 ${isCompleted ? 'border-emerald-200 bg-[#f6f3eb]/20' : 'border-slate-100 bg-[#f6f3eb]'}`}>
                           <div className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
                             <div className="flex items-start gap-4 min-w-0">
                               <button 
                                 type="button" 
                                 onClick={() => toggleCompleted(milestone.order)} 
-                                className={`mt-1 w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300 text-transparent hover:border-emerald-400'}`}
+                                className={`mt-1 w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-all ${isCompleted ? 'bg-[#f6f3eb]0 border-emerald-500 text-white' : 'bg-white border-slate-300 text-transparent hover:border-emerald-400'}`}
                               >
                                 <CheckCircle2 className="w-4 h-4" />
                               </button>
                               <div className="min-w-0">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Milestone {milestone.order}</span>
-                                <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{milestone.title}</h3>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-teal-500">Milestone {milestone.order}</span>
+                                <h3 className="text-lg font-black text-slate-900 group-hover:text-teal-600 transition-colors">{milestone.title}</h3>
                                 <p className="text-sm text-slate-600 line-clamp-2 mt-1">{milestone.description}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <button type="button" onClick={() => speakMilestone(milestone)} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm">
+                              <button type="button" onClick={() => speakMilestone(milestone)} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm">
                                 <Mic className="w-4 h-4" />
                               </button>
-                              <button type="button" onClick={() => toggleExpanded(milestone.order)} className="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
+                              <button type="button" onClick={() => toggleExpanded(milestone.order)} className="px-4 py-2.5 rounded-xl bg-teal-950 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 {isExpanded ? 'Collapse' : 'Details'}
                               </button>
@@ -595,7 +595,7 @@ export default function AdminRoadmapsPage() {
                                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" /> Core Subtopics</h4>
                                   <div className="space-y-2">
                                     {milestone.subtopics.map((st, idx) => (
-                                      <div key={idx} className="p-3 rounded-xl bg-slate-50/50 border border-slate-50">
+                                      <div key={idx} className="p-3 rounded-xl bg-[#f6f3eb] border border-slate-50">
                                         <p className="text-sm font-bold text-slate-800">{st.title}</p>
                                         <p className="text-[11px] text-slate-500 mt-0.5">{st.description || 'Focus on foundational concepts and practical implementation.'}</p>
                                       </div>
@@ -607,7 +607,7 @@ export default function AdminRoadmapsPage() {
                                   <div className="space-y-3">
                                     {milestone.learning_steps.map((step, idx) => (
                                       <div key={idx} className="flex gap-3">
-                                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black shrink-0">{idx + 1}</div>
+                                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-50 border border-teal-100 text-teal-600 text-[10px] font-black shrink-0">{idx + 1}</div>
                                         <p className="text-[13px] text-slate-700 leading-relaxed">{step}</p>
                                       </div>
                                     ))}
@@ -636,7 +636,7 @@ export default function AdminRoadmapsPage() {
               </div>
             ) : (
               <div className="rounded-[2.5rem] border border-dashed border-slate-200 bg-white p-16 text-center shadow-sm">
-                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-indigo-50 text-indigo-600 mb-8 shadow-inner">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-teal-50 text-teal-600 mb-8 shadow-inner">
                   <Sparkles className="w-12 h-12" />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900">Await Generation</h2>
@@ -648,7 +648,7 @@ export default function AdminRoadmapsPage() {
           </div>
         </div>
       </div>
-    </AdminNavigation>
+    </>
   );
 }
 

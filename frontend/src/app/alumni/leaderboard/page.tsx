@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import AlumniNavigation from "../AluminaNavigation/AlumniNavigation";
+
 import { Trophy, Briefcase, Map, Users, Camera, TrendingUp } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
@@ -52,18 +52,18 @@ export default function LeaderboardPage() {
     String(name || email || '').charAt(0).toUpperCase() || '?';
 
   const statCols = [
-    { key: 'jobs', label: 'Jobs', icon: <Briefcase className="w-3 h-3" />, color: 'text-blue-600' },
-    { key: 'roadmaps', label: 'Roadmaps', icon: <Map className="w-3 h-3" />, color: 'text-purple-600' },
+    { key: 'jobs', label: 'Jobs', icon: <Briefcase className="w-3 h-3" />, color: 'text-teal-600' },
+    { key: 'roadmaps', label: 'Roadmaps', icon: <Map className="w-3 h-3" />, color: 'text-teal-600' },
     { key: 'mentorships', label: 'Mentorship', icon: <Users className="w-3 h-3" />, color: 'text-green-600' },
     { key: 'memories', label: 'Memories', icon: <Camera className="w-3 h-3" />, color: 'text-orange-600' },
   ];
 
   return (
-    <AlumniNavigation>
+    <>
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="bg-[#1A1C23] text-white rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
+        <div className="bg-teal-950 text-white rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden">
         <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
@@ -209,7 +209,7 @@ export default function LeaderboardPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-[#f6f3eb]">
                   <tr>
                     <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rank</th>
                     <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Alumni</th>
@@ -223,7 +223,7 @@ export default function LeaderboardPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {leaders.map((alum, i) => (
-                    <tr key={alum.email || i} className={`hover:bg-gray-50 transition-colors ${i < 3 ? 'bg-amber-50/30' : ''}`}>
+                    <tr key={alum.email || i} className={`hover:bg-[#f6f3eb] transition-colors ${i < 3 ? 'bg-amber-50/30' : ''}`}>
                       <td className="px-5 py-3.5">
                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${
                           i === 0 ? 'bg-amber-100 text-amber-700' :
@@ -274,6 +274,6 @@ export default function LeaderboardPage() {
           </div>
         )}
       </div>
-    </AlumniNavigation>
+    </>
   );
 }

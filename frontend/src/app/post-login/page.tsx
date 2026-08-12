@@ -109,8 +109,8 @@ export default function PostLogin() {
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center px-6 overflow-hidden">
       {/* Decorative blurred circles matching portal style */}
-      <div className="absolute top-10 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
-      <div className="absolute bottom-10 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+      <div className="absolute top-10 left-10 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+      <div className="absolute bottom-10 right-10 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
 
       <div className="relative w-full max-w-md rounded-3xl border border-gray-200 bg-white/90 backdrop-blur-md p-8 shadow-xl text-gray-900 z-10">
         <div className="mx-auto mb-6 h-20 w-20 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
@@ -119,9 +119,9 @@ export default function PostLogin() {
           Verifying your profile and routing you to the right space.
         </p>
         <div className="mt-6 flex items-center justify-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.2s]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.1s]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-400 animate-bounce" />
+          <span className="h-2.5 w-2.5 rounded-full bg-teal-600 animate-bounce [animation-delay:-0.2s]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-teal-600 animate-bounce [animation-delay:-0.1s]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-teal-400 animate-bounce" />
         </div>
       </div>
     </div>

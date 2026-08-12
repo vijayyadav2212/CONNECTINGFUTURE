@@ -15,7 +15,7 @@ export default function HeroSection() {
             Elite Pedigree <br />
             <span className="relative inline-block text-teal-955">
               Alumni Network
-              <span className="absolute bottom-1 left-0 w-full h-[6px] bg-[#f3b13a] rounded-full z-[-1] opacity-60"></span>
+              <span className="absolute bottom-1 left-0 w-full h-[6px] bg-black rounded-full z-[-1] opacity-60"></span>
             </span>
           </h1>
           
@@ -31,7 +31,7 @@ export default function HeroSection() {
               className="bg-transparent text-slate-800 placeholder:text-slate-405 text-sm outline-none px-3 py-2 flex-grow min-w-0"
             />
             <a href="/api/auth/login?screen_hint=signup">
-              <Button className="bg-[#f3b13a] hover:bg-[#d89c30] text-teal-950 font-bold px-6 py-5 rounded-lg text-sm shadow-sm transition-transform active:scale-[0.98]">
+              <Button className="bg-black hover:bg-gray-900 text-white font-bold px-6 py-5 rounded-lg text-sm shadow-sm transition-transform active:scale-[0.98]">
                 Contact Me
               </Button>
             </a>

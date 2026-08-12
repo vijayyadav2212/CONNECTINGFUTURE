@@ -25,7 +25,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h5 className="font-bold text-sm tracking-wider uppercase text-[#f3b13a] mb-4">Platform</h5>
+          <h5 className="font-bold text-sm tracking-wider uppercase text-black mb-4">Platform</h5>
           <ul className="space-y-2 text-sm text-slate-200">
             <li><Link href="/alumni/Directory" className="hover:text-white">Alumni Directory</Link></li>
             <li><Link href="/alumni/mentorship" className="hover:text-white">Mentorship Portal</Link></li>
@@ -35,7 +35,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h5 className="font-bold text-sm tracking-wider uppercase text-[#f3b13a] mb-4">Resources</h5>
+          <h5 className="font-bold text-sm tracking-wider uppercase text-black mb-4">Resources</h5>
           <ul className="space-y-2 text-sm text-slate-200">
             <li><Link href="/alumni/blog" className="hover:text-white">Success Stories</Link></li>
             <li><Link href="/alumni/roadmap" className="hover:text-white">Career Roadmaps</Link></li>
@@ -45,7 +45,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h5 className="font-bold text-sm tracking-wider uppercase text-[#f3b13a] mb-4">Support</h5>
+          <h5 className="font-bold text-sm tracking-wider uppercase text-black mb-4">Support</h5>
           <ul className="space-y-2 text-sm text-slate-200">
             <li><Link href="/alumni/settings" className="hover:text-white">Account Settings</Link></li>
             <li><Link href="#" className="hover:text-white">Help Desk</Link></li>

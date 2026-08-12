@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import AdminNavigation from '../AdminNavigation/AdminNavigation';
+
 import {
   AlertTriangle,
   Bookmark,
@@ -247,24 +247,24 @@ export default function ExternalJobsPage() {
   };
 
   return (
-    <AdminNavigation>
+    <>
       <div className="space-y-5">
         <div className="bg-gradient-to-r from-rose-50 to-orange-50 rounded-2xl border border-rose-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Briefcase className="w-6 h-6 text-rose-600" />Job Opportunities</h1>
-            <p className="text-gray-500 text-sm mt-1">Fetch and review real-time job listings through backend RapidAPI proxy</p>
+            <h1 className="text-2xl font-bold text-teal-950 flex items-center gap-2"><Briefcase className="w-6 h-6 text-teal-950" />Job Opportunities</h1>
+            <p className="text-teal-700 text-sm mt-1">Fetch and review real-time job listings through backend RapidAPI proxy</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="px-4 py-2 rounded-xl border bg-white text-center">
-              <p className="text-lg font-black text-gray-900">{jobs.length}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Loaded</p>
+              <p className="text-lg font-black text-teal-950">{jobs.length}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-700">Loaded</p>
             </div>
             <div className="px-4 py-2 rounded-xl border bg-white text-center">
               <p className="text-lg font-black text-rose-700">{bookmarkedJobs.length}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-rose-500">Bookmarked</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-950">Bookmarked</p>
             </div>
-            <button onClick={() => setShowSettings(s => !s)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"><Settings className="w-4 h-4" />Defaults</button>
-            <button onClick={() => fetchJobs(filters, true)} disabled={refreshing} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-sm disabled:opacity-60">
+            <button onClick={() => setShowSettings(s => !s)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-white border border-teal-900/10 text-teal-900 hover:bg-[#f6f3eb] transition-colors shadow-sm"><Settings className="w-4 h-4" />Defaults</button>
+            <button onClick={() => fetchJobs(filters, true)} disabled={refreshing} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-[#f3b13a] text-teal-950 font-bold hover:bg-[#d89c30] transition-colors shadow-sm disabled:opacity-60">
               {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh
             </button>
           </div>
@@ -281,90 +281,90 @@ export default function ExternalJobsPage() {
         ) : null}
 
         {showSettings ? (
-          <form onSubmit={handleSaveDefaults} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><Settings className="w-4 h-4" />Default search configuration</h2>
+          <form onSubmit={handleSaveDefaults} className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-5 space-y-4">
+            <h2 className="font-bold text-teal-950 flex items-center gap-2"><Settings className="w-4 h-4" />Default search configuration</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <label className="space-y-1.5">
-                <span className="text-xs font-bold text-gray-500 uppercase">Role</span>
-                <input value={filters.role} onChange={e => setFilters({ ...filters, role: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none text-sm" />
+                <span className="text-xs font-bold text-teal-700 uppercase">Role</span>
+                <input value={filters.role} onChange={e => setFilters({ ...filters, role: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-teal-900/10 focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none text-sm" />
               </label>
               <label className="space-y-1.5">
-                <span className="text-xs font-bold text-gray-500 uppercase">Location</span>
-                <input value={filters.location} onChange={e => setFilters({ ...filters, location: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none text-sm" />
+                <span className="text-xs font-bold text-teal-700 uppercase">Location</span>
+                <input value={filters.location} onChange={e => setFilters({ ...filters, location: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-teal-900/10 focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none text-sm" />
               </label>
               <label className="space-y-1.5">
-                <span className="text-xs font-bold text-gray-500 uppercase">Job Type</span>
-                <select value={filters.employment_type} onChange={e => setFilters({ ...filters, employment_type: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none text-sm bg-white text-gray-900">
+                <span className="text-xs font-bold text-teal-700 uppercase">Job Type</span>
+                <select value={filters.employment_type} onChange={e => setFilters({ ...filters, employment_type: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-teal-900/10 focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none text-sm bg-white text-teal-950">
                   {JOB_TYPE_OPTIONS.map(option => (<option key={option} value={option}>{option}</option>))}
                 </select>
               </label>
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">Cancel</button>
-              <button type="submit" disabled={savingSettings} className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors disabled:opacity-60">
+              <button type="button" onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm font-bold text-teal-700 hover:text-teal-900">Cancel</button>
+              <button type="submit" disabled={savingSettings} className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-teal-900 transition-colors disabled:opacity-60">
                 {savingSettings ? 'Saving...' : 'Save defaults'}
               </button>
             </div>
           </form>
         ) : null}
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input value={filters.role} onChange={e => setFilters({ ...filters, role: e.target.value })} placeholder="Role e.g. software developer" className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" />
+            <input value={filters.role} onChange={e => setFilters({ ...filters, role: e.target.value })} placeholder="Role e.g. software developer" className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-teal-900/10 bg-white text-teal-950 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400" />
           </div>
           <div className="relative flex-1 max-w-sm">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input value={filters.location} onChange={e => setFilters({ ...filters, location: e.target.value })} placeholder="Location e.g. Mumbai" className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400" />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" />
+            <input value={filters.location} onChange={e => setFilters({ ...filters, location: e.target.value })} placeholder="Location e.g. Mumbai" className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-teal-900/10 bg-white text-teal-950 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400" />
           </div>
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select value={filters.employment_type} onChange={e => setFilters({ ...filters, employment_type: e.target.value })} className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white text-gray-900">
+            <Filter className="w-4 h-4 text-teal-600" />
+            <select value={filters.employment_type} onChange={e => setFilters({ ...filters, employment_type: e.target.value })} className="px-3 py-2.5 rounded-xl border border-teal-900/10 text-sm bg-white text-teal-950">
               {JOB_TYPE_OPTIONS.map(option => (<option key={option} value={option}>{option}</option>))}
             </select>
-            <button onClick={() => fetchJobs(filters, true)} className="px-4 py-2.5 text-sm font-bold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors">Search</button>
+            <button onClick={() => fetchJobs(filters, true)} className="px-4 py-2.5 text-sm font-bold rounded-xl bg-[#f3b13a] text-teal-950 font-bold hover:bg-[#d89c30] transition-colors">Search</button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <div className="xl:col-span-2 space-y-3">
             {loading ? (
-              <div className="flex items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
-                <Loader2 className="w-6 h-6 text-rose-500 animate-spin mr-3" />
-                <p className="text-sm text-gray-500">Loading external jobs...</p>
+              <div className="flex items-center justify-center py-16 bg-white rounded-2xl border border-teal-900/10">
+                <Loader2 className="w-6 h-6 text-teal-950 animate-spin mr-3" />
+                <p className="text-sm text-teal-700">Loading external jobs...</p>
               </div>
             ) : jobs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100 text-center">
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><Briefcase className="w-6 h-6 text-gray-300" /></div>
-                <p className="font-bold text-gray-900 text-xl">No jobs found</p>
-                <p className="text-sm text-gray-500 mt-1">Try another role/location or refresh after fixing RapidAPI subscription.</p>
+              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-teal-900/10 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#f6f3eb] flex items-center justify-center mb-3"><Briefcase className="w-6 h-6 text-gray-300" /></div>
+                <p className="font-bold text-teal-950 text-xl">No jobs found</p>
+                <p className="text-sm text-teal-700 mt-1">Try another role/location or refresh after fixing RapidAPI subscription.</p>
               </div>
             ) : (
               jobs.map(job => {
                 const isBookmarked = bookmarkedIds.includes(job.job_id);
                 return (
-                  <div key={job.job_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+                  <div key={job.job_id} className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-950 flex items-center justify-center shrink-0 overflow-hidden">
                         {job.logo_url ? <img src={job.logo_url} alt={job.company} className="w-full h-full object-contain" /> : <Briefcase className="w-5 h-5" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <p className="font-bold text-gray-900 text-sm truncate">{job.title}</p>
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200"><Clock className="w-3 h-3" />{formatDate(job.posted_date)}</span>
+                          <p className="font-bold text-teal-950 text-sm truncate">{job.title}</p>
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200"><Clock className="w-3 h-3" />{formatDate(job.posted_date)}</span>
                         </div>
-                        <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 mb-2">
+                        <div className="flex flex-wrap gap-2 text-[11px] text-teal-700 mb-2">
                           <span className="flex items-center gap-1"><Building className="w-3 h-3" />{job.company}</span>
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200">{job.employment_type || 'Not specified'}</span>
                         </div>
-                        <p className="text-xs text-gray-500">Salary: <span className="font-semibold text-gray-700">{job.salary || 'Not specified'}</span></p>
+                        <p className="text-xs text-teal-700">Salary: <span className="font-semibold text-teal-900">{job.salary || 'Not specified'}</span></p>
                       </div>
                       <div className="flex flex-col gap-2 shrink-0">
-                        <button onClick={() => toggleBookmark(job.job_id)} className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors">
-                          {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-rose-600" /> : <Bookmark className="w-3.5 h-3.5" />}
+                        <button onClick={() => toggleBookmark(job.job_id)} className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#f6f3eb] border border-teal-900/10 text-teal-700 hover:bg-[#f6f3eb] transition-colors">
+                          {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-teal-950" /> : <Bookmark className="w-3.5 h-3.5" />}
                         </button>
-                        <button onClick={() => handleApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors">
+                        <button onClick={() => handleApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#f3b13a] text-teal-950 font-bold hover:bg-[#d89c30] transition-colors">
                           Apply <ExternalLink className="w-3 h-3" />
                         </button>
                       </div>
@@ -376,54 +376,54 @@ export default function ExternalJobsPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-rose-600" />Current defaults</h3>
-              <p className="text-xs text-gray-500 mt-2">Role: {settings.role}</p>
-              <p className="text-xs text-gray-500">Location: {settings.location}</p>
-              <p className="text-xs text-gray-500">Type: {settings.employment_type}</p>
+            <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4">
+              <h3 className="font-bold text-teal-950 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-teal-950" />Current defaults</h3>
+              <p className="text-xs text-teal-700 mt-2">Role: {settings.role}</p>
+              <p className="text-xs text-teal-700">Location: {settings.location}</p>
+              <p className="text-xs text-teal-700">Type: {settings.employment_type}</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2"><Bookmark className="w-4 h-4 text-rose-600" />Bookmarks</h3>
+            <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4">
+              <h3 className="font-bold text-teal-950 flex items-center gap-2"><Bookmark className="w-4 h-4 text-teal-950" />Bookmarks</h3>
               <div className="mt-3 space-y-2">
                 {bookmarkedJobs.length === 0 ? (
-                  <p className="text-xs text-gray-500">No bookmarks yet.</p>
+                  <p className="text-xs text-teal-700">No bookmarks yet.</p>
                 ) : bookmarkedJobs.slice(0, 5).map(job => (
-                  <div key={job.job_id} className="p-2 rounded-xl bg-gray-50 border border-gray-100">
-                    <p className="text-xs font-semibold text-gray-800 truncate">{job.title}</p>
-                    <p className="text-[11px] text-gray-500 truncate">{job.company}</p>
+                  <div key={job.job_id} className="p-2 rounded-xl bg-[#f6f3eb] border border-teal-900/10">
+                    <p className="text-xs font-semibold text-teal-950 truncate">{job.title}</p>
+                    <p className="text-[11px] text-teal-700 truncate">{job.company}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-rose-600" />Most viewed jobs</h3>
+            <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4">
+              <h3 className="font-bold text-teal-950 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-teal-950" />Most viewed jobs</h3>
               <div className="mt-3 space-y-2">
                 {analyticsJobs.length === 0 ? (
-                  <p className="text-xs text-gray-500">No analytics yet.</p>
+                  <p className="text-xs text-teal-700">No analytics yet.</p>
                 ) : analyticsJobs.map(job => (
-                  <div key={job.job_id} className="p-2 rounded-xl bg-gray-50 border border-gray-100">
-                    <p className="text-xs font-semibold text-gray-800 truncate">{job.title}</p>
-                    <p className="text-[11px] text-gray-500">{job.view_count || 0} views • {job.apply_click_count || 0} apply clicks</p>
+                  <div key={job.job_id} className="p-2 rounded-xl bg-[#f6f3eb] border border-teal-900/10">
+                    <p className="text-xs font-semibold text-teal-950 truncate">{job.title}</p>
+                    <p className="text-[11px] text-teal-700">{job.view_count || 0} views • {job.apply_click_count || 0} apply clicks</p>
                     <p className="text-[11px] text-emerald-700 font-semibold">{job.applied_confirm_count || 0} confirmed applications</p>
-                    <p className="text-[10px] text-gray-500">Response: {job.application_response_count || 0} • Conversion: {job.apply_conversion_pct || 0}%</p>
+                    <p className="text-[10px] text-teal-700">Response: {job.application_response_count || 0} • Conversion: {job.apply_conversion_pct || 0}%</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-rose-600" />Confirmed External Applications</h3>
+            <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4">
+              <h3 className="font-bold text-teal-950 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-teal-950" />Confirmed External Applications</h3>
               <div className="mt-3 space-y-2">
                 {applications.length === 0 ? (
-                  <p className="text-xs text-gray-500">No confirmed applications yet.</p>
+                  <p className="text-xs text-teal-700">No confirmed applications yet.</p>
                 ) : applications.map(entry => (
-                  <div key={entry.id} className="p-2 rounded-xl bg-gray-50 border border-gray-100">
-                    <p className="text-xs font-semibold text-gray-900 truncate">{entry.user_name}</p>
-                    <p className="text-[11px] text-gray-600 truncate">{entry.title || 'External job'}{entry.company ? ` at ${entry.company}` : ''}</p>
-                    <p className="text-[10px] text-gray-500 truncate">{entry.user_email}</p>
-                    <p className="text-[10px] text-gray-500">{entry.updated_at ? new Date(entry.updated_at).toLocaleString() : ''}</p>
+                  <div key={entry.id} className="p-2 rounded-xl bg-[#f6f3eb] border border-teal-900/10">
+                    <p className="text-xs font-semibold text-teal-950 truncate">{entry.user_name}</p>
+                    <p className="text-[11px] text-teal-800 truncate">{entry.title || 'External job'}{entry.company ? ` at ${entry.company}` : ''}</p>
+                    <p className="text-[10px] text-teal-700 truncate">{entry.user_email}</p>
+                    <p className="text-[10px] text-teal-700">{entry.updated_at ? new Date(entry.updated_at).toLocaleString() : ''}</p>
                   </div>
                 ))}
               </div>
@@ -431,6 +431,6 @@ export default function ExternalJobsPage() {
           </div>
         </div>
       </div>
-    </AdminNavigation>
+    </>
   );
 }

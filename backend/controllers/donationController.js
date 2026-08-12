@@ -66,9 +66,9 @@ async function createDonation(req, res) {
   `;
 
   const values = [
-    donor_name, donor_email, donor_email, donor_phone, amount, currency, payment_method,
-    payment_id, razorpay_order_id || payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-    transaction_status, donation_type, cause_category, anonymous, message, message
+    donor_name, donor_email, donor_email, donor_phone || null, amount, currency || 'INR', payment_method,
+    payment_id || null, razorpay_order_id || payment_id || null, razorpay_order_id || null, razorpay_payment_id || null, razorpay_signature || null,
+    transaction_status || 'completed', donation_type || 'one-time', cause_category || 'general', Boolean(anonymous), message || '', message || ''
   ];
 
   dbQuery(query, values)

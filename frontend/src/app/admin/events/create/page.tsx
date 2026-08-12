@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useAuth0Token } from '../../../../hooks/useAuth0Token';
-import AdminNavigation from '../../AdminNavigation/AdminNavigation';
+
 import Link from 'next/link';
 import {
   Calendar, MapPin, Users, Video, Save, X,
@@ -20,14 +20,14 @@ interface EventFormData {
   requirements: string; agenda: string;
 }
 
-const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400";
-const iconInputCls = "w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400";
-const labelCls = "block text-xs font-bold text-gray-600 mb-1.5";
+const inputCls = "w-full px-3 py-2.5 text-sm rounded-xl border border-teal-900/10 bg-white text-teal-950 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400";
+const iconInputCls = "w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-teal-900/10 bg-white text-teal-950 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400";
+const labelCls = "block text-xs font-bold text-teal-800 mb-1.5";
 
 const SectionHeader = ({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) => (
-  <div className="flex items-center gap-3 pb-3 mb-4 border-b border-gray-100">
-    <div className="w-9 h-9 rounded-xl bg-pink-50 text-rose-500 flex items-center justify-center">{icon}</div>
-    <div><p className="text-sm font-black text-gray-900">{title}</p><p className="text-xs text-gray-400">{desc}</p></div>
+  <div className="flex items-center gap-3 pb-3 mb-4 border-b border-teal-900/10">
+    <div className="w-9 h-9 rounded-xl bg-[#f6f3eb] text-teal-950 flex items-center justify-center">{icon}</div>
+    <div><p className="text-sm font-black text-teal-950">{title}</p><p className="text-xs text-teal-600">{desc}</p></div>
   </div>
 );
 
@@ -87,34 +87,34 @@ export default function CreateEventPage() {
   const needsVirtual   = formData.eventType === 'virtual'  || formData.eventType === 'hybrid';
 
   return (
-    <AdminNavigation>
+    <>
       <div className="max-w-3xl mx-auto space-y-5">
 
         {/* Header */}
-        <div className="bg-pink-50 rounded-[20px] p-6 sm:p-8 flex items-center gap-5 border border-pink-100">
-          <Link href="/admin/events" className="w-10 h-10 rounded-xl bg-white/60 border border-white text-gray-600 hover:bg-white transition-all shadow-sm shrink-0 flex items-center justify-center">
+        <div className="bg-[#f6f3eb] rounded-[20px] p-6 sm:p-8 flex items-center gap-5 border border-teal-900/10">
+          <Link href="/admin/events" className="w-10 h-10 rounded-xl bg-white/60 border border-white text-teal-800 hover:bg-white transition-all shadow-sm shrink-0 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 mb-1">
-              <Calendar className="w-7 h-7 text-rose-500" />Create New Event
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-teal-950 tracking-tight flex items-center gap-2 mb-1">
+              <Calendar className="w-7 h-7 text-teal-950" />Create New Event
             </h1>
-            <p className="text-gray-600 text-[15px]">Host a new event for alumni and students</p>
+            <p className="text-teal-800 text-[15px]">Host a new event for alumni and students</p>
           </div>
         </div>
 
         {/* Success */}
         {showSuccess && (
-          <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-rose-600" />
-            <div><p className="text-sm font-bold text-rose-800">Event created successfully!</p><p className="text-xs text-rose-600">Redirecting…</p></div>
+          <div className="bg-[#f6f3eb] border border-pink-200 rounded-xl p-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-teal-950" />
+            <div><p className="text-sm font-bold text-rose-800">Event created successfully!</p><p className="text-xs text-teal-950">Redirecting…</p></div>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {/* Basic Info */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-5">
             <SectionHeader icon={<FileText className="w-4 h-4" />} title="Basic Information" desc="General event details" />
             <div className="space-y-4">
               <div><label className={labelCls}>Event Title *</label><input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="e.g., Tech Talk: AI in Industry" className={inputCls} /></div>
@@ -137,7 +137,7 @@ export default function CreateEventPage() {
           </div>
 
           {/* Date & Time */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-5">
             <SectionHeader icon={<Clock className="w-4 h-4" />} title="Date & Time" desc="Schedule your event" />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div><label className={labelCls}>Event Date *</label><input type="date" name="date" value={formData.date} onChange={handleChange} required className={inputCls} /></div>
@@ -148,32 +148,32 @@ export default function CreateEventPage() {
           </div>
 
           {/* Location & Access */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-5">
             <SectionHeader icon={<MapPin className="w-4 h-4" />} title="Location & Access" desc="Where the event will take place" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {needsLocation && (
                 <div className={!needsVirtual ? 'sm:col-span-2' : ''}>
                   <label className={labelCls}>Physical Location *</label>
-                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input type="text" name="location" value={formData.location} onChange={handleChange} required={needsLocation} placeholder="e.g., Main Auditorium, Building A" className={iconInputCls} /></div>
+                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" /><input type="text" name="location" value={formData.location} onChange={handleChange} required={needsLocation} placeholder="e.g., Main Auditorium, Building A" className={iconInputCls} /></div>
                 </div>
               )}
               {needsVirtual && (
                 <div className={!needsLocation ? 'sm:col-span-2' : ''}>
                   <label className={labelCls}>Virtual Meeting Link *</label>
-                  <div className="relative"><Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input type="url" name="virtualLink" value={formData.virtualLink} onChange={handleChange} required={needsVirtual} placeholder="https://zoom.us/j/123456789" className={iconInputCls} /></div>
+                  <div className="relative"><Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" /><input type="url" name="virtualLink" value={formData.virtualLink} onChange={handleChange} required={needsVirtual} placeholder="https://zoom.us/j/123456789" className={iconInputCls} /></div>
                 </div>
               )}
               <div><label className={labelCls}>Max Participants</label>
-                <div className="relative"><Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input type="number" name="maxParticipants" value={formData.maxParticipants} onChange={handleChange} min="1" placeholder="100" className={iconInputCls} /></div>
+                <div className="relative"><Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" /><input type="number" name="maxParticipants" value={formData.maxParticipants} onChange={handleChange} min="1" placeholder="100" className={iconInputCls} /></div>
               </div>
               <div><label className={labelCls}>Tags (comma-separated)</label>
-                <div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="AI, Technology, Career" className={iconInputCls} /></div>
+                <div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" /><input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="AI, Technology, Career" className={iconInputCls} /></div>
               </div>
             </div>
           </div>
 
           {/* Speaker */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-5">
             <SectionHeader icon={<Users className="w-4 h-4" />} title="Speaker Information" desc="Details about the event speaker(s)" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className={labelCls}>Speaker Name</label><input type="text" name="speakerName" value={formData.speakerName} onChange={handleChange} placeholder="John Doe" className={inputCls} /></div>
@@ -183,7 +183,7 @@ export default function CreateEventPage() {
           </div>
 
           {/* Additional Details */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-5">
             <SectionHeader icon={<FileText className="w-4 h-4" />} title="Additional Details" desc="Agenda, requirements and event image" />
             <div className="space-y-4">
               <div><label className={labelCls}>Event Agenda</label><textarea name="agenda" value={formData.agenda} onChange={handleChange} rows={4} placeholder="Outline the event schedule and topics…" className={`${inputCls} resize-none`} /></div>
@@ -192,23 +192,23 @@ export default function CreateEventPage() {
                 <label className={labelCls}>Event Image</label>
                 <div className="flex items-center gap-3">
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="eventImage" />
-                  <label htmlFor="eventImage" className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
-                    <Upload className="w-4 h-4 text-gray-500" />{formData.image ? formData.image.name : 'Choose Image'}
+                  <label htmlFor="eventImage" className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-teal-900/10 bg-white text-teal-900 hover:bg-[#f6f3eb] cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4 text-teal-700" />{formData.image ? formData.image.name : 'Choose Image'}
                   </label>
-                  {formData.image && <span className="flex items-center gap-1 text-xs font-bold text-rose-600"><CheckCircle className="w-3.5 h-3.5" />Selected</span>}
+                  {formData.image && <span className="flex items-center gap-1 text-xs font-bold text-teal-950"><CheckCircle className="w-3.5 h-3.5" />Selected</span>}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1.5">Recommended: 1200×630px · Max 5MB</p>
+                <p className="text-[10px] text-teal-600 mt-1.5">Recommended: 1200×630px · Max 5MB</p>
               </div>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3">
-            <button type="button" onClick={handleCancel} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"><X className="w-4 h-4" />Cancel</button>
-            <button type="submit" className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-sm"><Save className="w-4 h-4" />Create Event</button>
+            <button type="button" onClick={handleCancel} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl border border-teal-900/10 text-teal-900 hover:bg-[#f6f3eb] transition-colors"><X className="w-4 h-4" />Cancel</button>
+            <button type="submit" className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl bg-[#f3b13a] text-teal-950 font-bold hover:bg-[#d89c30] transition-colors shadow-sm"><Save className="w-4 h-4" />Create Event</button>
           </div>
         </form>
       </div>
-    </AdminNavigation>
+    </>
   );
 }

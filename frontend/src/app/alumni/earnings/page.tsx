@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@auth0/nextjs-auth0/client';
 import { useRouter } from 'next/navigation';
-import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
+
 import {
   TrendingUp, DollarSign, Clock, CheckCircle,
   AlertCircle, Download, Zap, Users, Star, Calendar,
@@ -49,9 +48,9 @@ interface DetailViewState {
 }
 
 export default function EarningsPage() {
-  const { user } = useUser();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<EarningStats>({
     total_earned: 0,
     pending_amount: 0,
@@ -70,20 +69,34 @@ export default function EarningsPage() {
   const API_ROOT = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
 
   useEffect(() => {
-    const fetchEarningsData = async () => {
-      if (!user?.email) return;
+    const loadAllData = async () => {
       try {
         setLoading(true);
 
+        // Fetch local profile
+        const profileResp = await fetch('/api/user/profile', { cache: 'no-store' });
+        if (!profileResp.ok) {
+          if (profileResp.status === 401) {
+            router.push('/api/auth/login?returnTo=/alumni/earnings');
+            return;
+          }
+          throw new Error('Failed to load profile');
+        }
+        const profileData = await profileResp.json();
+        const p = profileData.user || profileData;
+        setProfile(p);
+
+        if (!p?.email) throw new Error('No email found in profile');
+
         // Fetch earnings stats
-        const statsResp = await fetch(`${API_ROOT}/alumni/earnings/stats?email=${encodeURIComponent(user.email)}`);
+        const statsResp = await fetch(`${API_ROOT}/alumni/earnings/stats?email=${encodeURIComponent(p.email)}`);
         if (statsResp.ok) {
           const statsData = await statsResp.json();
           setStats(statsData.stats || {});
         }
 
         // Fetch earnings records
-        const earningsResp = await fetch(`${API_ROOT}/alumni/earnings?email=${encodeURIComponent(user.email)}`);
+        const earningsResp = await fetch(`${API_ROOT}/alumni/earnings?email=${encodeURIComponent(p.email)}`);
         if (earningsResp.ok) {
           const earningsData = await earningsResp.json();
           const records = earningsData.earnings || [];
@@ -97,8 +110,8 @@ export default function EarningsPage() {
       }
     };
 
-    fetchEarningsData();
-  }, [user?.email]);
+    loadAllData();
+  }, [router, API_ROOT]);
 
   useEffect(() => {
     let filtered = [...earnings];
@@ -159,36 +172,36 @@ export default function EarningsPage() {
 
   if (loading) {
     return (
-      <AlumniNavigation>
+      <>
         <div className="flex h-full min-h-[60vh] items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-indigo-500" />
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-teal-500" />
         </div>
-      </AlumniNavigation>
+      </>
     );
   }
 
   return (
-    <AlumniNavigation>
+    <>
       <div className="space-y-6 max-w-7xl mx-auto mb-8">
 
         {/* Header Banner */}
-        <div className="bg-[#1A1C23]  rounded-[32px] border border-emerald-100/40 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden text-white">
+        <div className="bg-teal-950  rounded-[32px] border border-teal-900/10/40 px-6 py-7 md:px-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative overflow-hidden text-white">
         <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
           <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-emerald-100/40 blur-2xl pointer-events-none" />
           <div className="relative z-10">
             <h1 className="text-3xl font-bold text-white flex items-center gap-2 tracking-tight">
-              <TrendingUp className="w-8 h-8 text-emerald-600" />
+              <TrendingUp className="w-8 h-8 text-teal-950" />
               Earnings Dashboard
             </h1>
             <p className="text-gray-300 text-sm mt-1 font-medium">Track your mentorship earnings with detailed breakdown</p>
           </div>
           <button
             onClick={handleDownloadStatement}
-            className="relative z-10 flex items-center gap-2 px-4 py-2.5 bg-white text-sm font-semibold text-slate-700 rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors whitespace-nowrap"
+            className="relative z-10 flex items-center gap-2 px-4 py-2.5 bg-white text-sm font-semibold text-slate-700 rounded-xl border border-slate-200 shadow-sm hover:bg-[#f6f3eb] transition-colors whitespace-nowrap"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
+            <Download className="w-4 h-4 text-teal-950" />
             Download Statement
           </button>
         </div>
@@ -196,11 +209,11 @@ export default function EarningsPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Total Earned */}
-          <div className="bg-gradient-to-br from-emerald-50 to-white rounded-[20px] border border-emerald-100 shadow-sm p-8 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-emerald-50 to-white rounded-[20px] border border-teal-900/10 shadow-sm p-8 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-slate-600 text-sm font-medium mb-3">Total Earned</p>
-                <p className="text-5xl font-bold text-emerald-600">₹{stats.total_earned?.toLocaleString()}</p>
+                <p className="text-5xl font-bold text-teal-950">₹{stats.total_earned?.toLocaleString()}</p>
               </div>
               <DollarSign className="w-12 h-12 text-emerald-200" />
             </div>
@@ -218,13 +231,13 @@ export default function EarningsPage() {
           </div>
 
           {/* Completed Sessions */}
-          <div className="bg-gradient-to-br from-blue-50 to-white rounded-[20px] border border-blue-100 shadow-sm p-8 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-teal-50 to-white rounded-[20px] border border-teal-100 shadow-sm p-8 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-slate-600 text-sm font-medium mb-3">Completed</p>
-                <p className="text-5xl font-bold text-blue-600">{analytics.completedCount}</p>
+                <p className="text-5xl font-bold text-teal-600">{analytics.completedCount}</p>
               </div>
-              <CheckCircle className="w-12 h-12 text-blue-200" />
+              <CheckCircle className="w-12 h-12 text-teal-200" />
             </div>
           </div>
         </div>
@@ -235,7 +248,7 @@ export default function EarningsPage() {
           <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-600">Total Sessions</h3>
-              <Users className="w-5 h-5 text-blue-600" />
+              <Users className="w-5 h-5 text-teal-600" />
             </div>
             <div className="space-y-2">
               <p className="text-2xl font-bold text-slate-900">{analytics.sessions}</p>
@@ -247,7 +260,7 @@ export default function EarningsPage() {
           <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-600">Subscriptions</h3>
-              <BarChart3 className="w-5 h-5 text-purple-600" />
+              <BarChart3 className="w-5 h-5 text-teal-600" />
             </div>
             <div className="space-y-2">
               <p className="text-2xl font-bold text-slate-900">{analytics.subscriptions}</p>
@@ -259,7 +272,7 @@ export default function EarningsPage() {
           <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-600">Avg per Session</h3>
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
+              <TrendingUp className="w-5 h-5 text-teal-950" />
             </div>
             <div className="space-y-2">
               <p className="text-2xl font-bold text-slate-900">₹{Math.round(analytics.avgEarningPerSession)}</p>
@@ -269,11 +282,11 @@ export default function EarningsPage() {
         </div>
 
         {/* This Month Section */}
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-[24px] border border-indigo-100/40 p-6 shadow-sm">
+        <div className="bg-gradient-to-br from-teal-50 to-teal-50 rounded-[24px] border border-teal-100/40 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-100 rounded-xl p-3">
-                <Calendar className="w-6 h-6 text-[#1A1C23]" />
+              <div className="bg-teal-100 rounded-xl p-3">
+                <Calendar className="w-6 h-6 text-teal-950" />
               </div>
               <div>
                 <p className="text-slate-600 text-sm font-medium">This Month</p>
@@ -282,7 +295,7 @@ export default function EarningsPage() {
             </div>
             <div className="text-right">
               <p className="text-slate-500 text-sm">Year to Date</p>
-              <p className="text-lg font-semibold text-[#1A1C23]">₹{stats.total_earned?.toLocaleString()}</p>
+              <p className="text-lg font-semibold text-teal-950">₹{stats.total_earned?.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -290,7 +303,7 @@ export default function EarningsPage() {
         {/* Earnings Records */}
         <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-slate-200 bg-slate-50/50">
+          <div className="px-6 py-5 border-b border-slate-200 bg-[#f6f3eb]">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Earnings History</h2>
 
             {/* Search and Filters */}
@@ -302,14 +315,14 @@ export default function EarningsPage() {
                   placeholder="Search by student name or description..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 />
               </div>
 
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               >
                 <option value="all">All Status</option>
                 <option value="completed">Completed</option>
@@ -320,7 +333,7 @@ export default function EarningsPage() {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               >
                 <option value="all">All Types</option>
                 <option value="mentorship">Mentorship</option>
@@ -339,16 +352,16 @@ export default function EarningsPage() {
               </div>
             ) : (
               filteredEarnings.map((earning, idx) => (
-                <div key={earning.id} className="px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                <div key={earning.id} className="px-6 py-4 hover:bg-[#f6f3eb] transition-colors">
                   <div className="flex items-center justify-between gap-4 mb-3">
                     <div className="flex items-center gap-4 flex-1">
                       {/* Type Icon */}
                       <div className={`rounded-xl p-3 ${
-                        earning.type === 'resume_review' ? 'bg-blue-50' :
-                        'bg-purple-50'
+                        earning.type === 'resume_review' ? 'bg-teal-50' :
+                        'bg-teal-50'
                       }`}>
-                        {earning.type === 'resume_review' && <CheckCircle className="w-5 h-5 text-blue-600" />}
-                        {earning.type === 'mentorship' && <Users className="w-5 h-5 text-purple-600" />}
+                        {earning.type === 'resume_review' && <CheckCircle className="w-5 h-5 text-teal-600" />}
+                        {earning.type === 'mentorship' && <Users className="w-5 h-5 text-teal-600" />}
                       </div>
 
                       {/* Details */}
@@ -367,7 +380,7 @@ export default function EarningsPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <div className="flex flex-col gap-1">
-                          <div className="text-sm font-semibold text-emerald-600">
+                          <div className="text-sm font-semibold text-teal-950">
                             ₹{(earning.alumni_amount ?? 0)?.toLocaleString()}
                           </div>
                           <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
@@ -381,7 +394,7 @@ export default function EarningsPage() {
                       </div>
                       <button 
                         onClick={() => setDetailView({ open: true, record: earning })}
-                        className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="text-slate-400 hover:text-slate-600 p-2 hover:bg-[#f6f3eb] rounded-lg transition-colors"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -399,10 +412,10 @@ export default function EarningsPage() {
 
       {/* Detail Modal */}
       {detailView.open && detailView.record && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-teal-950/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[24px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-[#f6f3eb] border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900">Transaction Details</h3>
               <button
                 onClick={() => setDetailView({ open: false, record: null })}
@@ -471,7 +484,7 @@ export default function EarningsPage() {
                     href={detailView.record.meeting_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 transition-colors text-sm font-medium"
                   >
                     Open Meeting Link
                     <ArrowUpRight className="w-3 h-3" />
@@ -482,6 +495,6 @@ export default function EarningsPage() {
           </div>
         </div>
       )}
-    </AlumniNavigation>
+    </>
   );
 }

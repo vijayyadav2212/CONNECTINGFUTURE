@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
-import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
+
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { Users, GraduationCap, Building, MapPin, MessageSquare, Clock, Search, UserCheck, UserX, X, Sparkles, ChevronRight, Check } from 'lucide-react';
 
@@ -171,7 +171,7 @@ export default function NetworkPage() {
       <div key={u.id} className="bg-white rounded-[28px] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-transparent hover:border-gray-100 h-full relative" onClick={() => setSelectedProfile(u)}>
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[17px] shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[17px] shrink-0">
               {initials}
             </div>
             <div>
@@ -180,7 +180,7 @@ export default function NetworkPage() {
             </div>
           </div>
           {u.user_type === 'alumni' && u.is_mentor && (
-            <span className="shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full bg-[#1A1C23] text-white">Mentor</span>
+            <span className="shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full bg-teal-950 text-white">Mentor</span>
           )}
         </div>
 
@@ -192,12 +192,12 @@ export default function NetworkPage() {
 
         <div className="flex flex-wrap gap-2 mb-6">
           {skills.slice(0, 3).map((skill, idx) => (
-            <span key={idx} className="px-3 py-1.5 bg-[#F4F6FB] text-gray-600 text-[11px] font-bold rounded-xl">
+            <span key={idx} className="px-3 py-1.5 bg-[#f6f3eb] text-gray-600 text-[11px] font-bold rounded-xl">
               {skill}
             </span>
           ))}
           {skills.length > 3 && (
-            <span className="px-3 py-1.5 bg-[#F4F6FB] text-gray-600 text-[11px] font-bold rounded-xl">+{skills.length - 3}</span>
+            <span className="px-3 py-1.5 bg-[#f6f3eb] text-gray-600 text-[11px] font-bold rounded-xl">+{skills.length - 3}</span>
           )}
         </div>
 
@@ -205,7 +205,7 @@ export default function NetworkPage() {
           {myEmail && myEmail.toLowerCase() !== u.email.toLowerCase() && (
             <div className="flex w-full gap-2">
               {!status && (
-                <button disabled={connBusy} onClick={() => request(u)} className="flex-1 px-4 py-3 text-[13px] font-bold rounded-2xl bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50">
+                <button disabled={connBusy} onClick={() => request(u)} className="flex-1 px-4 py-3 text-[13px] font-bold rounded-2xl bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50">
                   Connect
                 </button>
               )}
@@ -216,7 +216,7 @@ export default function NetworkPage() {
               )}
               {status === 'pending' && !isRequester && (
                 <>
-                  <button disabled={connBusy} onClick={() => respond(u, 'accept')} className="flex-1 px-4 py-3 text-[13px] font-bold rounded-2xl bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50">Accept</button>
+                  <button disabled={connBusy} onClick={() => respond(u, 'accept')} className="flex-1 px-4 py-3 text-[13px] font-bold rounded-2xl bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50">Accept</button>
                   <button disabled={connBusy} onClick={() => respond(u, 'reject')} className="px-4 py-3 text-[13px] font-bold rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50">Decline</button>
                 </>
               )}
@@ -226,7 +226,7 @@ export default function NetworkPage() {
                 </button>
               )}
               {(status === 'rejected' || status === 'removed') && (
-                <button disabled={connBusy} onClick={() => request(u)} className="flex-1 px-4 py-3 text-[13px] font-bold rounded-2xl bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50">
+                <button disabled={connBusy} onClick={() => request(u)} className="flex-1 px-4 py-3 text-[13px] font-bold rounded-2xl bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50">
                   Re-connect
                 </button>
               )}
@@ -240,11 +240,11 @@ export default function NetworkPage() {
   const incoming = connections.filter(c => c.status === 'pending' && c.target_email.toLowerCase() === myEmail.toLowerCase());
 
   return (
-    <AlumniNavigation>
+    <>
       <div className="max-w-[1400px] mx-auto text-[#111111]">
         
         {/* Page Header Banner */}
-        <div className="bg-[#1A1C23] rounded-[32px] p-8 md:p-12 text-white mb-10 relative overflow-hidden shadow-lg">
+        <div className="bg-teal-950 rounded-[32px] p-8 md:p-12 text-white mb-10 relative overflow-hidden shadow-lg">
            <div className="relative z-10">
              <h1 className="text-[32px] md:text-[38px] font-bold mb-2 tracking-tight">Expand Your Reach</h1>
              <p className="text-[#8F93A3] text-[14px] font-medium max-w-[400px] leading-[1.6]">
@@ -263,13 +263,13 @@ export default function NetworkPage() {
            <div className="flex gap-4 sm:gap-8 text-[14px] font-bold text-gray-400 bg-white md:bg-transparent rounded-full md:rounded-none p-1 md:p-0">
              <span 
                onClick={() => { setType('alumni'); setShowOthers(false); }}
-               className={`cursor-pointer transition-colors py-2.5 px-6 rounded-full ${type === 'alumni' ? 'bg-[#1A1C23] text-white shadow-sm' : 'hover:text-black'}`}
+               className={`cursor-pointer transition-colors py-2.5 px-6 rounded-full ${type === 'alumni' ? 'bg-teal-950 text-white shadow-sm' : 'hover:text-black'}`}
              >
                Alumni
              </span>
              <span 
                onClick={() => { setType('students'); setShowOthers(false); }}
-               className={`cursor-pointer transition-colors py-2.5 px-6 rounded-full ${type === 'students' ? 'bg-[#1A1C23] text-white shadow-sm' : 'hover:text-black'}`}
+               className={`cursor-pointer transition-colors py-2.5 px-6 rounded-full ${type === 'students' ? 'bg-teal-950 text-white shadow-sm' : 'hover:text-black'}`}
              >
                Students
              </span>
@@ -286,7 +286,7 @@ export default function NetworkPage() {
                placeholder="Search..." 
                className="w-full bg-white py-3.5 pl-12 pr-4 text-[15px] font-medium focus:outline-none placeholder-gray-400"
              />
-             <button onClick={load} className="bg-white border-l border-gray-100 text-[#1A1C23] px-6 py-3.5 font-bold text-[14px] hover:bg-gray-50 transition-colors">Search</button>
+             <button onClick={load} className="bg-white border-l border-gray-100 text-teal-950 px-6 py-3.5 font-bold text-[14px] hover:bg-[#f6f3eb] transition-colors">Search</button>
            </div>
         </div>
 
@@ -295,7 +295,7 @@ export default function NetworkPage() {
           <div className="mb-10">
              <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-[22px] font-bold tracking-tight">Connection Requests</h2>
-                <span className="w-6 h-6 flex items-center justify-center bg-[#1A1C23] text-white text-[12px] font-bold rounded-full">{incoming.length}</span>
+                <span className="w-6 h-6 flex items-center justify-center bg-teal-950 text-white text-[12px] font-bold rounded-full">{incoming.length}</span>
              </div>
              <div className="space-y-4">
                 {incoming.map(req => {
@@ -308,7 +308,7 @@ export default function NetworkPage() {
                   return (
                     <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-[24px] shadow-sm border border-gray-100 gap-4">
                        <div className="flex items-center gap-4 pl-2">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">
                             {initials}
                           </div>
                           <div>
@@ -317,8 +317,8 @@ export default function NetworkPage() {
                           </div>
                        </div>
                        <div className="flex gap-2">
-                          <button disabled={connBusy} onClick={() => respond(userLite, 'accept')} className="px-5 py-2.5 rounded-[14px] bg-[#1A1C23] text-white text-[13px] font-bold hover:bg-black transition-colors disabled:opacity-50">Accept</button>
-                          <button disabled={connBusy} onClick={() => respond(userLite, 'reject')} className="px-5 py-2.5 rounded-[14px] bg-[#F4F6FB] text-gray-600 text-[13px] font-bold hover:bg-gray-200 transition-colors disabled:opacity-50">Decline</button>
+                          <button disabled={connBusy} onClick={() => respond(userLite, 'accept')} className="px-5 py-2.5 rounded-[14px] bg-teal-950 text-white text-[13px] font-bold hover:bg-teal-900 transition-colors disabled:opacity-50">Accept</button>
+                          <button disabled={connBusy} onClick={() => respond(userLite, 'reject')} className="px-5 py-2.5 rounded-[14px] bg-[#f6f3eb] text-gray-600 text-[13px] font-bold hover:bg-gray-200 transition-colors disabled:opacity-50">Decline</button>
                        </div>
                     </div>
                   );
@@ -393,7 +393,7 @@ export default function NetworkPage() {
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm">
                   <Search size={24} className="text-gray-400" strokeWidth={2} />
                 </div>
-                <h3 className="text-lg font-bold text-[#1A1C23] mb-1">No Profiles Found</h3>
+                <h3 className="text-lg font-bold text-teal-950 mb-1">No Profiles Found</h3>
                 <p className="text-[14px] font-bold text-gray-400 max-w-sm">Try adjusting your search criteria or switching between tabs.</p>
               </div>
             )}
@@ -404,41 +404,41 @@ export default function NetworkPage() {
         {selectedProfile && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111111]/40 backdrop-blur-sm p-4" onClick={() => setSelectedProfile(null)}>
             <div className="bg-white rounded-[40px] max-w-md w-full p-8 shadow-2xl relative overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setSelectedProfile(null)} className="absolute top-6 right-6 w-10 h-10 bg-gray-50 hover:bg-gray-100 flex items-center justify-center rounded-full transition-colors z-20">
+              <button onClick={() => setSelectedProfile(null)} className="absolute top-6 right-6 w-10 h-10 bg-[#f6f3eb] hover:bg-gray-100 flex items-center justify-center rounded-full transition-colors z-20">
                 <X size={18} className="text-gray-600" strokeWidth={2.5} />
               </button>
 
               <div className="flex flex-col items-center mb-8 relative z-10 pt-4">
-                <div className="w-24 h-24 rounded-[28px] bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-3xl shrink-0 mb-4 shadow-inner">
+                <div className="w-24 h-24 rounded-[28px] bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-3xl shrink-0 mb-4 shadow-inner">
                   {(selectedProfile.name || selectedProfile.email).split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                <h2 className="text-[24px] font-bold text-[#1A1C23] text-center tracking-tight leading-tight">{selectedProfile.name || 'Unnamed'}</h2>
+                <h2 className="text-[24px] font-bold text-teal-950 text-center tracking-tight leading-tight">{selectedProfile.name || 'Unnamed'}</h2>
                 <p className="text-[14px] font-bold text-gray-400 text-center mt-1">{selectedProfile.email}</p>
               </div>
 
-              <div className="flex flex-col gap-2 mb-8 bg-gray-50 rounded-3xl p-5 border border-gray-100">
+              <div className="flex flex-col gap-2 mb-8 bg-[#f6f3eb] rounded-3xl p-5 border border-gray-100">
                 {selectedProfile.user_type && (
                   <div className="flex justify-between items-center pb-2 border-b border-gray-200">
                      <span className="text-[13px] font-bold text-gray-400">Role</span>
-                     <span className="text-[13px] font-bold text-[#1A1C23] capitalize">{selectedProfile.user_type}</span>
+                     <span className="text-[13px] font-bold text-teal-950 capitalize">{selectedProfile.user_type}</span>
                   </div>
                 )}
                 {selectedProfile.graduation_year && (
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                      <span className="text-[13px] font-bold text-gray-400">Class Of</span>
-                     <span className="text-[13px] font-bold text-[#1A1C23]">{selectedProfile.graduation_year}</span>
+                     <span className="text-[13px] font-bold text-teal-950">{selectedProfile.graduation_year}</span>
                   </div>
                 )}
                 {selectedProfile.major && (
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                      <span className="text-[13px] font-bold text-gray-400">Major</span>
-                     <span className="text-[13px] font-bold text-[#1A1C23]">{selectedProfile.major}</span>
+                     <span className="text-[13px] font-bold text-teal-950">{selectedProfile.major}</span>
                   </div>
                 )}
                 {selectedProfile.company && (
                   <div className="flex justify-between items-center pt-2">
                      <span className="text-[13px] font-bold text-gray-400">Company</span>
-                     <span className="text-[13px] font-bold text-[#1A1C23]">{selectedProfile.company}</span>
+                     <span className="text-[13px] font-bold text-teal-950">{selectedProfile.company}</span>
                   </div>
                 )}
               </div>
@@ -455,7 +455,7 @@ export default function NetworkPage() {
                   <h3 className="text-[13px] font-bold tracking-tight mb-3">Skills</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedProfile.skills.split(',').slice(0, 12).map(s => (
-                      <span key={s} className="px-3 py-1.5 text-[12px] rounded-xl bg-[#1A1C23] text-white font-bold">{s.trim()}</span>
+                      <span key={s} className="px-3 py-1.5 text-[12px] rounded-xl bg-teal-950 text-white font-bold">{s.trim()}</span>
                     ))}
                   </div>
                 </div>
@@ -468,15 +468,15 @@ export default function NetworkPage() {
                   const isReq = c && c.requester_email.toLowerCase() === myEmail.toLowerCase();
                   if (!myEmail || myEmail.toLowerCase() === selectedProfile.email.toLowerCase()) return null;
 
-                  if (!status) return <button disabled={connBusy} onClick={() => request(selectedProfile)} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50">Connect</button>;
+                  if (!status) return <button disabled={connBusy} onClick={() => request(selectedProfile)} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50">Connect</button>;
 
                   if (status === 'pending' && isReq) return <span className="flex-1 flex items-center justify-center py-4 text-[14px] font-bold rounded-2xl bg-gray-100 text-gray-500">Request Sent</span>;
 
-                  if (status === 'pending' && !isReq) return <div className="flex-1 flex gap-3"><button disabled={connBusy} onClick={() => respond(selectedProfile, 'accept')} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50">Accept</button><button disabled={connBusy} onClick={() => respond(selectedProfile, 'reject')} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50">Decline</button></div>;
+                  if (status === 'pending' && !isReq) return <div className="flex-1 flex gap-3"><button disabled={connBusy} onClick={() => respond(selectedProfile, 'accept')} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50">Accept</button><button disabled={connBusy} onClick={() => respond(selectedProfile, 'reject')} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50">Decline</button></div>;
 
                   if (status === 'accepted') return <button disabled={connBusy} onClick={() => remove(selectedProfile)} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50">Disconnect</button>;
 
-                  if (status === 'rejected' || status === 'removed') return <button disabled={connBusy} onClick={() => request(selectedProfile)} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50">Re-connect</button>;
+                  if (status === 'rejected' || status === 'removed') return <button disabled={connBusy} onClick={() => request(selectedProfile)} className="flex-1 py-4 text-[14px] font-bold rounded-2xl bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50">Re-connect</button>;
 
                   return null;
                 })()}
@@ -486,6 +486,6 @@ export default function NetworkPage() {
         )}
 
       </div>
-    </AlumniNavigation>
+    </>
   );
 }

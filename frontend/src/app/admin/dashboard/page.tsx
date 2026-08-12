@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import AdminNavigation from '../AdminNavigation/AdminNavigation';
+
 import {
   Users, UserCheck, UserX, Briefcase, Calendar,
   TrendingUp, AlertCircle, CheckCircle, Clock,
@@ -139,39 +139,39 @@ export default function AdminDashboard() {
   }, [loading, user, accessToken]);
 
   const typeIcon = (t: string) => ({ alumni: <UserCheck className="w-4 h-4" />, job: <Briefcase className="w-4 h-4" />, event: <Calendar className="w-4 h-4" /> }[t] || <AlertCircle className="w-4 h-4" />);
-  const typeStyle = (t: string) => ({ alumni: 'bg-blue-50 text-blue-600', job: 'bg-purple-50 text-purple-600', event: 'bg-green-50 text-green-600' }[t] || 'bg-gray-50 text-gray-600');
+  const typeStyle = (t: string) => ({ alumni: 'bg-teal-50 text-teal-900', job: 'bg-teal-950/10 text-teal-950', event: 'bg-green-50 text-green-600' }[t] || 'bg-[#f6f3eb] text-teal-800');
   const typeRoute = (t: string) => ({ alumni: '/admin/approvals/alumni', job: '/admin/jobs', event: '/admin/events' }[t] || '/admin/dashboard');
 
   const statCards = [
-    { label: 'Total Users',        value: stats.totalUsers,        sub: '+12% this month',  icon: <Users className="w-4 h-4" />,     bg: 'bg-blue-50',   color: 'text-blue-600' },
+    { label: 'Total Users',        value: stats.totalUsers,        sub: '+12% this month',  icon: <Users className="w-4 h-4" />,     bg: 'bg-teal-50',   color: 'text-teal-900' },
     { label: 'Pending Approvals',   value: stats.pendingApprovals,  sub: 'Needs attention',  icon: <AlertCircle className="w-4 h-4" />, bg: 'bg-amber-50',  color: 'text-amber-600' },
-    { label: 'Active Jobs',         value: stats.activeJobs,        sub: 'Live postings',    icon: <Briefcase className="w-4 h-4" />,  bg: 'bg-purple-50', color: 'text-purple-600' },
+    { label: 'Active Jobs',         value: stats.activeJobs,        sub: 'Live postings',    icon: <Briefcase className="w-4 h-4" />,  bg: 'bg-teal-950/10', color: 'text-teal-950' },
     { label: 'Upcoming Events',     value: stats.upcomingEvents,    sub: 'This month',       icon: <Calendar className="w-4 h-4" />,   bg: 'bg-green-50',  color: 'text-green-600' },
     { label: 'New Registrations',   value: stats.newRegistrations,  sub: 'This week',        icon: <TrendingUp className="w-4 h-4" />, bg: 'bg-teal-50',   color: 'text-teal-600' },
     { label: 'Approved Today',      value: stats.approvedToday,     sub: 'All processed',    icon: <CheckCircle className="w-4 h-4" />, bg: 'bg-green-50', color: 'text-green-600' },
   ];
 
   return (
-    <AdminNavigation>
+    <>
       {loading ? (
         <div className="flex flex-col items-center justify-center h-60 gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500" />
-          <p className="text-sm text-gray-400">Loading dashboard…</p>
+          <p className="text-sm text-teal-600">Loading dashboard…</p>
         </div>
       ) : (
         <div className="space-y-5">
 
           {/* Welcome Banner */}
-          <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex items-center justify-between border border-purple-100">
+          <div className="bg-teal-950/10 rounded-[20px] p-6 sm:p-8 flex items-center justify-between border border-teal-900/10">
             <div>
               <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
                 <Sparkles className="w-[18px] h-[18px]" />
                 <span className="text-sm tracking-wide">Welcome Back</span>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Hello, {user?.name || 'Admin'}!</h1>
-              <p className="text-gray-600 text-[15px] sm:text-base">Your community is growing. Ready to make an impact today?</p>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-teal-950 tracking-tight mb-2">Hello, {user?.name || 'Admin'}!</h1>
+              <p className="text-teal-800 text-[15px] sm:text-base">Your community is growing. Ready to make an impact today?</p>
             </div>
-            <button onClick={() => fetchDashboardData(true)} disabled={refreshing} className="flex items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/60 border border-white text-gray-700 hover:bg-white disabled:opacity-60 transition-all shadow-sm self-start sm:self-center shrink-0 ml-4">
+            <button onClick={() => fetchDashboardData(true)} disabled={refreshing} className="flex items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/60 border border-white text-teal-900 hover:bg-white disabled:opacity-60 transition-all shadow-sm self-start sm:self-center shrink-0 ml-4">
               <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
@@ -187,11 +187,11 @@ export default function AdminDashboard() {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {statCards.map((s, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow flex items-center gap-3">
+              <div key={i} className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4 hover:shadow-md transition-shadow flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl ${s.bg} ${s.color} flex items-center justify-center shrink-0`}>{s.icon}</div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{s.label}</p>
-                  <p className="text-2xl font-black text-gray-900 leading-none mt-0.5">{s.value}</p>
+                  <p className="text-[10px] text-teal-600 font-bold uppercase tracking-wide">{s.label}</p>
+                  <p className="text-2xl font-black text-teal-950 leading-none mt-0.5">{s.value}</p>
                   <p className={`text-[11px] font-semibold mt-0.5 ${s.color}`}>{s.sub}</p>
                 </div>
               </div>
@@ -199,33 +199,33 @@ export default function AdminDashboard() {
           </div>
 
           {/* Pending Approvals */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-teal-900/10 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-gray-900 text-sm">Pending Approvals</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Items requiring your review</p>
+                <h3 className="font-bold text-teal-950 text-sm">Pending Approvals</h3>
+                <p className="text-xs text-teal-600 mt-0.5">Items requiring your review</p>
               </div>
               <Link href="/admin/approvals/alumni" className="text-xs font-bold text-red-600 hover:underline">View All →</Link>
             </div>
             {pendingApprovals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3"><CheckCircle className="w-6 h-6 text-green-500" /></div>
-                <p className="font-bold text-gray-900 text-sm">All caught up!</p>
-                <p className="text-xs text-gray-400 mt-0.5">No pending approvals at the moment.</p>
+                <p className="font-bold text-teal-950 text-sm">All caught up!</p>
+                <p className="text-xs text-teal-600 mt-0.5">No pending approvals at the moment.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {pendingApprovals.map(a => (
-                  <div key={`${a.type}-${a.id}`} className="px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                  <div key={`${a.type}-${a.id}`} className="px-5 py-3.5 hover:bg-[#f6f3eb] transition-colors">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${typeStyle(a.type)}`}>{typeIcon(a.type)}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">{a.title}</p>
-                        <p className="text-xs text-gray-400">{a.subtitle}</p>
+                        <p className="text-sm font-bold text-teal-950 truncate">{a.title}</p>
+                        <p className="text-xs text-teal-600">{a.subtitle}</p>
                       </div>
-                      <p className="text-[10px] text-gray-400 shrink-0 mr-2">{a.date}</p>
+                      <p className="text-[10px] text-teal-600 shrink-0 mr-2">{a.date}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button onClick={() => router.push(typeRoute(a.type))} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
+                        <button onClick={() => router.push(typeRoute(a.type))} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#f6f3eb] border border-teal-900/10 text-teal-800 hover:bg-[#f6f3eb] transition-colors">
                           <Eye className="w-3 h-3" />Review
                         </button>
                         <button onClick={() => quickApprove(a)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors">
@@ -245,18 +245,18 @@ export default function AdminDashboard() {
           {/* Quick Actions */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { href: '/admin/jobs/create', icon: <Briefcase className="w-5 h-5" />, title: 'Post a Job', desc: 'Create new job postings', bg: 'bg-purple-50', color: 'text-purple-600', border: 'border-purple-100' },
+              { href: '/admin/jobs/create', icon: <Briefcase className="w-5 h-5" />, title: 'Post a Job', desc: 'Create new job postings', bg: 'bg-teal-950/10', color: 'text-teal-950', border: 'border-teal-900/10' },
               { href: '/admin/events/create', icon: <Calendar className="w-5 h-5" />, title: 'Host an Event', desc: 'Schedule alumni events', bg: 'bg-green-50', color: 'text-green-600', border: 'border-green-100' },
-              { href: '/admin/notifications', icon: <Send className="w-5 h-5" />, title: 'Send Notification', desc: 'Broadcast to users', bg: 'bg-blue-50', color: 'text-blue-600', border: 'border-blue-100' },
+              { href: '/admin/notifications', icon: <Send className="w-5 h-5" />, title: 'Send Notification', desc: 'Broadcast to users', bg: 'bg-teal-50', color: 'text-teal-900', border: 'border-teal-100' },
             ].map((q, i) => (
               <Link key={i} href={q.href} className={`bg-white rounded-2xl border ${q.border} shadow-sm p-4 hover:shadow-md transition-all flex items-center gap-3`}>
                 <div className={`w-10 h-10 rounded-xl ${q.bg} ${q.color} flex items-center justify-center shrink-0`}>{q.icon}</div>
-                <div><p className={`text-sm font-bold ${q.color}`}>{q.title}</p><p className="text-xs text-gray-400">{q.desc}</p></div>
+                <div><p className={`text-sm font-bold ${q.color}`}>{q.title}</p><p className="text-xs text-teal-600">{q.desc}</p></div>
               </Link>
             ))}
           </div>
         </div>
       )}
-    </AdminNavigation>
+    </>
   );
 }

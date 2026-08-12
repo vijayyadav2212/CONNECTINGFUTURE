@@ -163,7 +163,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         // High-contrast text color (slate-900), glassmorphism (bg-white/80), and extra rounded corners
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 border border-white/50 bg-white/80 backdrop-blur-xl p-0 shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-[2.5rem] overflow-hidden text-slate-900 sm:max-w-2xl",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 border border-teal-950/100 bg-white/80 backdrop-blur-xl p-0 shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-[2.5rem] overflow-hidden text-slate-900 sm:max-w-2xl",
         className
       )}
       {...props}
@@ -198,7 +198,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 p-6 bg-slate-50/50 border-t border-white/50",
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 p-6 bg-slate-50/50 border-t border-teal-950/100",
       className
     )}
     {...props}

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
+
 import StarRating from '@/components/ui/star-rating';
 import {
   Users, CheckCircle, Star, Calendar, Clock, UserX, ChevronDown, ChevronUp, Video, Sparkles
@@ -52,7 +52,8 @@ type UserProfile = {
   company?: string | null;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+const rawApiBase = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const API_BASE = rawApiBase.replace(/\/$/, '').replace(/\/api$/, '');
 
 function normalizeLink(link?: string) {
   if (!link) return '';
@@ -103,11 +104,11 @@ function getSessionDisplayStatus(session: Session) {
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'bg-gray-100 text-gray-500 border-gray-200',
-    accepted: 'bg-[#1A1C23] text-white border-black',
-    rejected: 'bg-gray-50 text-gray-400 border-gray-100',
-    removed: 'bg-gray-50 text-gray-400 border-gray-100',
-    scheduled: 'bg-[#F4F6FB] text-gray-700 border-gray-200',
-    paid: 'bg-[#1A1C23] text-white border-black',
+    accepted: 'bg-teal-950 text-white border-black',
+    rejected: 'bg-[#f6f3eb] text-gray-400 border-gray-100',
+    removed: 'bg-[#f6f3eb] text-gray-400 border-gray-100',
+    scheduled: 'bg-[#f6f3eb] text-gray-700 border-gray-200',
+    paid: 'bg-teal-950 text-white border-black',
     completed: 'bg-gray-100 text-gray-500 border-gray-200',
   };
   return `text-[11px] font-bold px-3 py-1 rounded-[8px] border ${map[status] || 'bg-gray-100 text-gray-500 border-gray-200'} uppercase tracking-wider`;
@@ -394,11 +395,11 @@ export default function MentorshipPage() {
   const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 3);
 
   return (
-    <AlumniNavigation>
+    <>
       <div className="space-y-8 max-w-[1400px] mx-auto h-full flex flex-col font-sans text-[#111111] mb-12">
         
         {/* Page Header Banner */}
-        <div className="bg-[#1A1C23] rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="bg-teal-950 rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
            <div className="relative z-10 max-w-2xl">
              <h1 className="text-[32px] md:text-[38px] font-bold mb-2 tracking-tight">Mentorship Hub</h1>
              <p className="text-[#8F93A3] text-[14px] font-medium leading-[1.6]">
@@ -418,7 +419,7 @@ export default function MentorshipPage() {
               <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Active Mentees</p>
               <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{activeMenteesCount}</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0">
               <Users size={20} strokeWidth={2.5} />
             </div>
           </div>
@@ -427,7 +428,7 @@ export default function MentorshipPage() {
               <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Sessions Done</p>
               <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{completedSessionsCount}</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0">
               <CheckCircle size={20} strokeWidth={2.5} />
             </div>
           </div>
@@ -436,120 +437,14 @@ export default function MentorshipPage() {
               <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Avg Rating</p>
               <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{myRatingAvg != null ? Number(myRatingAvg).toFixed(1) : '—'}</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-[#F4F6FB] text-[#1A1C23] flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#f6f3eb] text-teal-950 flex items-center justify-center shrink-0">
               <Star size={20} strokeWidth={2.5} />
             </div>
           </div>
         </div>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-          {/* Left Column: Mentor Profile Setup */}
-          <div className="xl:col-span-1 bg-white rounded-[32px] p-8 shadow-sm border border-gray-50 flex flex-col">
-            <h3 className="text-[22px] font-bold tracking-tight mb-6">Your Profile</h3>
-            <div className="space-y-5 flex-1 flex flex-col">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Skills / Expertise</label>
-                <textarea
-                  value={skills}
-                  onChange={e => setSkills(e.target.value)}
-                  placeholder="e.g., React, Node.js, System Design"
-                  rows={2}
-                  className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 placeholder-gray-400 focus:outline-none focus:border-gray-300 transition-all resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Mentorship Topics</label>
-                <textarea
-                  value={topics}
-                  onChange={e => setTopics(e.target.value)}
-                  placeholder="e.g., Interview Prep, Career Guidance"
-                  rows={2}
-                  className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 placeholder-gray-400 focus:outline-none focus:border-gray-300 transition-all resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Availability</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="time"
-                    value={availabilityFrom}
-                    onChange={e => setAvailabilityFrom(e.target.value)}
-                    className="w-full text-[14px] font-bold px-4 py-3 rounded-[12px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all"
-                  />
-                  <input
-                    type="time"
-                    value={availabilityTo}
-                    onChange={e => setAvailabilityTo(e.target.value)}
-                    className="w-full text-[14px] font-bold px-4 py-3 rounded-[12px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Experience</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={experience as any}
-                      onChange={e => setExperience(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="Years"
-                      className="w-full text-[14px] font-medium pr-8 pl-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">Yrs</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Session (₹)</label>
-                  <input className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all" type="number" value={price as any} onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Sub Price (₹)</label>
-                  <input className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all" type="number" value={subscriptionPrice as any} onChange={(e) => setSubscriptionPrice(e.target.value ? Number(e.target.value) : '')} />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Sub Duration (Days)</label>
-                  <input className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all" type="number" min={1} value={subscriptionDurationDays as any} onChange={(e) => setSubscriptionDurationDays(e.target.value ? Number(e.target.value) : '')} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Payment UPI ID</label>
-                <input className="w-full text-[14px] font-medium px-4 py-3.5 rounded-[16px] bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300 transition-all" type="text" value={paymentUpiId} onChange={(e) => setPaymentUpiId(e.target.value)} placeholder="e.g., name@okbank" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div className="bg-gray-50 p-4 rounded-[16px] border border-gray-100 flex flex-col justify-center">
-                  <div className="flex items-center gap-2 mb-1">
-                    <StarRating value={Number(myRatingAvg || 0)} readOnly size={16} />
-                    <span className="font-bold text-[14px]">{myRatingAvg ?? '—'}</span>
-                  </div>
-                  <p className="text-[12px] font-bold text-gray-400">({myRatingCount || 0} reviews)</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-[16px] border border-gray-100">
-                  <p className="font-extrabold text-[16px]">{price ? `₹${price}` : '—'}</p>
-                  <p className="text-[12px] font-bold text-gray-400">Per Session</p>
-                  <p className="text-[10px] font-bold text-gray-500 mt-1">Sub: {subscriptionPrice ? `₹${subscriptionPrice}` : '—'} / {subscriptionDurationDays || 30}d</p>
-                </div>
-              </div>
-
-              <div className="mt-auto pt-6">
-                {saveMsg && <p className="text-[13px] text-center font-bold text-[#1A1C23] mb-3">{saveMsg}</p>}
-                <button
-                  onClick={saveProfile}
-                  disabled={saving || !user?.email}
-                  className="w-full py-4 text-[15px] font-bold rounded-[20px] bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save Profile'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Requests + Upcoming Sessions */}
-          <div className="xl:col-span-2 space-y-6">
+        {/* Main Content Layout */}
+        <div className="space-y-6">
 
             {/* Mentees & Requests */}
             <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
@@ -558,7 +453,7 @@ export default function MentorshipPage() {
                   Mentees & Requests
                 </h3>
                 {requests.filter(r => r.status === 'pending').length > 0 && (
-                  <span className="text-[12px] font-bold bg-[#1A1C23] text-white px-3 py-1 rounded-full">
+                  <span className="text-[12px] font-bold bg-teal-950 text-white px-3 py-1 rounded-full">
                     {requests.filter(r => r.status === 'pending').length} New
                   </span>
                 )}
@@ -574,7 +469,7 @@ export default function MentorshipPage() {
                     return (
                       <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-[20px] shadow-sm border border-gray-50 gap-4 hover:border-gray-200 transition-colors">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">{initials}</div>
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">{initials}</div>
                           <div>
                             <p className="font-bold text-[16px] tracking-tight">{name}</p>
                             <div className="mt-1.5 flex">
@@ -585,7 +480,7 @@ export default function MentorshipPage() {
                         <div className="flex gap-2 shrink-0">
                           {r.status === 'pending' && (
                             <>
-                              <button onClick={() => respondRequest(r, 'accept')} className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-[#1A1C23] text-white hover:bg-black transition-colors">Accept</button>
+                              <button onClick={() => respondRequest(r, 'accept')} className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-teal-950 text-white hover:bg-teal-900 transition-colors">Accept</button>
                               <button onClick={() => respondRequest(r, 'reject')} className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Decline</button>
                             </>
                           )}
@@ -612,7 +507,7 @@ export default function MentorshipPage() {
                 Daily Session Plans
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-6 rounded-[24px] border border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#f6f3eb] p-6 rounded-[24px] border border-gray-100">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Title</label>
                   <input
@@ -661,12 +556,12 @@ export default function MentorshipPage() {
                   <button
                     onClick={createDailySessionPlan}
                     disabled={savingDailyPlan || !dailyPlanForm.title || !dailyPlanForm.start_date || !dailyPlanForm.end_date}
-                    className="px-6 py-3 text-[14px] font-bold rounded-[16px] bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50"
+                    className="px-6 py-3 text-[14px] font-bold rounded-[16px] bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50"
                   >
                     {savingDailyPlan ? 'Saving...' : 'Create Plan'}
                   </button>
                 </div>
-                {dailyPlanMsg && <p className="md:col-span-2 text-[12px] font-bold text-[#1A1C23] mt-2">{dailyPlanMsg}</p>}
+                {dailyPlanMsg && <p className="md:col-span-2 text-[12px] font-bold text-teal-950 mt-2">{dailyPlanMsg}</p>}
               </div>
 
               <div className="mt-6 space-y-3">
@@ -679,7 +574,7 @@ export default function MentorshipPage() {
                       <p className="text-[12px] font-bold text-gray-400">{plan.daily_time} • {plan.start_date} to {plan.end_date}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {plan.meeting_link && <a href={normalizeLink(plan.meeting_link)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[12px] rounded-xl bg-[#F4F6FB] text-[#1A1C23] font-bold">Open Link</a>}
+                      {plan.meeting_link && <a href={normalizeLink(plan.meeting_link)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[12px] rounded-xl bg-[#f6f3eb] text-teal-950 font-bold">Open Link</a>}
                       <button
                         onClick={() => deactivateDailySessionPlan(plan.id)}
                         disabled={deactivatingPlanId === plan.id}
@@ -709,7 +604,7 @@ export default function MentorshipPage() {
                     return (
                       <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-[20px] border border-gray-100 bg-white shadow-sm hover:border-gray-200">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">{initials}</div>
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">{initials}</div>
                           <div>
                             <p className="font-bold text-[16px] tracking-tight">{name}</p>
                             <p className="text-[13px] font-bold text-gray-400 flex items-center gap-1.5 mt-1">
@@ -719,7 +614,7 @@ export default function MentorshipPage() {
                           </div>
                         </div>
                         {link && (
-                          <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-5 py-2.5 mt-3 sm:mt-0 text-[13px] font-bold rounded-[14px] bg-[#1A1C23] text-white hover:bg-black transition-colors shrink-0">
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-5 py-2.5 mt-3 sm:mt-0 text-[13px] font-bold rounded-[14px] bg-teal-950 text-white hover:bg-teal-900 transition-colors shrink-0">
                             <Video size={16} /> Join
                           </a>
                         )}
@@ -737,7 +632,7 @@ export default function MentorshipPage() {
                   Session History
                 </h3>
                 {sortedSessions.length > 3 && (
-                  <button onClick={() => setShowAllSessions(v => !v)} className="text-[13px] font-bold text-gray-500 hover:text-[#1A1C23] transition-colors">
+                  <button onClick={() => setShowAllSessions(v => !v)} className="text-[13px] font-bold text-gray-500 hover:text-teal-950 transition-colors">
                     {showAllSessions ? 'Show Less' : 'View All'}
                   </button>
                 )}
@@ -756,10 +651,10 @@ export default function MentorshipPage() {
                     const displayStatus = getSessionDisplayStatus(s);
 
                     return (
-                      <div key={s.id} className={`rounded-[20px] border transition-all overflow-hidden ${isActive ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
+                      <div key={s.id} className={`rounded-[20px] border transition-all overflow-hidden ${isActive ? 'bg-[#f6f3eb] border-gray-200' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">{initials}</div>
+                            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">{initials}</div>
                             <div>
                               <p className="font-bold text-[16px] tracking-tight mb-1.5">{name}</p>
                               <div className="flex items-center gap-2 flex-wrap">
@@ -778,7 +673,7 @@ export default function MentorshipPage() {
 
                           <div className="flex gap-2 shrink-0 mt-3 sm:mt-0">
                             {link && s.status === 'scheduled' && !isSessionCompletedByTime(s) && (
-                              <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-bold rounded-[14px] bg-[#1A1C23] text-white hover:bg-black transition-colors">
+                              <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-bold rounded-[14px] bg-teal-950 text-white hover:bg-teal-900 transition-colors">
                                 <Video size={16} /> Join
                               </a>
                             )}
@@ -799,7 +694,7 @@ export default function MentorshipPage() {
                                     });
                                   }
                                 }}
-                                className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-[#1A1C23] text-white hover:bg-black transition-colors"
+                                className="px-5 py-2.5 text-[13px] font-bold rounded-[14px] bg-teal-950 text-white hover:bg-teal-900 transition-colors"
                               >
                                 {isActive ? 'Cancel Setup' : 'Schedule Meets'}
                               </button>
@@ -808,7 +703,7 @@ export default function MentorshipPage() {
                         </div>
 
                         {s.status === 'paid' && isActive && (
-                          <div className="p-5 border-t border-gray-200 bg-gray-50">
+                          <div className="p-5 border-t border-gray-200 bg-[#f6f3eb]">
                             <h4 className="text-[11px] font-bold text-gray-400 mb-3 uppercase tracking-widest">Finalize Schedule</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                               <input
@@ -839,7 +734,7 @@ export default function MentorshipPage() {
                                   if (!scheduleForm?.scheduled_at) return;
                                   scheduleSession(scheduleForm.session_id, scheduleForm.scheduled_at, scheduleForm.duration_minutes, scheduleForm.meeting_link);
                                 }}
-                                className="py-3 text-[13px] font-bold rounded-[12px] bg-[#1A1C23] text-white hover:bg-black transition-colors disabled:opacity-50"
+                                className="py-3 text-[13px] font-bold rounded-[12px] bg-teal-950 text-white hover:bg-teal-900 transition-colors disabled:opacity-50"
                               >
                                 Save Details
                               </button>
@@ -852,7 +747,6 @@ export default function MentorshipPage() {
                 </div>
               )}
             </div>
-          </div>
         </div>
       </div>
 
@@ -860,13 +754,13 @@ export default function MentorshipPage() {
       {paidSessionAlert && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111111]/40 backdrop-blur-sm p-4" onClick={() => setPaidSessionAlert(null)}>
           <div className="bg-white rounded-[32px] max-w-sm w-full p-8 shadow-2xl relative overflow-hidden text-center" onClick={e => e.stopPropagation()}>
-            <div className="w-16 h-16 rounded-full bg-gray-100 text-[#1A1C23] flex items-center justify-center mx-auto mb-5">
+            <div className="w-16 h-16 rounded-full bg-gray-100 text-teal-950 flex items-center justify-center mx-auto mb-5">
               <Calendar size={24} strokeWidth={2.5} />
             </div>
             <h2 className="text-[22px] font-bold tracking-tight mb-2">Schedule Session</h2>
             <p className="text-[14px] font-medium text-gray-500 mb-6">
-              <span className="font-bold text-[#1A1C23]">{profiles[paidSessionAlert.student_email]?.name || paidSessionAlert.student_email}</span> has purchased a session.
-              {paidSessionAlert.amount && <span className="block mt-2 font-bold text-[#1A1C23]">₹{paidSessionAlert.amount}</span>}
+              <span className="font-bold text-teal-950">{profiles[paidSessionAlert.student_email]?.name || paidSessionAlert.student_email}</span> has purchased a session.
+              {paidSessionAlert.amount && <span className="block mt-2 font-bold text-teal-950">₹{paidSessionAlert.amount}</span>}
             </p>
             
             <div className="flex flex-col gap-3">
@@ -883,7 +777,7 @@ export default function MentorshipPage() {
                   });
                   setPaidSessionAlert(null);
                 }}
-                className="w-full py-3.5 text-[14px] font-bold rounded-[16px] bg-[#1A1C23] text-white hover:bg-black transition-colors"
+                className="w-full py-3.5 text-[14px] font-bold rounded-[16px] bg-teal-950 text-white hover:bg-teal-900 transition-colors"
               >
                 Schedule Now
               </button>
@@ -906,22 +800,22 @@ export default function MentorshipPage() {
       {meetingDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111111]/40 backdrop-blur-sm p-4" onClick={() => setMeetingDialog(null)}>
           <div className="bg-white rounded-[32px] max-w-sm w-full p-8 shadow-2xl relative overflow-hidden text-center" onClick={e => e.stopPropagation()}>
-            <div className="w-16 h-16 rounded-full bg-gray-100 text-[#1A1C23] flex items-center justify-center mx-auto mb-5">
+            <div className="w-16 h-16 rounded-full bg-gray-100 text-teal-950 flex items-center justify-center mx-auto mb-5">
               <Video size={24} strokeWidth={2.5} />
             </div>
             <h2 className="text-[22px] font-bold tracking-tight mb-2">Session Starting</h2>
             <p className="text-[14px] font-medium text-gray-500 mb-6">
-              You have a mentoring session with <span className="font-bold text-[#1A1C23]">{profiles[meetingDialog.student_email]?.name || meetingDialog.student_email}</span>
+              You have a mentoring session with <span className="font-bold text-teal-950">{profiles[meetingDialog.student_email]?.name || meetingDialog.student_email}</span>
               {meetingDialog.scheduled_at && <span className="block mt-1 font-bold text-gray-400">{new Date(meetingDialog.scheduled_at).toLocaleString()}</span>}
             </p>
 
             <div className="flex flex-col gap-3">
               {meetingDialog.meeting_link ? (
                 <a href={normalizeLink(meetingDialog.meeting_link)} target="_blank" rel="noopener noreferrer"
-                  className="w-full py-3.5 text-[14px] font-bold rounded-[16px] bg-[#1A1C23] text-white hover:bg-black transition-colors">
+                  className="w-full py-3.5 text-[14px] font-bold rounded-[16px] bg-teal-950 text-white hover:bg-teal-900 transition-colors">
                   Launch Meeting
                 </a>
-              ) : <p className="text-[14px] font-medium text-gray-500 mb-2 bg-gray-50 py-3 rounded-[16px]">No link provided.</p>}
+              ) : <p className="text-[14px] font-medium text-gray-500 mb-2 bg-[#f6f3eb] py-3 rounded-[16px]">No link provided.</p>}
 
               <button onClick={() => setMeetingDialog(null)} className="w-full py-3.5 text-[14px] font-bold rounded-[16px] bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
                 Dismiss
@@ -930,6 +824,6 @@ export default function MentorshipPage() {
           </div>
         </div>
       )}
-    </AlumniNavigation>
+    </>
   );
 }

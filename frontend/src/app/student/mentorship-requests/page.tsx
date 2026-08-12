@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import StudentNavigation from "../StudentNavigation/StudentNavigation";
+
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,8 @@ type Subscription = {
   order_id?: string | null;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
+const rawApiBase = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+const API_BASE = rawApiBase.replace(/\/$/, '').replace(/\/api$/, '');
 
 function normalizeExternalLink(link?: string) {
   if (!link) return '';
@@ -99,16 +100,16 @@ function normalizeExternalLink(link?: string) {
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'bg-amber-50 text-amber-600 border-amber-200/60',
-    accepted: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
-    rejected: 'bg-rose-50 text-rose-600 border-rose-200/60',
-    removed: 'bg-slate-100 text-slate-600 border-slate-200/80',
-    paid: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
-    scheduled: 'bg-indigo-50 text-indigo-700 border-indigo-200/60',
-    completed: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
-    active: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
-    expired: 'bg-slate-100 text-slate-600 border-slate-200/80',
+    accepted: 'bg-[#f6f3eb] text-teal-950 border-emerald-200/60',
+    rejected: 'bg-teal-50 text-teal-950 border-rose-200/60',
+    removed: 'bg-[#f6f3eb] text-slate-600 border-slate-200/80',
+    paid: 'bg-teal-50 text-teal-700 border-teal-200/60',
+    scheduled: 'bg-teal-50 text-teal-700 border-teal-200/60',
+    completed: 'bg-[#f6f3eb] text-teal-950 border-emerald-200/60',
+    active: 'bg-[#f6f3eb] text-teal-950 border-emerald-200/60',
+    expired: 'bg-[#f6f3eb] text-slate-600 border-slate-200/80',
   };
-  return `text-[11px] font-bold px-3 py-1 rounded-[8px] border ${map[status] || 'bg-slate-100 text-slate-600 border-slate-200/80'} uppercase tracking-wider`;
+  return `text-[11px] font-bold px-3 py-1 rounded-[8px] border ${map[status] || 'bg-[#f6f3eb] text-slate-600 border-slate-200/80'} uppercase tracking-wider`;
 }
 
 function isSessionCompletedByTime(session: Session) {
@@ -191,7 +192,10 @@ export default function MentorshipRequests() {
   async function loadMentors() {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/mentors?${queryParams}`);
+      let res = await fetch(`${API_BASE}/api/mentors?${queryParams}`);
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/api/mentorship/mentors?${queryParams}`);
+      }
       const data = await res.json();
       const list: Mentor[] = data.mentors || [];
       setMentors(list);
@@ -436,8 +440,8 @@ export default function MentorshipRequests() {
   };
 
   return (
-    <StudentNavigation>
-      <div className="min-h-screen bg-[#F5F6FA]">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb]">
 
         <div className="p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
@@ -449,7 +453,7 @@ export default function MentorshipRequests() {
               transition={{ duration: 0.6 }}
               className="mb-8"
             >
-                            <div className="bg-[#16161c] rounded-[32px] p-8 lg:p-12 relative overflow-hidden shadow-sm">
+                            <div className="bg-teal-950 rounded-[32px] p-8 lg:p-12 relative overflow-hidden shadow-sm">
                 <div className="relative z-10">
                   <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 tracking-tight">Student Mentorship</h1>
                   <p className="text-lg text-gray-400 font-medium max-w-2xl mb-8">Find mentors, send requests, book sessions, and track your mentorship progress.</p>
@@ -459,7 +463,7 @@ export default function MentorshipRequests() {
                       <span className="font-semibold">{connectedMentorsCount} Connected Mentors</span>
                     </div>
                     <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full"></div>
                       <span className="font-semibold">{mentors.length} Mentors Found</span>
                     </div>
                     <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10">
@@ -481,13 +485,13 @@ export default function MentorshipRequests() {
             >
               <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
-                  <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
-                  <Input placeholder="Max price (INR)" type="number" value={maxPrice as any} onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
-                  <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Search skills/topics" value={q} onChange={(e) => setQ(e.target.value)} className="h-12 rounded-[16px] border-slate-200 bg-[#f6f3eb] text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Min experience (years)" type="number" value={minExp as any} onChange={(e) => setMinExp(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-[#f6f3eb] text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Max price (INR)" type="number" value={maxPrice as any} onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-[#f6f3eb] text-slate-900 placeholder:text-slate-400 caret-slate-900" />
+                  <Input placeholder="Min rating (1-5)" type="number" value={minRating as any} onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")} className="h-12 rounded-[16px] border-slate-200 bg-[#f6f3eb] text-slate-900 placeholder:text-slate-400 caret-slate-900" />
                   <div className="flex gap-2 justify-end md:justify-start lg:justify-end">
-                    <Button variant="outline" onClick={clearFilters} disabled={loading} className="h-12 rounded-[16px] border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-950 shadow-sm">Clear</Button>
-                    <Button onClick={loadMentors} disabled={loading} className="h-12 rounded-[16px] bg-[#16161c] hover:bg-black text-white px-6">{loading ? "Searching..." : "Search"}</Button>
+                    <Button variant="outline" onClick={clearFilters} disabled={loading} className="h-12 rounded-[16px] border-slate-200 bg-white text-slate-900 hover:bg-[#f6f3eb] hover:text-slate-950 shadow-sm">Clear</Button>
+                    <Button onClick={loadMentors} disabled={loading} className="h-12 rounded-[16px] bg-teal-950 hover:bg-teal-900 text-white px-6">{loading ? "Searching..." : "Search"}</Button>
                   </div>
                 </div>
                 {appliedFilters.length > 0 ? (
@@ -533,9 +537,9 @@ export default function MentorshipRequests() {
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Connected Mentors</p>
                     <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{connectedMentorsCount}</p>
-                    <p className="text-[13px] font-bold text-emerald-600">Accepted connections</p>
+                    <p className="text-[13px] font-bold text-teal-950">Accepted connections</p>
                   </div>
-                  <div className="w-14 h-14 rounded-[16px] bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-[16px] bg-[#f6f3eb] text-teal-950 flex items-center justify-center">
                     <Users size={24} />
                   </div>
                 </div>
@@ -561,7 +565,7 @@ export default function MentorshipRequests() {
                     <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{upcomingSessionsCount}</p>
                     <p className="text-[13px] font-bold text-[#16161c]">Scheduled mentorship calls</p>
                   </div>
-                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-[16px] bg-teal-50 text-[#16161c] flex items-center justify-center">
                     <CalendarClock size={24} />
                   </div>
                 </div>
@@ -574,7 +578,7 @@ export default function MentorshipRequests() {
                     <p className="text-[36px] leading-none font-extrabold text-slate-800 mb-2">{activeSubscriptionsCount}</p>
                     <p className="text-[13px] font-bold text-[#16161c]">Recurring mentor access</p>
                   </div>
-                  <div className="w-14 h-14 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-[16px] bg-teal-50 text-[#16161c] flex items-center justify-center">
                     <Wallet size={24} />
                   </div>
                 </div>
@@ -599,7 +603,7 @@ export default function MentorshipRequests() {
                   return (
                     <div key={`conn-${r.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300">
                       <div className="flex items-center space-x-6">
-                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                        <div className="w-12 h-12 rounded-[16px] bg-teal-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                           {String(name).charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -609,7 +613,7 @@ export default function MentorshipRequests() {
                           </div>
                         </div>
                       </div>
-                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="mt-3 sm:mt-0 px-4 py-2.5 text-[13px] font-bold rounded-xl bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80 transition-colors">Remove Mentor</Button>
+                      <Button variant="destructive" onClick={() => removeConnectionWithMentor(r.mentor_email)} className="mt-3 sm:mt-0 px-4 py-2.5 text-[13px] font-bold rounded-xl bg-[#f6f3eb] text-slate-600 hover:bg-[#f6f3eb] border border-slate-200/80 transition-colors">Remove Mentor</Button>
                     </div>
                   );
                 })}
@@ -661,10 +665,9 @@ export default function MentorshipRequests() {
               .map(s => s.trim())
               .filter(Boolean)
               .slice(0, 6);
-            const reqForMentor = requests.find((r) => r.mentor_email === m.mentor_email);
-            const reqStatus = reqForMentor?.status;
-            const isPending = reqStatus === 'pending';
-            const isAccepted = reqStatus === 'accepted';
+            const reqsForMentor = requests.filter((r) => r.mentor_email && r.mentor_email.toLowerCase() === m.mentor_email.toLowerCase());
+            const isAccepted = reqsForMentor.some((r) => r.status === 'accepted');
+            const isPending = !isAccepted && reqsForMentor.some((r) => r.status === 'pending');
             const activeSubscription = activeSubscriptionsByMentor[m.mentor_email];
             const hasActiveSubscription = Boolean(activeSubscription);
             const btnDisabled = !user?.email || requesting === m.mentor_email || isPending || isAccepted;
@@ -673,7 +676,7 @@ export default function MentorshipRequests() {
               : isPending
                 ? 'Request Sent'
                 : isAccepted
-                  ? 'Connected'
+                  ? 'Request Accepted'
                   : 'Request Mentorship';
             return (
               <motion.div
@@ -683,7 +686,7 @@ export default function MentorshipRequests() {
               >
                 {available && (
                   <div className="absolute top-4 right-4 z-10">
-                    <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-200">
+                    <div className="bg-[#f6f3eb] text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-200">
                       Available
                     </div>
                   </div>
@@ -691,13 +694,13 @@ export default function MentorshipRequests() {
                 <div className="p-7 flex flex-col h-full">
                   <div className="flex items-start gap-4 mb-5">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-[#16161c] rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                      <div className="w-16 h-16 bg-teal-950 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                         {prof?.picture ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={prof.picture} alt={name} className="w-full h-full object-cover" />
                         ) : initials}
                       </div>
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#f6f3eb]0 rounded-full border-2 border-white"></div>
                     </div>
                     <div className="flex-1">
                       <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-[#16161c] transition-colors duration-200 mb-1">
@@ -709,11 +712,11 @@ export default function MentorshipRequests() {
                       {m.experience_years ? <p className="text-xs text-slate-500 font-semibold mt-1">Experience: {m.experience_years}+ years</p> : null}
                       {m.availability ? <p className="text-xs text-slate-500 font-semibold">Availability: {m.availability}</p> : null}
                       {prof?.location ? (
-                        <div className="mt-2"><Badge className="bg-slate-50 text-slate-700 border border-slate-200 rounded-lg">{prof.location}</Badge></div>
+                        <div className="mt-2"><Badge className="bg-[#f6f3eb] text-slate-700 border border-slate-200 rounded-lg">{prof.location}</Badge></div>
                       ) : null}
                     </div>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl mb-4 border border-gray-100">
+                  <div className="bg-[#f6f3eb] p-4 rounded-2xl mb-4 border border-gray-100">
                     {skillChips.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {skillChips.map((s) => (
@@ -733,15 +736,15 @@ export default function MentorshipRequests() {
                       </div>
                       <p className="text-xs text-amber-700 font-semibold">Avg Rating ({m.rating_count || 0})</p>
                     </div>
-                    <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-200">
+                    <div className="bg-teal-50 p-3 rounded-2xl border border-teal-200">
                       <div className="mb-1">
-                        <span className="font-black text-blue-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
+                        <span className="font-black text-teal-800 text-sm">{m.price ? `₹${m.price}` : '—'}</span>
                       </div>
-                      <p className="text-xs text-blue-700 font-semibold">Session Price</p>
+                      <p className="text-xs text-teal-700 font-semibold">Session Price</p>
                     </div>
                   </div>
                   {hasActiveSubscription ? (
-                    <div className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                    <div className="mb-4 p-3 rounded-2xl bg-[#f6f3eb] border border-emerald-200">
                       <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Subscription Active</p>
                       <p className="text-[12px] text-emerald-700 mt-1">
                         Valid till {activeSubscription?.end_at ? new Date(activeSubscription.end_at).toLocaleDateString() : '—'}
@@ -749,13 +752,13 @@ export default function MentorshipRequests() {
                     </div>
                   ) : null}
                   <div className="grid grid-cols-1 gap-2 mt-auto pt-4 border-t border-gray-100">
-                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-[#16161c] text-white hover:bg-black disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
+                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl bg-teal-950 text-white hover:bg-teal-900 disabled:opacity-70 font-bold whitespace-normal break-words text-center leading-tight" onClick={() => sendRequest(m.mentor_email)} disabled={btnDisabled}>
                       {btnText}
                     </Button>
                     {(m.price || m.subscription_price) ? (
                       <div className="w-full text-center space-y-1.5">
                         {m.price ? (
-                          <Button variant="outline" className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl border-slate-200 hover:border-blue-300 font-semibold whitespace-normal break-words text-center leading-tight" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price) * 1.06).toFixed(2)), type: 'session' })}>
+                          <Button variant="outline" className="w-full min-h-11 h-auto py-2.5 px-3 rounded-xl border-slate-200 hover:border-teal-300 font-semibold whitespace-normal break-words text-center leading-tight" onClick={() => setPurchaseFor({ mentor_email: m.mentor_email, amount: Number((Number(m.price) * 1.06).toFixed(2)), type: 'session' })}>
                             Purchase Session (₹{Number((Number(m.price) * 1.06).toFixed(2))})
                           </Button>
                         ) : null}
@@ -812,7 +815,7 @@ export default function MentorshipRequests() {
                         href={normalizeExternalLink(plan.meeting_link)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center bg-[#16161c] hover:bg-black text-white px-4 py-2 rounded-md text-sm font-semibold"
+                        className="inline-flex items-center justify-center bg-teal-950 hover:bg-teal-900 text-white px-4 py-2 rounded-md text-sm font-semibold"
                       >
                         Join Daily Session
                       </a>
@@ -892,7 +895,7 @@ export default function MentorshipRequests() {
                       className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] border border-gray-100 bg-white hover:bg-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:border-gray-100 transition-all duration-300"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                        <div className="w-12 h-12 rounded-[16px] bg-teal-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                           {String(name).charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -952,7 +955,7 @@ export default function MentorshipRequests() {
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-[16px] bg-indigo-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
+                          <div className="w-12 h-12 rounded-[16px] bg-teal-50 text-[#16161c] flex items-center justify-center font-bold text-[15px] shadow-sm shrink-0">
                             {String(name).charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -969,7 +972,7 @@ export default function MentorshipRequests() {
                           const href = normalizeExternalLink(s.meeting_link || undefined);
                           return (
                             <div>
-                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-[#16161c] hover:bg-black text-white px-4 py-2 rounded-md">Join</a>
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-teal-950 hover:bg-teal-900 text-white px-4 py-2 rounded-md">Join</a>
                             </div>
                           );
                         })()}
@@ -985,13 +988,13 @@ export default function MentorshipRequests() {
                             <span className="text-sm text-slate-700">{ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0}/5</span>
                           </div>
                           <Input
-                            className="h-12 bg-white border-slate-200 focus:border-indigo-400"
+                            className="h-12 bg-white border-slate-200 focus:border-teal-400"
                             placeholder="Optional feedback"
                             value={ratingForm && ratingForm.session_id === s.id ? ratingForm.feedback : ''}
                             onChange={(e) => setRatingForm({ session_id: s.id, rating: ratingForm && ratingForm.session_id === s.id ? ratingForm.rating : 0, feedback: e.target.value })}
                           />
                           <Button
-                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-[#16161c] hover:bg-black text-white shadow-md hover:shadow-lg disabled:opacity-60"
+                            className="h-12 px-6 font-semibold text-sm min-w-[120px] bg-teal-950 hover:bg-teal-900 text-white shadow-md hover:shadow-lg disabled:opacity-60"
                             onClick={() => {
                               if (!ratingForm || ratingForm.session_id !== s.id) return;
                               const r = ratingForm.rating;
@@ -1004,7 +1007,7 @@ export default function MentorshipRequests() {
                           </Button>
                         </div>
                       ) : getSessionDisplayStatus(s) === 'completed' && s.is_rated ? (
-                        <div className="mt-4 p-3 rounded-[12px] bg-emerald-50 border border-emerald-200 text-emerald-700 text-[13px] font-semibold">
+                        <div className="mt-4 p-3 rounded-[12px] bg-[#f6f3eb] border border-emerald-200 text-emerald-700 text-[13px] font-semibold">
                           Rating already submitted for this session.
                         </div>
                       ) : null}
@@ -1026,6 +1029,6 @@ export default function MentorshipRequests() {
           </div>
         </div>
       </div>
-    </StudentNavigation>
+    </>
   );
 }

@@ -31,8 +31,9 @@ export function Header() {
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="font-bold text-xl">
-            Alumnex
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="h-8 w-auto object-contain" />
+            <span className="font-bold text-xl text-teal-950">Alumnex</span>
           </Link>
         </div>
 

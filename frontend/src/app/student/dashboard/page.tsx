@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import StudentNavigation from '../StudentNavigation/StudentNavigation';
+
 import { Search, Bell, User, BookOpen, Users, Trophy, Calendar, MessageSquare, Target, TrendingUp, Award, Clock, CheckCircle, AlertCircle, Briefcase, GraduationCap, UserPlus, Check, X, Mail, IdCard, Building2, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -83,7 +83,7 @@ function getEventDateColor(dateStr: string | null): string {
   if (!dateStr) return 'text-gray-600 bg-gray-100';
   const diffDays = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
   if (diffDays <= 1) return 'text-red-600 bg-red-100';
-  if (diffDays <= 7) return 'text-blue-600 bg-blue-100';
+  if (diffDays <= 7) return 'text-teal-600 bg-teal-100';
   return 'text-green-600 bg-green-100';
 }
 
@@ -389,12 +389,12 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <StudentNavigation>
-        <div className="min-h-screen relative overflow-hidden bg-[#F5F6FA]">
+      <>
+        <div className="min-h-screen relative overflow-hidden bg-[#f6f3eb]">
           {/* Animated background blobs */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+            <div className="absolute top-0 -left-4 w-72 h-72 bg-teal-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-teal-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
             <div className="absolute -bottom-8 left-20 w-72 h-72 bg-green-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
           </div>
 
@@ -413,14 +413,14 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
-      </StudentNavigation>
+      </>
     );
   }
 
   if (error) {
     return (
-      <StudentNavigation>
-        <div className="min-h-screen relative overflow-hidden bg-[#F5F6FA] p-8">
+      <>
+        <div className="min-h-screen relative overflow-hidden bg-[#f6f3eb] p-8">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -435,15 +435,15 @@ export default function StudentDashboard() {
             </div>
           </motion.div>
         </div>
-      </StudentNavigation>
+      </>
     );
   }
 
   return (
-    <StudentNavigation>
-      <div className="p-8 bg-[#F5F6FA] min-h-screen">
+    <>
+      <div className="p-8 bg-[#f6f3eb] min-h-screen">
         {/* Header Section (Black Rounded) */}
-        <div className="bg-[#16161c] rounded-[24px] p-6 mb-8 flex flex-col md:flex-row justify-between items-center shadow-xl">
+        <div className="bg-teal-950 rounded-[24px] p-6 mb-8 flex flex-col md:flex-row justify-between items-center shadow-xl">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-white">Dashboard</h1>
             <p className="text-xs text-gray-400 mt-1">Focus on learning, not chasing data.</p>
@@ -454,7 +454,7 @@ export default function StudentDashboard() {
               <input 
                 type="text" 
                 placeholder="Search anything..." 
-                className="w-full pl-10 pr-4 py-2.5 bg-white text-sm font-medium rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50" 
+                className="w-full pl-10 pr-4 py-2.5 bg-white text-sm font-medium rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-teal-500/50" 
               />
             </div>
             <button className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white transition-colors relative shrink-0">
@@ -472,7 +472,7 @@ export default function StudentDashboard() {
           <div className="xl:col-span-8 flex flex-col gap-8">
             
             {/* Profile Card */}
-            <div className="bg-[#1A1B23] rounded-[32px] p-8 flex flex-col shadow-2xl relative overflow-hidden border border-white/5">
+            <div className="bg-teal-950 rounded-[32px] p-8 flex flex-col shadow-2xl relative overflow-hidden border border-teal-900/10">
               {/* Subtle background wave/gradient */}
               <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
               
@@ -488,7 +488,7 @@ export default function StudentDashboard() {
               </div>
 
               <div className="flex flex-col gap-4 relative z-10">
-                <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-teal-900/10">
                   <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center shrink-0 bg-[#1e1e24]">
                     <Mail className="w-5 h-5 text-gray-300" />
                   </div>
@@ -499,7 +499,7 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-teal-900/10">
                     <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center shrink-0 bg-[#1e1e24]">
                       <Building2 className="w-5 h-5 text-gray-300" />
                     </div>
@@ -509,7 +509,7 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-5 bg-[#17171a] p-5 rounded-2xl border border-teal-900/10">
                     <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center shrink-0 bg-[#1e1e24]">
                       <GraduationCap className="w-5 h-5 text-gray-300" />
                     </div>
@@ -560,7 +560,7 @@ export default function StudentDashboard() {
               <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-between items-start transition-transform hover:-translate-y-1">
                 <div className="flex flex-col">
                   <h3 className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-2">Active Courses</h3>
-                  <p className="text-[32px] font-extrabold text-[#11233f] leading-none mb-3">{currentSemesterCourses?.length || 0}</p>
+                  <p className="text-[32px] font-extrabold text-teal-950 leading-none mb-3">{currentSemesterCourses?.length || 0}</p>
                   <p className="text-[13px] font-bold text-[#16161c]">Currently enrolled</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
@@ -572,7 +572,7 @@ export default function StudentDashboard() {
               <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-between items-start transition-transform hover:-translate-y-1">
                 <div className="flex flex-col">
                   <h3 className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-2">Connected Mentors</h3>
-                  <p className="text-[32px] font-extrabold text-[#11233f] leading-none mb-3">{acceptedMentors || 0}</p>
+                  <p className="text-[32px] font-extrabold text-teal-950 leading-none mb-3">{acceptedMentors || 0}</p>
                   <p className="text-[13px] font-bold text-[#16161c]">Accepted connections</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
@@ -584,7 +584,7 @@ export default function StudentDashboard() {
               <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-between items-start transition-transform hover:-translate-y-1">
                 <div className="flex flex-col">
                   <h3 className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-2">Job Applications</h3>
-                  <p className="text-[32px] font-extrabold text-[#11233f] leading-none mb-3">{applications?.length || 0}</p>
+                  <p className="text-[32px] font-extrabold text-teal-950 leading-none mb-3">{applications?.length || 0}</p>
                   <p className="text-[13px] font-bold text-[#16161c]">Pending & Reviewed</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
@@ -626,7 +626,7 @@ export default function StudentDashboard() {
                 {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17].map(d => (
                   <div key={d} className="text-sm font-medium text-gray-600">{d}</div>
                 ))}
-                <div className="text-sm font-bold text-white bg-[#16161c] w-7 h-7 flex items-center justify-center rounded-full mx-auto shadow-md">18</div>
+                <div className="text-sm font-bold text-white bg-teal-950 w-7 h-7 flex items-center justify-center rounded-full mx-auto shadow-md">18</div>
                 {[19,20,21,22,23,24,25,26].map(d => (
                   <div key={d} className="text-sm font-medium text-gray-600">{d}</div>
                 ))}
@@ -687,14 +687,14 @@ export default function StudentDashboard() {
                   const timeStr = diff === 0 && index === 0 ? '4 min ago' : `${hours}:${item.date.getMinutes().toString().padStart(2, '0')} ${ampm}`;
 
                   let Icon = Bell;
-                  let iconBg = 'bg-indigo-50';
-                  let iconColor = 'text-indigo-600';
+                  let iconBg = 'bg-teal-50';
+                  let iconColor = 'text-teal-600';
                   let appName = 'Notification';
                   
                   if (item.type === 'event') {
                     Icon = Calendar;
-                    iconBg = 'bg-rose-50';
-                    iconColor = 'text-rose-600';
+                    iconBg = 'bg-teal-50';
+                    iconColor = 'text-teal-950';
                     appName = 'Event';
                   } else if (item.type === 'job') {
                     Icon = Briefcase;
@@ -703,8 +703,8 @@ export default function StudentDashboard() {
                     appName = 'Job Portal';
                   } else if (item.type === 'mentor') {
                     Icon = User;
-                    iconBg = 'bg-indigo-50';
-                    iconColor = 'text-indigo-600';
+                    iconBg = 'bg-teal-50';
+                    iconColor = 'text-teal-600';
                     appName = 'Mentorship';
                   }
 
@@ -737,6 +737,6 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
-    </StudentNavigation>
+    </>
   );
 }

@@ -167,14 +167,14 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-[#F5F6FA] overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#f6f3eb] overflow-x-hidden font-sans">
       {/* Mobile Top Bar */}
-      <div className="lg:hidden sticky top-0 z-50 bg-[#16161c] text-white px-4 py-3 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center">
-            <div className="w-3 h-3 bg-white rounded-full"></div>
+      <div className="lg:hidden sticky top-0 z-50 bg-teal-950 text-white px-4 py-3 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/student/dashboard')}>
+          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center p-1 shadow-sm shrink-0 overflow-hidden">
+            <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-base font-bold">Alumnex</h1>
+          <h1 className="text-base font-bold text-white">Alumnex</h1>
         </div>
         <button
           type="button"
@@ -186,13 +186,16 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
       </div>
 
       {/* Navigation Sidebar (Desktop) */}
-      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[260px] h-screen bg-[#1A1B23] flex-col justify-between rounded-r-[32px] py-8">
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 w-[260px] h-screen bg-teal-950 flex-col justify-between rounded-r-[32px] py-8">
         <div className="flex flex-col w-full">
           {/* Logo */}
-          <div className="px-10 mb-10 flex items-center">
-            <div className="relative w-12 h-10 flex">
-              <div className="w-[20px] h-[36px] bg-white rounded-full z-10 absolute left-0 top-0"></div>
-              <div className="w-[20px] h-[36px] bg-[#4a4d60] rounded-full absolute left-2 top-2"></div>
+          <div className="px-8 mb-10 flex items-center gap-3 cursor-pointer" onClick={() => router.push('/student/dashboard')}>
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-1.5 shadow-md shrink-0 overflow-hidden">
+              <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold text-white leading-none">Alumnex</h1>
+              <span className="text-[10px] text-teal-200/80 font-medium tracking-wide mt-1">Connecting Future</span>
             </div>
           </div>
 
@@ -203,8 +206,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
                 const active = isActiveRoute(item.route);
                 return (
                   <li key={item.id} className="relative w-full">
-                    <Link
-                      href={item.route}
+                    <Link href={item.route} prefetch={true}
                       className={`flex items-center w-full px-10 py-2.5 transition-all duration-200 ${
                         active ? 'text-white font-bold' : 'text-[#8c8d93] hover:text-white font-medium'
                       }`}
@@ -255,7 +257,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
 
           {/* Profile Avatar */}
           <div className="px-10 flex items-center">
-            <div className="w-10 h-10 rounded-full border border-gray-600 bg-black flex items-center justify-center overflow-hidden shadow-lg relative">
+            <div className="w-10 h-10 rounded-full border border-gray-600 bg-teal-950 flex items-center justify-center overflow-hidden shadow-lg relative">
               {studentData.avatar && !imgError ? (
                 <img
                   src={studentData.avatar}
@@ -278,15 +280,15 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
         <div className="lg:hidden fixed inset-0 z-50">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-teal-950/60 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-[280px] bg-[#16161c] shadow-2xl flex flex-col justify-between overflow-y-auto">
+          <div className="absolute left-0 top-0 h-full w-[280px] bg-teal-950 shadow-2xl flex flex-col justify-between overflow-y-auto">
             <div className="flex flex-col w-full">
               <div className="px-6 py-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setIsMobileMenuOpen(false); router.push('/student/dashboard'); }}>
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center p-1 shadow-sm shrink-0 overflow-hidden">
+                    <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="w-full h-full object-contain" />
                   </div>
                   <h1 className="text-[20px] font-bold text-white tracking-wide">Alumnex</h1>
                 </div>
@@ -324,8 +326,7 @@ export default function StudentNavigation({ children }: StudentNavigationProps) 
                     const active = isActiveRoute(item.route);
                     return (
                       <li key={item.id}>
-                        <Link
-                          href={item.route}
+                        <Link href={item.route} prefetch={true}
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={`flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-200 ${
                             active

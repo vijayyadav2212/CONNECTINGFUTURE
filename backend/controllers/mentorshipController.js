@@ -14,20 +14,76 @@ async function getMentors(req, res) {
     const p = Math.max(1, parseInt(page, 10));
     const l = Math.min(100, Math.max(1, parseInt(limit, 10)));
     const offset = (p - 1) * l;
-    const where = [];
-    const params = [];
+
+    // Fetch mentors from mentors table
+    const { rows: mentorsList } = await dbQuery(`SELECT mentor_email AS mentor_email, skills, topics, availability, experience_years, price, subscription_price, subscription_duration_days, rating_avg, rating_count FROM mentors`);
+    
+    // Fetch alumni users who are marked as mentors or are alumni
+    const { rows: userMentors } = await dbQuery(`
+      SELECT email AS mentor_email, name, company, job_title, skills, bio, is_mentor, user_type
+      FROM users 
+      WHERE (is_mentor = true OR LOWER(user_type) = 'alumni')
+        AND (LOWER(approval_status) = 'approved' OR approval_status IS NULL)
+    `);
+
+    const mentorMap = new Map();
+
+    // First populate from users
+    (userMentors || []).forEach(u => {
+      if (!u.mentor_email) return;
+      const key = u.mentor_email.toLowerCase();
+      mentorMap.set(key, {
+        mentor_email: u.mentor_email,
+        skills: u.skills || 'Mentorship, Career Advice',
+        topics: u.job_title ? `${u.job_title}${u.company ? ` at ${u.company}` : ''}` : 'Career Guidance',
+        availability: 'Available for Sessions',
+        experience_years: 3,
+        price: 0,
+        subscription_price: 0,
+        subscription_duration_days: 30,
+        rating_avg: 5.0,
+        rating_count: 1
+      });
+    });
+
+    // Then overwrite/enrich with specific mentor settings if present in mentors table
+    (mentorsList || []).forEach(m => {
+      if (!m.mentor_email) return;
+      const key = m.mentor_email.toLowerCase();
+      const existing = mentorMap.get(key) || {};
+      mentorMap.set(key, {
+        ...existing,
+        ...m,
+        mentor_email: m.mentor_email || existing.mentor_email,
+      });
+    });
+
+    let combined = Array.from(mentorMap.values());
+
+    // Apply filtering
     if (q) {
-      where.push("(LOWER(mentor_email) LIKE ? OR LOWER(skills) LIKE ? OR LOWER(topics) LIKE ?)");
-      const like = `%${String(q).toLowerCase()}%`;
-      params.push(like, like, like);
+      const queryStr = String(q).toLowerCase();
+      combined = combined.filter(m => 
+        (m.mentor_email && m.mentor_email.toLowerCase().includes(queryStr)) ||
+        (m.skills && String(m.skills).toLowerCase().includes(queryStr)) ||
+        (m.topics && String(m.topics).toLowerCase().includes(queryStr))
+      );
     }
-    if (min_experience) { where.push('experience_years >= ?'); params.push(Number(min_experience)); }
-    if (max_price) { where.push('price <= ?'); params.push(Number(max_price)); }
-    if (min_rating) { where.push('rating_avg >= ?'); params.push(Number(min_rating)); }
-    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const { rows: list } = await dbQuery(`SELECT mentor_email AS mentor_email, skills, topics, availability, experience_years, price, subscription_price, subscription_duration_days, rating_avg, rating_count FROM mentors ${whereSql} ORDER BY rating_avg DESC NULLS LAST LIMIT ? OFFSET ?`, [...params, l, offset]);
-    return res.json({ mentors: list, page: p, limit: l });
+    if (min_experience) {
+      combined = combined.filter(m => Number(m.experience_years || 0) >= Number(min_experience));
+    }
+    if (max_price) {
+      combined = combined.filter(m => Number(m.price || 0) <= Number(max_price));
+    }
+    if (min_rating) {
+      combined = combined.filter(m => Number(m.rating_avg || 0) >= Number(min_rating));
+    }
+
+    const paginated = combined.slice(offset, offset + l);
+
+    return res.json({ mentors: paginated, total: combined.length, page: p, limit: l });
   } catch (e) {
+    console.error('Error getting mentors:', e.message);
     return res.status(500).json({ error: e.message });
   }
 }
@@ -206,9 +262,9 @@ async function getMentorshipRequests(req, res) {
   try {
     let sql = 'SELECT * FROM mentorship_requests WHERE 1=1';
     const params = [];
-    if (mentor_email) { sql += ' AND mentor_email = ?'; params.push(mentor_email); }
-    if (student_email) { sql += ' AND student_email = ?'; params.push(student_email); }
-    if (status) { sql += ' AND status = ?'; params.push(status); }
+    if (mentor_email) { sql += ' AND LOWER(mentor_email) = LOWER(?)'; params.push(mentor_email); }
+    if (student_email) { sql += ' AND LOWER(student_email) = LOWER(?)'; params.push(student_email); }
+    if (status) { sql += ' AND LOWER(status) = LOWER(?)'; params.push(status); }
     sql += ' ORDER BY updated_at DESC LIMIT 200';
     const { rows } = await dbQuery(sql, params);
     return res.json({ requests: rows });
@@ -320,6 +376,216 @@ async function getAdminMentorshipPayments(req, res) {
   }
 }
 
+// GET daily sessions
+async function getDailySessions(req, res) {
+  try {
+    const { mentor_email, student_email, active_only } = req.query || {};
+    let sql = 'SELECT * FROM mentor_daily_sessions WHERE 1=1';
+    const params = [];
+    if (mentor_email) {
+      sql += ' AND LOWER(mentor_email) = LOWER(?)';
+      params.push(mentor_email);
+    }
+    if (active_only) {
+      sql += ' AND is_active = true AND end_date >= CURRENT_DATE';
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 100';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ daily_sessions: rows || [] });
+  } catch (e) {
+    console.error('Error in getDailySessions:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// POST create daily session
+async function createDailySession(req, res) {
+  try {
+    const {
+      mentor_email, title, description, daily_time, timezone, start_date, end_date, duration_minutes, meeting_link, max_mentees
+    } = req.body || {};
+    if (!mentor_email || !title || !start_date || !end_date || !daily_time) {
+      return res.status(400).json({ error: 'mentor_email, title, start_date, end_date and daily_time are required' });
+    }
+    const { rows } = await dbQuery(
+      `INSERT INTO mentor_daily_sessions 
+       (mentor_email, title, description, daily_time, timezone, start_date, end_date, duration_minutes, meeting_link, max_mentees, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true) RETURNING *`,
+      [
+        mentor_email,
+        title,
+        description || null,
+        daily_time,
+        timezone || 'Asia/Kolkata',
+        start_date,
+        end_date,
+        Number(duration_minutes) || 60,
+        meeting_link || null,
+        Number(max_mentees) || 50
+      ]
+    );
+    return res.status(201).json({ daily_session: rows[0] });
+  } catch (e) {
+    console.error('Error in createDailySession:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// DELETE deactivate daily session
+async function deactivateDailySession(req, res) {
+  try {
+    const { id } = req.params;
+    const { mentor_email } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'id required' });
+    let sql = 'UPDATE mentor_daily_sessions SET is_active = false, updated_at = NOW() WHERE id = ?';
+    const params = [id];
+    if (mentor_email) {
+      sql += ' AND LOWER(mentor_email) = LOWER(?)';
+      params.push(mentor_email);
+    }
+    sql += ' RETURNING *';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ daily_session: rows && rows[0] ? rows[0] : null });
+  } catch (e) {
+    console.error('Error in deactivateDailySession:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// GET mentorship sessions
+async function getMentorshipSessions(req, res) {
+  try {
+    const { mentor_email, student_email, role, status } = req.query || {};
+    if (!mentor_email && !student_email) {
+      return res.status(400).json({ error: 'mentor_email or student_email required' });
+    }
+    let sql = 'SELECT * FROM mentorship_sessions WHERE 1=1';
+    const params = [];
+    if (mentor_email) {
+      sql += ' AND LOWER(mentor_email) = LOWER(?)';
+      params.push(mentor_email);
+    }
+    if (student_email) {
+      sql += ' AND LOWER(student_email) = LOWER(?)';
+      params.push(student_email);
+    }
+    if (status) {
+      sql += ' AND LOWER(status) = LOWER(?)';
+      params.push(status);
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 200';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ sessions: rows || [] });
+  } catch (e) {
+    console.error('Error in getMentorshipSessions:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// POST schedule session
+async function scheduleMentorshipSession(req, res) {
+  try {
+    const { session_id, scheduled_at, duration_minutes, meeting_link } = req.body || {};
+    if (!session_id || !scheduled_at) {
+      return res.status(400).json({ error: 'session_id and scheduled_at required' });
+    }
+    const { rows } = await dbQuery(
+      `UPDATE mentorship_sessions 
+       SET scheduled_at = ?, duration_minutes = COALESCE(?, duration_minutes), meeting_link = COALESCE(?, meeting_link), status = 'scheduled', updated_at = NOW() 
+       WHERE id = ? RETURNING *`,
+      [scheduled_at, duration_minutes || null, meeting_link || null, session_id]
+    );
+    return res.json({ session: rows && rows[0] ? rows[0] : null });
+  } catch (e) {
+    console.error('Error in scheduleMentorshipSession:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// POST purchase session
+async function purchaseMentorshipSession(req, res) {
+  try {
+    const { student_email, mentor_email, amount, currency, payment_id, order_id } = req.body || {};
+    if (!student_email || !mentor_email) {
+      return res.status(400).json({ error: 'student_email and mentor_email required' });
+    }
+    const pair_key = buildPairKey(student_email, mentor_email);
+    const numAmount = Number(amount || 0);
+    const platform_fee = Number((numAmount * 0.1).toFixed(2));
+    const alumni_earnings = Number((numAmount - platform_fee).toFixed(2));
+    const { rows } = await dbQuery(
+      `INSERT INTO mentorship_sessions 
+       (pair_key, student_email, mentor_email, status, amount, currency, payment_id, order_id, platform_fee, alumni_earnings)
+       VALUES (?, ?, ?, 'paid', ?, ?, ?, ?, ?, ?) RETURNING *`,
+      [pair_key, student_email, mentor_email, numAmount, currency || 'INR', payment_id || null, order_id || null, platform_fee, alumni_earnings]
+    );
+    return res.status(201).json({ session: rows[0] });
+  } catch (e) {
+    console.error('Error in purchaseMentorshipSession:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// GET mentorship subscriptions
+async function getMentorshipSubscriptions(req, res) {
+  try {
+    const { student_email, mentor_email } = req.query || {};
+    if (!student_email && !mentor_email) {
+      return res.status(400).json({ error: 'student_email or mentor_email required' });
+    }
+    let sql = 'SELECT * FROM mentorship_subscriptions WHERE 1=1';
+    const params = [];
+    if (student_email) { sql += ' AND LOWER(student_email) = LOWER(?)'; params.push(student_email); }
+    if (mentor_email) { sql += ' AND LOWER(mentor_email) = LOWER(?)'; params.push(mentor_email); }
+    sql += ' ORDER BY created_at DESC LIMIT 100';
+    const { rows } = await dbQuery(sql, params);
+    return res.json({ subscriptions: rows || [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// POST purchase subscription
+async function purchaseMentorshipSubscription(req, res) {
+  try {
+    const { student_email, mentor_email, amount, currency, duration_days, payment_id, order_id } = req.body || {};
+    if (!student_email || !mentor_email) return res.status(400).json({ error: 'student_email and mentor_email required' });
+    const pair_key = buildPairKey(student_email, mentor_email);
+    const numAmount = Number(amount || 0);
+    const days = Math.max(1, Number(duration_days) || 30);
+    const platform_fee = Number((numAmount * 0.1).toFixed(2));
+    const alumni_earnings = Number((numAmount - platform_fee).toFixed(2));
+    const start_at = new Date();
+    const end_at = new Date(start_at.getTime() + days * 24 * 60 * 60 * 1000);
+    const { rows } = await dbQuery(
+      `INSERT INTO mentorship_subscriptions
+       (pair_key, student_email, mentor_email, status, amount, currency, duration_days, start_at, end_at, payment_id, order_id, platform_fee, alumni_earnings)
+       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+      [pair_key, student_email, mentor_email, numAmount, currency || 'INR', days, start_at, end_at, payment_id || null, order_id || null, platform_fee, alumni_earnings]
+    );
+    return res.status(201).json({ subscription: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// POST rating
+async function createMentorshipRating(req, res) {
+  try {
+    const { session_id, student_email, mentor_email, rating, feedback } = req.body || {};
+    if (!session_id || !rating) return res.status(400).json({ error: 'session_id and rating required' });
+    const numRating = Math.max(1, Math.min(5, Number(rating)));
+    const { rows } = await dbQuery(
+      `INSERT INTO mentor_ratings (session_id, student_email, mentor_email, rating, feedback)
+       VALUES (?, ?, ?, ?, ?) RETURNING *`,
+      [session_id, student_email || null, mentor_email || null, numRating, feedback || null]
+    );
+    return res.status(201).json({ rating: rows[0] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
 module.exports = {
   getMentors,
   getMentorProfile,
@@ -327,5 +593,14 @@ module.exports = {
   createMentorshipRequest,
   respondMentorshipRequest,
   getMentorshipRequests,
-  getAdminMentorshipPayments
+  getAdminMentorshipPayments,
+  getDailySessions,
+  createDailySession,
+  deactivateDailySession,
+  getMentorshipSessions,
+  scheduleMentorshipSession,
+  purchaseMentorshipSession,
+  getMentorshipSubscriptions,
+  purchaseMentorshipSubscription,
+  createMentorshipRating,
 };

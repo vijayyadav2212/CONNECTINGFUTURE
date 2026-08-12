@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import StudentNavigation from '../StudentNavigation/StudentNavigation';
+
 import ProfilePhotoModal from '../../../components/ProfilePhotoModal';
 import {
   User,
@@ -124,20 +124,32 @@ export default function Settings() {
   const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
   useEffect(() => {
-    if (user && token) {
+    if (user) {
       fetchProfile();
     }
   }, [user, token]);
 
+  const getActiveToken = () => {
+    if (token) return token;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_token') || localStorage.getItem('cf_token') || localStorage.getItem('cf_jwt');
+    }
+    return null;
+  };
+
   const fetchProfile = async () => {
-    if (!token) return;
+    const activeToken = getActiveToken();
+    if (activeToken) {
+      document.cookie = `cf_token=${activeToken}; path=/; max-age=900; SameSite=Lax`;
+    }
     try {
       setLoading(true);
-      const res = await fetch(`${backendUrl}/api/v2/users/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      let res = await fetch(`${backendUrl}/api/v2/users/profile`, {
+        headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : {}
       });
+      if (!res.ok) {
+        res = await fetch('/api/user/profile', { cache: 'no-store' });
+      }
       if (!res.ok) throw new Error('Failed to load profile');
       const data = await res.json();
       if (data.user) {
@@ -173,46 +185,62 @@ export default function Settings() {
   };
 
   const handleProfileSave = async () => {
-    if (!token) {
-      toast.error('Authentication error. Please try again.');
-      return;
+    const activeToken = getActiveToken();
+    if (activeToken) {
+      document.cookie = `cf_token=${activeToken}; path=/; max-age=900; SameSite=Lax`;
     }
     try {
       setSaving(true);
-      const res = await fetch(`${backendUrl}/api/v2/users/profile`, {
+      const payload = {
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        university: profile.university,
+        course: profile.major,
+        graduationYear: profile.graduationYear,
+        bio: profile.bio,
+        linkedIn: profile.linkedin,
+        gitHub: profile.github,
+        portfolio: profile.portfolio,
+        skills: profile.skills,
+        picture: profile.avatar,
+        rollNumber: profile.rollNumber,
+        yearOfStudy: profile.yearOfStudy,
+        semester: profile.semester,
+        department: profile.department,
+        cgpa: profile.cgpa,
+        location: profile.location
+      };
+
+      let res = await fetch(`${backendUrl}/api/v2/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
         },
-        body: JSON.stringify({
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
-          university: profile.university,
-          course: profile.major,
-          graduationYear: profile.graduationYear,
-          bio: profile.bio,
-          linkedIn: profile.linkedin,
-          gitHub: profile.github,
-          portfolio: profile.portfolio,
-          skills: profile.skills,
-          picture: profile.avatar,
-          rollNumber: profile.rollNumber,
-          yearOfStudy: profile.yearOfStudy,
-          semester: profile.semester,
-          department: profile.department,
-          cgpa: profile.cgpa,
-          location: profile.location
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed to update profile');
+      if (!res.ok) {
+        res = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || 'Failed to update profile');
+      }
 
       toast.success('Profile updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error(error?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -245,22 +273,22 @@ export default function Settings() {
   ];
 
   const profileFieldClass =
-    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-[#11233f] outline-none transition-all [color-scheme:light]';
+    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-teal-950 outline-none transition-all [color-scheme:light]';
   const profileFieldWithIconClass =
-    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-[#11233f] outline-none transition-all [color-scheme:light]';
+    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-teal-950 outline-none transition-all [color-scheme:light]';
   const profileFieldDisabledClass =
-    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-[#11233f] outline-none transition-all cursor-not-allowed [color-scheme:light]';
+    'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-[#f6f3eb] text-slate-500 shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-teal-950 outline-none transition-all cursor-not-allowed [color-scheme:light]';
 
   return (
-    <StudentNavigation>
-      <div className="min-h-screen bg-[#F5F6FA] py-6 px-4 sm:px-6 lg:px-8 pb-12">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb] py-6 px-4 sm:px-6 lg:px-8 pb-12">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
-            <div className="bg-[#1A1B23] rounded-[32px] p-8 lg:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
+            <div className="bg-teal-950 rounded-[32px] p-8 lg:p-10 shadow-2xl border border-teal-900/10 relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                  <div className="flex items-center gap-2 text-teal-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
                     <GraduationCap className="w-4 h-4" />
                     <span>Account Center</span>
                   </div>
@@ -279,7 +307,7 @@ export default function Settings() {
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row">
 
             {/* Sidebar */}
-            <div className="w-full md:w-64 bg-slate-50 border-r border-slate-200">
+            <div className="w-full md:w-64 bg-[#f6f3eb] border-r border-slate-200">
               <div className="p-6">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Account</h2>
                 <nav className="space-y-2">
@@ -290,8 +318,8 @@ export default function Settings() {
                         key={item.id}
                         onClick={() => setActiveTab(item.id as any)}
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                          ? 'bg-[#11233f] text-white shadow-md'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          ? 'bg-teal-900 text-white shadow-md'
+                          : 'text-slate-600 hover:bg-[#f6f3eb] hover:text-slate-900'
                           }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -312,8 +340,8 @@ export default function Settings() {
                           key={item.id}
                           onClick={() => setActiveTab(item.id as any)}
                           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                            ? 'bg-[#11233f] text-white shadow-md'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            ? 'bg-teal-900 text-white shadow-md'
+                            : 'text-slate-600 hover:bg-[#f6f3eb] hover:text-slate-900'
                             }`}
                         >
                           <Icon className="w-5 h-5" />
@@ -350,7 +378,7 @@ export default function Settings() {
                     <button
                       onClick={handleProfileSave}
                       disabled={saving}
-                      className="bg-[#11233f] hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="bg-teal-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg font-medium flex items-center shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {saving ? 'Saving...' : 'Save Changes'}
@@ -368,14 +396,14 @@ export default function Settings() {
                           alt={profile.name}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute inset-0 bg-teal-950/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <Camera className="w-8 h-8 text-white" />
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsAvatarModalOpen(true)}
-                        className="text-[#11233f] text-sm font-semibold hover:underline"
+                        className="text-teal-950 text-sm font-semibold hover:underline"
                       >
                         Change Photo
                       </button>
@@ -612,7 +640,7 @@ export default function Settings() {
                       if (key.toLowerCase().includes('mentorship')) icon = <Smartphone className="w-5 h-5" />;
 
                       return (
-                        <div key={key} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                        <div key={key} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-[#f6f3eb] hover:bg-[#f6f3eb] transition-colors">
                           <div className="flex items-center space-x-4">
                             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                               {icon}
@@ -664,7 +692,7 @@ export default function Settings() {
                               : 'border-slate-200 hover:border-slate-300'
                               }`}
                           >
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${privacy.profileVisibility === option ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${privacy.profileVisibility === option ? 'bg-green-100 text-green-600' : 'bg-[#f6f3eb] text-slate-500'
                               }`}>
                               {option === 'public' && <Globe className="w-6 h-6" />}
                               {option === 'alumni-only' && <User className="w-6 h-6" />}
@@ -719,7 +747,7 @@ export default function Settings() {
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500">
                   <h2 className="text-2xl font-bold text-slate-900 mb-6">Security Settings</h2>
                   <div className="space-y-6">
-                    <div className="p-6 border border-slate-200 rounded-xl bg-slate-50 hover:shadow-md transition-all">
+                    <div className="p-6 border border-slate-200 rounded-xl bg-[#f6f3eb] hover:shadow-md transition-all">
                       <div className="flex items-start gap-4">
                         <div className="p-3 bg-green-100 rounded-xl text-green-600">
                           <Key className="w-6 h-6" />
@@ -740,7 +768,7 @@ export default function Settings() {
               {/* Appearance Info */}
               {activeTab === 'appearance' && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500 text-center py-20">
-                  <div className="w-24 h-24 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="w-24 h-24 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Moon className="w-12 h-12" />
                   </div>
                   <h2 className="text-2xl font-bold text-slate-900 mb-2">Dark Mode Coming Soon!</h2>
@@ -758,6 +786,6 @@ export default function Settings() {
         onSelect={(url) => setProfile(prev => ({ ...prev, avatar: url }))}
         currentPhoto={profile.avatar}
       />
-    </StudentNavigation>
+    </>
   );
 }

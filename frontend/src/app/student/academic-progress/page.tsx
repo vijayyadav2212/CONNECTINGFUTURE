@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import StudentNavigation from "../StudentNavigation/StudentNavigation";
+
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import apiClient from '../../../lib/apiClient';
 import { GraduationCap, Pencil, TrendingUp, BookOpen, CheckCircle, AlertCircle } from "lucide-react";
@@ -140,14 +140,14 @@ const StatCard = ({ icon: Icon, value, label, color, delay, isVisible }: {
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between mb-4">
-        <div className="p-3 rounded-2xl bg-gray-100 text-[#11233f] group-hover:bg-[#11233f] group-hover:text-white transition-all duration-300">
+        <div className="p-3 rounded-2xl bg-gray-100 text-teal-950 group-hover:bg-teal-900 group-hover:text-white transition-all duration-300">
           <Icon size={24} />
         </div>
-        {color === 'green' && <div className="text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full text-xs font-bold">+0.2</div>}
+        {color === 'green' && <div className="text-teal-950 bg-emerald-100 px-2 py-1 rounded-full text-xs font-bold">+0.2</div>}
       </div>
       <div>
         <p className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em] mb-1">{label}</p>
-        <h3 className="text-4xl font-black text-[#11233f] tracking-tight">{value}</h3>
+        <h3 className="text-4xl font-black text-teal-950 tracking-tight">{value}</h3>
       </div>
     </div>
   );
@@ -161,15 +161,15 @@ const SubjectCard = ({ course, delay }: { course: Course, delay: number }) => {
 
   return (
     <div
-      className="group flex flex-col md:flex-row md:items-center justify-between p-5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 hover:-translate-x-1 animate-fade-in-up"
+      className="group flex flex-col md:flex-row md:items-center justify-between p-5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-teal-100 transition-all duration-300 hover:-translate-x-1 animate-fade-in-up"
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <div className="flex items-center gap-4 mb-4 md:mb-0">
-        <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+        <div className="h-12 w-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold group-hover:bg-teal-600 group-hover:text-white transition-colors duration-300">
           {course.code.replace(/[0-9]/g, '')}
         </div>
         <div>
-          <h4 className="font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">{course.name}</h4>
+          <h4 className="font-bold text-gray-800 group-hover:text-teal-700 transition-colors">{course.name}</h4>
           <p className="text-sm text-gray-500">{course.code}</p>
           <div className="mt-3 w-full max-w-sm">
             <div className="flex items-center justify-between mb-2 text-xs font-medium text-gray-500">
@@ -178,7 +178,7 @@ const SubjectCard = ({ course, delay }: { course: Course, delay: number }) => {
             </div>
             <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-500 transition-all duration-500"
                 style={{ width: `${marks}%` }}
               />
             </div>
@@ -189,7 +189,7 @@ const SubjectCard = ({ course, delay }: { course: Course, delay: number }) => {
       <div className="flex items-center gap-6">
         <div className="flex flex-col items-end">
           <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Subject Mark</span>
-          <span className={`font-bold ${marks >= 75 ? 'text-emerald-600' : marks >= 50 ? 'text-amber-600' : 'text-gray-700'}`}>
+          <span className={`font-bold ${marks >= 75 ? 'text-teal-950' : marks >= 50 ? 'text-amber-600' : 'text-gray-700'}`}>
             {course.progress ? `${marks}%` : '-'}
           </span>
           <span className="text-xs text-gray-400 mt-1">{derivedGrade || course.grade || 'Grade pending'}</span>
@@ -262,8 +262,8 @@ export default function AcademicProgress() {
   const attendancePercent = allCourses.length ? Math.round((allCourses.filter(c => c.status !== 'upcoming').length / allCourses.length) * 100) : 0;
 
   const animatedGpa = useAnimatedCounter(overallGpa, 1500, showStats);
-  const formInputClass = "w-full px-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm";
-  const formSelectClass = "w-full px-4 py-3 bg-white text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm";
+  const formInputClass = "w-full px-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all shadow-sm";
+  const formSelectClass = "w-full px-4 py-3 bg-white text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all shadow-sm";
 
   // Fetch real data from backend when user is available
   useEffect(() => {
@@ -477,8 +477,8 @@ export default function AcademicProgress() {
   }, []);
 
   return (
-    <StudentNavigation>
-      <div className="relative min-h-screen overflow-hidden bg-slate-50/30">
+    <>
+      <div className="relative min-h-screen overflow-hidden bg-[#f6f3eb]">
 
         {/* ANIMATED BACKGROUND BLOBS */}
 
@@ -492,7 +492,7 @@ export default function AcademicProgress() {
             transition={{ duration: 0.6 }}
             className="mb-8"
           >
-            <div className="bg-[#1A1C23] text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="bg-teal-950 text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
               <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
               </svg>
@@ -540,7 +540,7 @@ export default function AcademicProgress() {
                 className="relative z-10 w-full max-w-2xl bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl mb-8 overflow-hidden border border-white/20"
               >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600/90 to-purple-600/90 backdrop-blur-lg px-6 py-4">
+                <div className="bg-gradient-to-r from-teal-600/90 to-teal-600/90 backdrop-blur-lg px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -548,7 +548,7 @@ export default function AcademicProgress() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-white">Edit Academic Goals</h3>
-                        <p className="text-indigo-100 text-sm">Manage your semesters and subjects</p>
+                        <p className="text-teal-100 text-sm">Manage your semesters and subjects</p>
                       </div>
                     </div>
                     <button 
@@ -564,9 +564,9 @@ export default function AcademicProgress() {
 
                 <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-white backdrop-blur-sm">
                   {subjectNotice && (
-                    <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-4 shadow-sm">
+                    <div className="mb-6 rounded-2xl border border-emerald-200 bg-[#f6f3eb]/90 px-4 py-4 shadow-sm">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-teal-950">
                           <CheckCircle className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
@@ -595,7 +595,7 @@ export default function AcademicProgress() {
                     {/* Subject Management */}
                     <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.04)] space-y-4">
                       <div className="flex items-center gap-2">
-                        <BookOpen className="w-5 h-5 text-indigo-600" />
+                        <BookOpen className="w-5 h-5 text-teal-600" />
                         <h4 className="text-lg font-semibold text-slate-900">Subject Management</h4>
                         {currentSemester && (currentSemester.semester_key || currentSemester.id) === selectedSemesterKey && (
                           <span className="ml-auto rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-emerald-700">
@@ -629,7 +629,7 @@ export default function AcademicProgress() {
                       </div>
 
                       {selectedSemesterKey && (
-                        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                        <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4">
                           <label className="block text-sm font-semibold text-slate-700 mb-2">CGPA</label>
                           <div className="flex flex-col sm:flex-row gap-3">
                             <input
@@ -645,7 +645,7 @@ export default function AcademicProgress() {
                               type="button"
                               onClick={saveSelectedSemesterGpa}
                               disabled={isSavingSemesterGpa}
-                              className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="px-5 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-600 text-white font-semibold hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                               {isSavingSemesterGpa ? 'Saving...' : 'Save CGPA'}
                             </button>
@@ -660,7 +660,7 @@ export default function AcademicProgress() {
                                 checked={!!selectedSemester?.is_current}
                                 onChange={e => toggleSelectedSemesterCurrent(e.target.checked)}
                                 disabled={isTogglingCurrentSemester}
-                                className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                                className="h-4 w-4 rounded border-emerald-300 text-teal-950 focus:ring-emerald-500"
                               />
                               <span>{isTogglingCurrentSemester ? 'Updating...' : 'Mark as Current Semester'}</span>
                             </label>
@@ -675,15 +675,15 @@ export default function AcademicProgress() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            className="group relative bg-slate-50/80 backdrop-blur-md p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all"
+                            className="group relative bg-[#f6f3eb]/80 backdrop-blur-md p-4 rounded-xl border border-slate-200 hover:border-teal-300 hover:shadow-lg transition-all"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
-                                <div className="font-semibold text-slate-900 group-hover:text-indigo-700 transition-colors">{c.name}</div>
+                                <div className="font-semibold text-slate-900 group-hover:text-teal-700 transition-colors">{c.name}</div>
                                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                                   <span className="font-mono bg-white px-2 py-1 rounded">{c.code}</span>
                                   <span>•</span>
-                                  <span className="font-semibold text-indigo-600">{c.progress ? `${Math.max(0, Math.min(100, Number(c.progress || 0)))}% marks` : 'Marks pending'}</span>
+                                  <span className="font-semibold text-teal-600">{c.progress ? `${Math.max(0, Math.min(100, Number(c.progress || 0)))}% marks` : 'Marks pending'}</span>
                                 </div>
                               </div>
                               <div className="flex gap-2">
@@ -695,7 +695,7 @@ export default function AcademicProgress() {
                                     setCourseForm({ course_key: c.course_key || c.id, name: c.name, code: c.code, credits: '', backlog_count: String(c.backlog_count || ''), grade: c.grade || getGradeFromMarks(Number(c.progress || 0)), status: (c as any).status || 'upcoming', progress: String(c.progress || '') });
                                     setShowCourseForm(true);
                                   }} 
-                                  className="px-3 py-1.5 text-xs bg-white backdrop-blur-sm border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-all shadow-sm"
+                                  className="px-3 py-1.5 text-xs bg-white backdrop-blur-sm border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-teal-50 hover:border-teal-300 transition-all shadow-sm"
                                 >
                                   Edit
                                 </button>
@@ -807,8 +807,8 @@ export default function AcademicProgress() {
                       className="mt-8 pt-8 border-t border-slate-200"
                     >
                       <div className="flex items-center gap-2 mb-6">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Pencil className="w-5 h-5 text-blue-600" />
+                        <div className="p-2 bg-teal-100 rounded-lg">
+                          <Pencil className="w-5 h-5 text-teal-600" />
                         </div>
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900">
@@ -865,13 +865,13 @@ export default function AcademicProgress() {
                         <button
                           type="button"
                           onClick={() => setShowCourseForm(false)}
-                          className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+                          className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-[#f6f3eb] transition-all shadow-sm"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all backdrop-blur-sm"
+                          className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-semibold rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all backdrop-blur-sm"
                         >
                           {editingCourseId ? 'Update Subject' : 'Add Subject'}
                         </button>
@@ -921,13 +921,13 @@ export default function AcademicProgress() {
               {/* CURRENT SEMESTER HEADER */}
               <div
                 ref={semesterRef}
-                className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 border border-white/50 shadow-xl transition-all duration-700
+                className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 border border-teal-900/100 shadow-xl transition-all duration-700
                         ${showSemester ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 border-b border-gray-100 pb-4">
                   <div className="space-y-1">
                     <h2 className="text-2xl font-bold text-gray-800">Semester Overview</h2>
-                    <p className="text-indigo-500 font-medium">Select a semester to view its data</p>
+                    <p className="text-teal-500 font-medium">Select a semester to view its data</p>
                   </div>
                   <div className="w-full sm:w-72">
                     <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
@@ -977,6 +977,6 @@ export default function AcademicProgress() {
         {/* Legacy modal removed; new Edit Goals modal is rendered above header when `editOpen` is true. */}
 
       </div>
-    </StudentNavigation>
+    </>
   );
 }

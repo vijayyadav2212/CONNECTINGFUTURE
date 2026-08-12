@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import StudentNavigation from '../StudentNavigation/StudentNavigation';
+
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { Search, Send, Paperclip, User, Clock, Check, CheckCheck, FileText, Pencil, Trash2, X, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -450,14 +450,14 @@ const MessagesPage = () => {
     switch (status) {
       case 'sent': return <Check className="w-4 h-4 text-gray-400" />;
       case 'delivered': return <CheckCheck className="w-4 h-4 text-gray-400" />;
-      case 'read': return <CheckCheck className="w-4 h-4 text-blue-500" />;
+      case 'read': return <CheckCheck className="w-4 h-4 text-teal-500" />;
       default: return null;
     }
   };
 
   if (loading) {
     return (
-      <StudentNavigation>
+      <>
         <div className="p-6">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
@@ -467,22 +467,22 @@ const MessagesPage = () => {
             </div>
           </div>
         </div>
-      </StudentNavigation>
+      </>
     );
   }
 
   return (
-    <StudentNavigation>
-      <div className="min-h-screen bg-[#F5F6FA] py-6 px-4 sm:px-6 lg:px-8">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb] py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
-            <div className="relative bg-gradient-to-br from-blue-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
+            <div className="relative bg-gradient-to-br from-teal-100/60 via-green-100/50 to-orange-100/40 backdrop-blur-lg rounded-3xl p-8 lg:p-10 shadow-xl border border-white/30 overflow-hidden">
               <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-3">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
-                    <span className="text-blue-700 font-semibold text-sm">Student Network</span>
+                    <GraduationCap className="w-5 h-5 text-teal-600" />
+                    <span className="text-teal-700 font-semibold text-sm">Student Network</span>
                   </div>
                   <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">Messages</h1>
                   <p className="text-gray-700 text-base lg:text-lg max-w-2xl mb-4">Connect with alumni, mentors, and peers to build your professional network.</p>
@@ -493,7 +493,7 @@ const MessagesPage = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-[calc(100vh-220px)] min-h-[520px]">
             <div className="lg:col-span-1 bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-h-0 flex flex-col">
-              <div className="p-4 border-b border-slate-100 bg-slate-50/60">
+              <div className="p-4 border-b border-slate-100 bg-[#f6f3eb]/60">
                 <p className="text-sm font-bold text-slate-900 mb-3 tracking-tight">Conversations</p>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -502,14 +502,14 @@ const MessagesPage = () => {
                     placeholder="Search conversations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
                   />
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto min-h-0">
                 {filteredConversations.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-36 text-center px-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#f6f3eb] border border-slate-100 flex items-center justify-center mb-3">
                       <Search className="w-6 h-6 text-slate-300" />
                     </div>
                     <p className="text-sm font-semibold text-slate-700">No conversations found</p>
@@ -520,9 +520,9 @@ const MessagesPage = () => {
                   <button
                     key={conv.id}
                     onClick={() => { setSelectedConversation(conv.id); setSelectedOtherEmail(conv.email); }}
-                    className={`w-full text-left px-4 py-3 border-b border-slate-50 flex items-center gap-3 hover:bg-slate-50 transition-colors ${selectedConversation === conv.id ? 'bg-indigo-50/70 border-l-2 border-l-indigo-500' : ''}`}
+                    className={`w-full text-left px-4 py-3 border-b border-slate-50 flex items-center gap-3 hover:bg-[#f6f3eb] transition-colors ${selectedConversation === conv.id ? 'bg-teal-50/70 border-l-2 border-l-teal-500' : ''}`}
                   >
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${selectedConversation === conv.id ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${selectedConversation === conv.id ? 'bg-teal-100 text-teal-700' : 'bg-[#f6f3eb] text-slate-600'}`}>
                       {conv.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -532,7 +532,7 @@ const MessagesPage = () => {
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-[11px] text-slate-500 truncate flex-1">{conv.lastMessage}</p>
-                        {conv.unreadCount > 0 && <span className="ml-2 w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{conv.unreadCount}</span>}
+                        {conv.unreadCount > 0 && <span className="ml-2 w-5 h-5 rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{conv.unreadCount}</span>}
                       </div>
                     </div>
                   </button>
@@ -543,10 +543,10 @@ const MessagesPage = () => {
             <div className="lg:col-span-2 bg-white rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col overflow-hidden min-h-0">
               {selectedConversation ? (
                 <div className="flex flex-col h-full min-h-0">
-                  <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+                  <div className="px-5 py-4 border-b border-slate-100 bg-[#f6f3eb]/60">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 text-sm font-bold flex items-center justify-center shrink-0">
                           {conversations.find((c) => c.id === selectedConversation)?.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                         </div>
                         <div>
@@ -559,29 +559,29 @@ const MessagesPage = () => {
                         {connLoading && <span className="text-[11px] text-slate-400">Checking…</span>}
                         {!connLoading && (
                           <>
-                            {connectionStatus === 'accepted' && <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Connected</span>}
+                            {connectionStatus === 'accepted' && <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#f6f3eb] text-emerald-700 border border-emerald-200">Connected</span>}
                             {connectionStatus === 'pending' && currentConnection?.requester_email.toLowerCase() === currentUserEmail.toLowerCase() && <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Pending</span>}
                             {connectionStatus === 'pending' && currentConnection?.target_email.toLowerCase() === currentUserEmail.toLowerCase() && (
                               <div className="flex gap-1.5">
-                                <button onClick={() => respond('accept')} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Accept</button>
+                                <button onClick={() => respond('accept')} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 disabled:opacity-60">Accept</button>
                                 <button onClick={() => respond('reject')} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-red-50 text-red-600 border border-red-200 font-semibold hover:bg-red-100 disabled:opacity-60">Reject</button>
                               </div>
                             )}
-                            {!connectionStatus && <button onClick={sendConnectionRequest} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Connect</button>}
-                            {connectionStatus === 'accepted' && <button onClick={removeConnection} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 disabled:opacity-60">Remove</button>}
-                            {(connectionStatus === 'rejected' || connectionStatus === 'removed') && <button onClick={sendConnectionRequest} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60">Re-connect</button>}
+                            {!connectionStatus && <button onClick={sendConnectionRequest} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 disabled:opacity-60">Connect</button>}
+                            {connectionStatus === 'accepted' && <button onClick={removeConnection} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-[#f6f3eb] text-slate-600 font-semibold hover:bg-slate-200 disabled:opacity-60">Remove</button>}
+                            {(connectionStatus === 'rejected' || connectionStatus === 'removed') && <button onClick={sendConnectionRequest} disabled={connLoading} className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 disabled:opacity-60">Re-connect</button>}
                           </>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-slate-50/60" onClick={() => setActionMessageId(null)}>
+                  <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-[#f6f3eb]/60" onClick={() => setActionMessageId(null)}>
                     {messages.map((message) => (
                       <div key={message.id} className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[72%] ${message.isFromMe ? 'order-last' : ''}`}>
                           <div
-                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${message.isFromMe ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-sm'}`}
+                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${message.isFromMe ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-sm'}`}
                             onDoubleClick={() => {
                               if (message.isFromMe && message.canEditDelete && !message.deletedAt) setActionMessageId(message.id);
                             }}
@@ -597,7 +597,7 @@ const MessagesPage = () => {
                               <>
                                 {message.text ? <p>{message.text}</p> : null}
                                 {message.attachmentUrl ? (
-                                  <a href={getPreviewUrl(message.attachmentUrl, message.attachmentName)} target="_blank" rel="noopener noreferrer" className={`mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl ${message.isFromMe ? 'bg-white/15 hover:bg-white/20' : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'} transition-colors`}>
+                                  <a href={getPreviewUrl(message.attachmentUrl, message.attachmentName)} target="_blank" rel="noopener noreferrer" className={`mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl ${message.isFromMe ? 'bg-white/15 hover:bg-white/20' : 'bg-[#f6f3eb] hover:bg-[#f6f3eb] border border-slate-200'} transition-colors`}>
                                     <FileText className="w-4 h-4" />
                                     <span className="text-xs font-semibold max-w-[180px] truncate">{message.attachmentName || 'Attachment'}</span>
                                     {message.attachmentSize ? <span className="text-[10px] opacity-80">({formatFileSize(message.attachmentSize)})</span> : null}
@@ -606,22 +606,22 @@ const MessagesPage = () => {
                               </>
                             )}
                           </div>
-                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${message.isFromMe ? 'justify-end text-indigo-600' : 'justify-start text-slate-400'}`}>
+                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${message.isFromMe ? 'justify-end text-teal-600' : 'justify-start text-slate-400'}`}>
                             <span>{formatTime(message.timestamp)}</span>
                             {message.editedAt && !message.deletedAt && <span>(edited)</span>}
-                            {message.isFromMe && <div className={`${message.status === 'read' ? 'text-blue-600' : 'text-gray-400'}`}>{getStatusIcon(message.status)}</div>}
+                            {message.isFromMe && <div className={`${message.status === 'read' ? 'text-teal-600' : 'text-gray-400'}`}>{getStatusIcon(message.status)}</div>}
                           </div>
                           {message.isFromMe && message.canEditDelete && !message.deletedAt && actionMessageId === message.id && (
                             <div className="mt-2 flex items-center justify-end gap-2">
-                              <button onClick={() => startEditMessage(message)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"><Pencil className="w-3 h-3" />Edit</button>
-                              <button onClick={() => deleteMessage(message.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"><Trash2 className="w-3 h-3" />Delete</button>
+                              <button onClick={() => startEditMessage(message)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-[#f6f3eb] text-slate-600 hover:bg-slate-200"><Pencil className="w-3 h-3" />Edit</button>
+                              <button onClick={() => deleteMessage(message.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg bg-teal-50 text-teal-950 hover:bg-rose-100 border border-rose-200"><Trash2 className="w-3 h-3" />Delete</button>
                             </div>
                           )}
                           {message.isFromMe && editingMessageId === message.id && (
                             <div className="mt-2 flex items-center gap-2">
                               <input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300" />
-                              <button onClick={() => saveEditMessage(message.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Save</button>
-                              <button onClick={cancelEditMessage} className="px-2 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">Cancel</button>
+                              <button onClick={() => saveEditMessage(message.id)} className="px-2.5 py-1.5 text-xs rounded-lg bg-teal-600 text-white hover:bg-teal-700">Save</button>
+                              <button onClick={cancelEditMessage} className="px-2 py-1.5 text-xs rounded-lg bg-[#f6f3eb] text-slate-600 hover:bg-slate-200">Cancel</button>
                             </div>
                           )}
                         </div>
@@ -641,7 +641,7 @@ const MessagesPage = () => {
                     )}
                     <div className="flex items-center gap-2">
                       <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                      <button onClick={() => fileInputRef.current?.click()} disabled={connectionStatus !== 'accepted'} className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:bg-slate-100/60 disabled:text-slate-400 shrink-0">
+                      <button onClick={() => fileInputRef.current?.click()} disabled={connectionStatus !== 'accepted'} className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#f6f3eb] text-slate-600 hover:bg-slate-200 disabled:bg-[#f6f3eb]/60 disabled:text-slate-400 shrink-0">
                         <Paperclip className="w-4 h-4" />
                       </button>
                       <div className="flex-1 relative">
@@ -652,10 +652,10 @@ const MessagesPage = () => {
                           onChange={(e) => setNewMessage(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
                           disabled={connectionStatus !== 'accepted'}
-                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 disabled:bg-gray-50 disabled:text-gray-400 pr-14"
+                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 disabled:bg-[#f6f3eb] disabled:text-gray-400 pr-14"
                         />
                       </div>
-                      <button onClick={sendMessage} disabled={(!newMessage.trim() && !selectedFile) || connectionStatus !== 'accepted' || sendingMessage} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 ${(newMessage.trim() || selectedFile) && connectionStatus === 'accepted' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                      <button onClick={sendMessage} disabled={(!newMessage.trim() && !selectedFile) || connectionStatus !== 'accepted' || sendingMessage} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 ${(newMessage.trim() || selectedFile) && connectionStatus === 'accepted' ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
                         <Send className="w-4 h-4" />
                       </button>
                     </div>
@@ -663,8 +663,8 @@ const MessagesPage = () => {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                  <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4 border border-indigo-100">
-                    <User className="w-7 h-7 text-indigo-300" />
+                  <div className="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center mb-4 border border-teal-100">
+                    <User className="w-7 h-7 text-teal-300" />
                   </div>
                   <p className="font-bold text-slate-900 text-sm mb-1">No conversation selected</p>
                   <p className="text-xs text-slate-400">Choose a conversation from the list to start messaging</p>
@@ -674,7 +674,7 @@ const MessagesPage = () => {
           </div>
         </div>
       </div>
-    </StudentNavigation>
+    </>
   );
 };
 

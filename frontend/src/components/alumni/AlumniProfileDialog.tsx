@@ -50,13 +50,13 @@ export function AlumniProfileDialog({
           <div className="flex items-start gap-6">
             <Avatar className="w-24 h-24">
               <AvatarImage src={alumni.profilePicture} alt={alumni.name} />
-              <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl font-semibold">
+              <AvatarFallback className="bg-teal-100 text-teal-600 text-2xl font-semibold">
                 {alumni.name.split(' ').map((n: string) => n[0]).join('')}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <DialogTitle className="text-2xl mb-2">{alumni.name}</DialogTitle>
-              <p className="text-blue-600 font-semibold text-lg">{alumni.currentPosition}</p>
+              <p className="text-teal-600 font-semibold text-lg">{alumni.currentPosition}</p>
               <p className="text-gray-600 mb-3">{alumni.company}</p>
               
               <div className="flex gap-2 mb-4">
@@ -125,28 +125,28 @@ export function AlumniProfileDialog({
               <div>
                 <h3 className="font-semibold mb-3">Quick Facts</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="bg-[#f6f3eb] p-3 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <Calendar className="w-4 h-4 text-teal-600" />
                       <span className="font-medium">Graduation Year</span>
                     </div>
                     <span className="text-gray-600">{alumni.graduationYear}</span>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="bg-[#f6f3eb] p-3 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                       <GraduationCap className="w-4 h-4 text-green-600" />
                       <span className="font-medium">Degree</span>
                     </div>
                     <span className="text-gray-600">{alumni.degree}</span>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="bg-[#f6f3eb] p-3 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
-                      <Building className="w-4 h-4 text-purple-600" />
+                      <Building className="w-4 h-4 text-teal-600" />
                       <span className="font-medium">Industry</span>
                     </div>
                     <span className="text-gray-600">{alumni.industry}</span>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="bg-[#f6f3eb] p-3 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                       <MapPin className="w-4 h-4 text-red-600" />
                       <span className="font-medium">Location</span>
@@ -163,12 +163,12 @@ export function AlumniProfileDialog({
               <h3 className="font-semibold">Professional Experience</h3>
               
               {/* Current Position */}
-              <div className="border-l-2 border-blue-500 pl-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="border-l-2 border-teal-500 pl-4">
+                <div className="bg-teal-50 p-4 rounded-lg">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h4 className="font-semibold">{alumni.currentPosition}</h4>
-                      <p className="text-blue-600 font-medium">{alumni.company}</p>
+                      <p className="text-teal-600 font-medium">{alumni.company}</p>
                       <p className="text-sm text-gray-500">2022 - Present</p>
                     </div>
                     <Badge className="bg-green-100 text-green-800">Current</Badge>
@@ -198,16 +198,16 @@ export function AlumniProfileDialog({
             <div className="space-y-6">
               <h3 className="font-semibold">Education</h3>
               
-              <div className="border-l-2 border-purple-500 pl-4">
-                <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="border-l-2 border-teal-500 pl-4">
+                <div className="bg-teal-50 p-4 rounded-lg">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h4 className="font-semibold">{alumni.degree}</h4>
-                      <p className="text-purple-600 font-medium">{alumni.branch}</p>
+                      <p className="text-teal-600 font-medium">{alumni.branch}</p>
                       <p className="text-sm text-gray-500">ABC Engineering College</p>
                       <p className="text-sm text-gray-500">Graduated: {alumni.graduationYear}</p>
                     </div>
-                    <Badge className="bg-purple-100 text-purple-800">Alumni</Badge>
+                    <Badge className="bg-teal-100 text-teal-800">Alumni</Badge>
                   </div>
                   <p className="text-gray-600 text-sm">
                     Graduated with distinction. Active in various clubs and technical societies.
@@ -223,7 +223,7 @@ export function AlumniProfileDialog({
                 <h3 className="font-semibold mb-3">Skills & Expertise</h3>
                 <div className="flex flex-wrap gap-2">
                   {alumni.skills.map((skill: string, index: number) => (
-                    <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700">
+                    <Badge key={index} variant="outline" className="bg-teal-50 text-teal-700">
                       {skill}
                     </Badge>
                   ))}

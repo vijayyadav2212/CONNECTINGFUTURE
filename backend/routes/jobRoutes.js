@@ -1,16 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { handleExternalJobsRequest } = require('../controllers/jobController');
+const { 
+  handleExternalJobsRequest,
+  getAllJobs,
+  createJob,
+  updateJob,
+  deleteJob,
+  applyToJob,
+  getApplications,
+  getApplicationsByJob,
+  getExternalJobAnalytics
+} = require('../controllers/jobController');
 
-// Define job routes
-// We will mount this router at /api/jobs
-// So /api/jobs/external maps to /external
-
+router.get('/external/analytics/summary', getExternalJobAnalytics);
 router.get('/external', handleExternalJobsRequest);
-
-// As we extract more job endpoints from server.js, we will add them here:
-// router.get('/', getAllJobs);
-// router.post('/', createJob);
-// router.get('/:id', getJobById);
+router.get('/applications/by-job', getApplicationsByJob);
+router.get('/applications', getApplications);
+router.get('/', getAllJobs);
+router.post('/', createJob);
+router.put('/:id', updateJob);
+router.delete('/:id', deleteJob);
+router.post('/:id/apply', applyToJob);
 
 module.exports = router;

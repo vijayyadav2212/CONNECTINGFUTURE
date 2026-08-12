@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import AdminNavigation from '../AdminNavigation/AdminNavigation';
+
 import {
   Calendar, Search, Filter, CheckCircle, XCircle,
   Clock, Plus, Trash2, MapPin, Users, Video, ExternalLink, Sparkles
@@ -32,19 +32,19 @@ const getApprovalStatus = (status: string): FilterType => {
 const statusBadge = (status: FilterType) => {
   switch (status) {
     case 'pending':  return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200"><Clock className="w-3 h-3" />Pending</span>;
-    case 'approved': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-red-700 border border-purple-200"><CheckCircle className="w-3 h-3" />Approved</span>;
+    case 'approved': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-950/10 text-red-700 border border-teal-200"><CheckCircle className="w-3 h-3" />Approved</span>;
     case 'rejected': return <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200"><XCircle className="w-3 h-3" />Rejected</span>;
   }
 };
 
 const eventTypeStyle: Record<string, string> = {
-  webinar:    'bg-blue-50 text-blue-700 border-blue-200',
-  workshop:   'bg-purple-50 text-purple-700 border-purple-200',
-  networking: 'bg-purple-50 text-red-700 border-purple-200',
+  webinar:    'bg-teal-50 text-teal-700 border-teal-200',
+  workshop:   'bg-teal-950/10 text-teal-700 border-teal-200',
+  networking: 'bg-teal-950/10 text-red-700 border-teal-200',
   meetup:     'bg-orange-50 text-orange-700 border-orange-200',
   conference: 'bg-red-50 text-red-700 border-red-200',
   seminar:    'bg-teal-50 text-teal-700 border-teal-200',
-  hackathon:  'bg-indigo-50 text-indigo-700 border-indigo-200',
+  hackathon:  'bg-teal-50 text-teal-700 border-teal-200',
 };
 
 export default function EventManagementPage() {
@@ -125,23 +125,23 @@ export default function EventManagementPage() {
   ];
 
   return (
-    <AdminNavigation>
+    <>
       <div className="space-y-5">
 
         {/* Header */}
-        <div className="bg-purple-50 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-purple-100 gap-5">
+        <div className="bg-teal-950/10 rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-teal-900/10 gap-5">
           <div>
             <div className="flex items-center gap-1.5 text-red-500 font-semibold mb-2">
               <Sparkles className="w-[18px] h-[18px]" />
               <span className="text-sm tracking-wide">Admin Actions</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Event Management</h1>
-            <p className="text-gray-600 text-[15px] sm:text-base">Manage and host alumni events</p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-teal-950 tracking-tight mb-2">Event Management</h1>
+            <p className="text-teal-800 text-[15px] sm:text-base">Manage and host alumni events</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {[
-              { label: 'Pending', value: count('pending'),  color: 'text-amber-700', bg: 'bg-white/60 border-white/50 shadow-sm' },
-              { label: 'Active',  value: count('approved'), color: 'text-red-600',   bg: 'bg-white/60 border-white/50 shadow-sm' },
+              { label: 'Pending', value: count('pending'),  color: 'text-amber-700', bg: 'bg-white/60 border-teal-950/100 shadow-sm' },
+              { label: 'Active',  value: count('approved'), color: 'text-red-600',   bg: 'bg-white/60 border-teal-950/100 shadow-sm' },
             ].map(s => (
               <div key={s.label} className={`px-5 py-3 rounded-2xl border ${s.bg} text-center min-w-[90px]`}>
                 <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
@@ -155,65 +155,65 @@ export default function EventManagementPage() {
         </div>
 
         {/* Search + Filter */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Search events…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600" />
+            <input type="text" placeholder="Search events…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-teal-900/10 bg-white text-teal-950 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+            <Filter className="w-4 h-4 text-teal-600 shrink-0" />
             {filterBtns.map(b => (
-              <button key={b.key} onClick={() => setFilter(b.key)} className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${filter === b.key ? b.active : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{b.label}</button>
+              <button key={b.key} onClick={() => setFilter(b.key)} className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${filter === b.key ? b.active : 'bg-[#f6f3eb] text-teal-800 hover:bg-teal-100'}`}>{b.label}</button>
             ))}
           </div>
         </div>
 
         {/* Events List */}
         {loading ? (
-          <div className="flex items-center justify-center py-14 bg-white rounded-2xl border border-gray-100">
+          <div className="flex items-center justify-center py-14 bg-white rounded-2xl border border-teal-900/10">
             <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-b-2 border-red-500 mr-3" />
-            <p className="text-sm text-gray-400">Loading events…</p>
+            <p className="text-sm text-teal-600">Loading events…</p>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 bg-white rounded-2xl border border-gray-100 text-center">
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><Calendar className="w-6 h-6 text-gray-300" /></div>
-            <p className="font-bold text-gray-900 text-sm">No events found</p>
-            <p className="text-xs text-gray-400 mt-1">Try adjusting your filters or search</p>
+          <div className="flex flex-col items-center justify-center py-14 bg-white rounded-2xl border border-teal-900/10 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#f6f3eb] flex items-center justify-center mb-3"><Calendar className="w-6 h-6 text-gray-300" /></div>
+            <p className="font-bold text-teal-950 text-sm">No events found</p>
+            <p className="text-xs text-teal-600 mt-1">Try adjusting your filters or search</p>
           </div>
         ) : (
           <div className="space-y-3">
             {filteredEvents.map(event => {
               const approvalStatus = getApprovalStatus(event.status);
               return (
-                <div key={event.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+                <div key={event.id} className="bg-white rounded-2xl border border-teal-900/10 shadow-sm p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-red-500 flex items-center justify-center shrink-0"><Calendar className="w-5 h-5" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-teal-950/10 text-red-500 flex items-center justify-center shrink-0"><Calendar className="w-5 h-5" /></div>
 
                     {/* Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-bold text-gray-900 text-sm">{event.title}</p>
+                        <p className="font-bold text-teal-950 text-sm">{event.title}</p>
                         {statusBadge(approvalStatus)}
                       </div>
-                      <div className="flex flex-wrap gap-3 text-[11px] text-gray-500 mb-2">
+                      <div className="flex flex-wrap gap-3 text-[11px] text-teal-700 mb-2">
                         <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{event.start_date ? new Date(event.start_date).toLocaleString() : '—'}</span>
                         {event.is_virtual
-                          ? <span className="flex items-center gap-1 text-blue-600"><Video className="w-3 h-3" />Virtual</span>
+                          ? <span className="flex items-center gap-1 text-teal-900"><Video className="w-3 h-3" />Virtual</span>
                           : event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>}
                         {event.max_attendees && <span className="flex items-center gap-1"><Users className="w-3 h-3" />Max {event.max_attendees}</span>}
                       </div>
                       <div className="flex flex-wrap gap-1.5 mb-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${eventTypeStyle[event.event_type?.toLowerCase()] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>{event.event_type}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${eventTypeStyle[event.event_type?.toLowerCase()] || 'bg-[#f6f3eb] text-teal-800 border-teal-900/10'}`}>{event.event_type}</span>
                       </div>
-                      <p className="text-xs text-gray-500 line-clamp-2 mb-1">{event.description}</p>
-                      {event.posted_by && <p className="text-[10px] text-gray-400">Posted by {event.posted_by}</p>}
+                      <p className="text-xs text-teal-700 line-clamp-2 mb-1">{event.description}</p>
+                      {event.posted_by && <p className="text-[10px] text-teal-600">Posted by {event.posted_by}</p>}
                     </div>
 
                     {/* Actions */}
                     <div className="flex flex-col gap-1.5 shrink-0">
                       {(event.registration_url || event.virtual_link) && (
-                        <a href={event.registration_url || event.virtual_link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors">
+                        <a href={event.registration_url || event.virtual_link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#f6f3eb] border border-teal-900/10 text-teal-700 hover:bg-[#f6f3eb] transition-colors">
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
@@ -234,6 +234,6 @@ export default function EventManagementPage() {
           </div>
         )}
       </div>
-    </AdminNavigation>
+    </>
   );
 }

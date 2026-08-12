@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { Download, CheckCircle, XCircle, MessageSquare, Loader, Sparkles, Award, FileText, Send, Clock, UserX } from 'lucide-react';
-import AluminaNavigation from '../AluminaNavigation/AlumniNavigation';
 import { toast } from 'sonner';
 
 interface ResumeRequest {
@@ -180,9 +179,9 @@ function AlumniResumeReviewsContent() {
   };
 
   return (
-    <div className="space-y-8 max-w-[1400px] mx-auto h-full flex flex-col font-sans text-[#111111] mb-12">
+    <div className="space-y-8 max-w-7xl mx-auto p-6 md:p-8 font-sans text-[#111111] mb-12">
       {/* Header Banner */}
-      <div className="bg-[#1A1C23] rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
+      <div className="bg-teal-950 rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div className="relative z-10 max-w-2xl">
           <h1 className="text-[32px] md:text-[38px] font-bold mb-2 tracking-tight">
             Resume Reviews
@@ -204,7 +203,7 @@ function AlumniResumeReviewsContent() {
             <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Pending</p>
             <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.pending}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0">
             <Clock size={20} strokeWidth={2.5} />
           </div>
         </div>
@@ -213,7 +212,7 @@ function AlumniResumeReviewsContent() {
             <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Accepted</p>
             <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.accepted}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0">
             <CheckCircle size={20} strokeWidth={2.5} />
           </div>
         </div>
@@ -222,7 +221,7 @@ function AlumniResumeReviewsContent() {
             <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Completed</p>
             <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.completed}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0">
             <Award size={20} strokeWidth={2.5} />
           </div>
         </div>
@@ -231,7 +230,7 @@ function AlumniResumeReviewsContent() {
             <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-1">Rejected</p>
             <p className="text-[32px] font-extrabold text-[#111111] tracking-tight">{stats.rejected}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0">
             <XCircle size={20} strokeWidth={2.5} />
           </div>
         </div>
@@ -239,7 +238,7 @@ function AlumniResumeReviewsContent() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader className="w-8 h-8 animate-spin text-[#1A1C23]" />
+          <Loader className="w-8 h-8 animate-spin text-teal-950" />
         </div>
       ) : requests.length === 0 ? (
         <div className="bg-white rounded-[32px] p-16 text-center border border-gray-50 shadow-sm">
@@ -258,7 +257,7 @@ function AlumniResumeReviewsContent() {
               <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-[22px] font-bold tracking-tight">Pending Requests</h3>
-                  <span className="text-[12px] font-bold bg-[#1A1C23] text-white px-3 py-1 rounded-full">
+                  <span className="text-[12px] font-bold bg-teal-950 text-white px-3 py-1 rounded-full">
                     {groupedRequests.pending.length} New
                   </span>
                 </div>
@@ -267,7 +266,7 @@ function AlumniResumeReviewsContent() {
                     <div key={req.id} className="bg-white border border-gray-100 rounded-[24px] p-5 hover:border-gray-200 transition-all shadow-sm">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">
                             {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
                           </div>
                           <div>
@@ -278,7 +277,7 @@ function AlumniResumeReviewsContent() {
                       </div>
 
                       {req.student_message && (
-                        <div className="bg-gray-50 rounded-[16px] p-4 mb-4 border border-gray-100">
+                        <div className="bg-[#f6f3eb] rounded-[16px] p-4 mb-4 border border-gray-100">
                           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Message</p>
                           <p className="text-[14px] font-medium text-gray-800">{req.student_message}</p>
                         </div>
@@ -286,18 +285,18 @@ function AlumniResumeReviewsContent() {
 
                       {req.resume_url ? (
                         <div className="flex gap-2 mb-4">
-                          <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-[#F4F6FB] text-[#1A1C23] hover:bg-gray-200 transition-colors flex items-center gap-2">
+                          <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-[#f6f3eb] text-teal-950 hover:bg-gray-200 transition-colors flex items-center gap-2">
                             <FileText size={16} /> Open Resume
                           </a>
                         </div>
                       ) : (
-                        <div className="bg-gray-50 border border-gray-100 rounded-[12px] p-3 mb-4">
+                        <div className="bg-[#f6f3eb] border border-gray-100 rounded-[12px] p-3 mb-4">
                           <p className="text-[13px] font-bold text-gray-500">Resume not available</p>
                         </div>
                       )}
 
                       <div className="flex gap-2">
-                        <button onClick={() => handleAccept(req.id)} className="flex-1 bg-[#1A1C23] hover:bg-black text-white font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
+                        <button onClick={() => handleAccept(req.id)} className="flex-1 bg-teal-950 hover:bg-teal-900 text-white font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
                           Accept
                         </button>
                         <button onClick={() => handleReject(req.id)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
@@ -318,7 +317,7 @@ function AlumniResumeReviewsContent() {
                     <div key={req.id} className="bg-white border border-gray-100 rounded-[24px] p-5 hover:border-gray-200 transition-all shadow-sm">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">
                             {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
                           </div>
                           <div>
@@ -331,13 +330,13 @@ function AlumniResumeReviewsContent() {
 
                       {req.resume_url && (
                         <div className="flex gap-2 mb-4">
-                           <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-[#F4F6FB] text-[#1A1C23] hover:bg-gray-200 transition-colors flex items-center gap-2">
+                           <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-[#f6f3eb] text-teal-950 hover:bg-gray-200 transition-colors flex items-center gap-2">
                              <FileText size={16} /> Open Resume
                            </a>
                         </div>
                       )}
 
-                      <button onClick={() => handleOpenFeedback(req.id)} className="w-full bg-[#1A1C23] hover:bg-black text-white font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
+                      <button onClick={() => handleOpenFeedback(req.id)} className="w-full bg-teal-950 hover:bg-teal-900 text-white font-bold py-3 rounded-[16px] transition flex items-center justify-center gap-2 text-[14px]">
                         <MessageSquare size={16} /> Provide Feedback
                       </button>
                     </div>
@@ -354,10 +353,10 @@ function AlumniResumeReviewsContent() {
                 <h3 className="text-[22px] font-bold tracking-tight mb-6">Completed History</h3>
                 <div className="space-y-4">
                   {groupedRequests.completed.map((req) => (
-                    <div key={req.id} className="bg-gray-50 border border-gray-100 rounded-[24px] p-5">
+                    <div key={req.id} className="bg-[#f6f3eb] border border-gray-100 rounded-[24px] p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 text-[#1A1C23] flex items-center justify-center font-bold text-[15px] shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 text-teal-950 flex items-center justify-center font-bold text-[15px] shrink-0">
                             {getStudentDisplayName(req).substring(0, 2).toUpperCase()}
                           </div>
                           <div>
@@ -370,7 +369,7 @@ function AlumniResumeReviewsContent() {
                       {req.alumni_feedback && (
                         <div className="bg-white rounded-[16px] p-4 mb-4 border border-gray-100">
                           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                            <Award size={14} className="text-[#1A1C23]" /> Your Feedback
+                            <Award size={14} className="text-teal-950" /> Your Feedback
                           </p>
                           <p className="text-[14px] font-medium text-gray-800">{req.alumni_feedback}</p>
                         </div>
@@ -378,7 +377,7 @@ function AlumniResumeReviewsContent() {
 
                       {req.resume_url && (
                         <div className="flex gap-2">
-                           <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                           <a href={getPreviewUrl(req.resume_url, req.filename)} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-[13px] font-bold rounded-[14px] bg-white border border-gray-200 text-gray-700 hover:bg-[#f6f3eb] transition-colors flex items-center gap-2">
                              <FileText size={16} /> Open Resume
                            </a>
                         </div>
@@ -397,7 +396,7 @@ function AlumniResumeReviewsContent() {
                 </div>
                 <div className="space-y-4 opacity-75">
                   {groupedRequests.rejected.map((req) => (
-                    <div key={req.id} className="bg-gray-50 border border-gray-100 rounded-[20px] p-5">
+                    <div key={req.id} className="bg-[#f6f3eb] border border-gray-100 rounded-[20px] p-5">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-2xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-bold text-[14px] shrink-0">
@@ -437,7 +436,7 @@ function AlumniResumeReviewsContent() {
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
                 placeholder="What are their strengths? Areas to improve? Specific suggestions?"
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-[16px] bg-gray-50 focus:outline-none focus:border-gray-400 focus:bg-white text-gray-900 font-medium resize-none transition-all placeholder-gray-400"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-[16px] bg-[#f6f3eb] focus:outline-none focus:border-gray-400 focus:bg-white text-gray-900 font-medium resize-none transition-all placeholder-gray-400"
                 rows={6}
               />
 
@@ -451,7 +450,7 @@ function AlumniResumeReviewsContent() {
                 <button
                   onClick={handleSubmitFeedback}
                   disabled={submittingFeedback || !feedbackText.trim()}
-                  className="flex-1 bg-[#1A1C23] hover:bg-black disabled:bg-gray-300 text-white font-bold py-3.5 rounded-[16px] transition-colors text-[14px] flex items-center justify-center gap-2"
+                  className="flex-1 bg-teal-950 hover:bg-teal-900 disabled:bg-gray-300 text-white font-bold py-3.5 rounded-[16px] transition-colors text-[14px] flex items-center justify-center gap-2"
                 >
                   {submittingFeedback ? (
                     <>
@@ -473,9 +472,5 @@ function AlumniResumeReviewsContent() {
 }
 
 export default function AlumniResumeReviews() {
-  return (
-    <AluminaNavigation>
-      <AlumniResumeReviewsContent />
-    </AluminaNavigation>
-  );
+  return <AlumniResumeReviewsContent />;
 }

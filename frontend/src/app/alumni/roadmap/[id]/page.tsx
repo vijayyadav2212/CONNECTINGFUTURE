@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import AlumniNavigation from "../../AluminaNavigation/AlumniNavigation";
+
 
 type Roadmap = {
   id: number;
@@ -41,8 +41,8 @@ export default function RoadmapDetailsPage() {
   }, [id]);
 
   return (
-    <AlumniNavigation>
-      <div className="p-6 min-h-screen bg-gray-50">
+    <>
+      <div className="p-6 min-h-screen bg-[#f6f3eb]">
         {loading && <p>Loading...</p>}
         {!loading && !roadmap && <p className="text-red-600">Roadmap not found.</p>}
         {roadmap && (
@@ -78,6 +78,6 @@ export default function RoadmapDetailsPage() {
           </Card>
         )}
       </div>
-    </AlumniNavigation>
+    </>
   );
 }

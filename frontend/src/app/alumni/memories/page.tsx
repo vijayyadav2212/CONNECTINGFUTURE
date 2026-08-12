@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
-import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
+
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Heart, MessageCircle, Calendar, MapPin, Camera, Search, Filter, Grid, List, Upload, X, Eye, TrendingUp, Clock, Sparkles, Send, Trophy, Users, BookOpen, UserPlus } from 'lucide-react';
@@ -49,9 +49,14 @@ const normalizeMemory = (m: any) => {
       ? m.tagged_user_emails
       : (typeof m.tagged_user_emails === 'string' ? m.tagged_user_emails.split(',').map((x: string) => x.trim()).filter(Boolean) : []));
 
+  const rawImage = m.image || m.image_url || '';
+  const resolvedImage = rawImage && !rawImage.startsWith('http') && !rawImage.startsWith('data:')
+    ? `http://localhost:4000${rawImage.startsWith('/') ? '' : '/'}${rawImage}`
+    : rawImage;
+
   return {
     id: m.id, title: m.title, description: m.description,
-    image: m.image || m.image_url || '',
+    image: resolvedImage,
     date: m.date || m.created_at || new Date().toISOString().split('T')[0],
     location: m.location || '', category: m.category || 'friendship', type: m.type || 'photo',
     likes: m.likes ?? 0, comments: m.comments ?? m.comments_count ?? 0,
@@ -63,14 +68,24 @@ const normalizeMemory = (m: any) => {
   };
 };
 
-const inputCls = "w-full px-4 py-3 text-[14px] rounded-[16px] border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all shadow-sm";
+const inputCls = "w-full px-4 py-3 text-[14px] rounded-[16px] border border-slate-200 bg-white hover:bg-[#f6f3eb] text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all shadow-sm";
 
 export default function MemoriesPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+  const addFormRef = useRef<HTMLDivElement | null>(null);
   const [memories, setMemories] = useState<any[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  useEffect(() => {
+    if (showAddForm) {
+      const timer = setTimeout(() => {
+        addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showAddForm]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -284,7 +299,7 @@ export default function MemoriesPage() {
                   toast({ title: 'Unable to open profile', description: 'Please try again.', variant: 'destructive' });
                 }
               }}
-              className="font-bold text-[#1A1C23] hover:text-indigo-700 hover:underline"
+              className="font-bold text-teal-950 hover:text-teal-700 hover:underline"
             >
               {p.text}
             </button>
@@ -444,8 +459,19 @@ export default function MemoriesPage() {
       setIsSharing(true);
       let image_url: string | null = null;
       if (imageFile) {
-        const fd = new FormData(); fd.append('image', imageFile);
-        try { const up = await apiClient.postFormData('/uploads/memory-image', fd); image_url = up?.url || null; } catch {}
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        try {
+          const up = await apiClient.postFormData('/memories/upload-image', fd).catch(() => null)
+            || await apiClient.postFormData('/uploads/memory-image', fd).catch(() => null);
+          image_url = up?.url || null;
+        } catch {}
+
+        if (!image_url) {
+          toast({ title: 'Image Upload Failed', description: 'Unable to upload photo to server. Please try again.', variant: 'destructive' });
+          setIsSharing(false);
+          return;
+        }
       }
       await apiClient.post('/memories', {
         author_name: user?.name || 'You',
@@ -463,7 +489,7 @@ export default function MemoriesPage() {
         category: newMemory.category,
         type: 'photo'
       });
-      toast({ title: 'Memory shared!', description: 'Your memory has been posted.', className: "bg-[#1A1C23] text-white rounded-2xl border-none" });
+      toast({ title: 'Memory shared!', description: 'Your memory has been posted.', className: "bg-teal-950 text-white rounded-2xl border-none" });
       setNewMemory({ title: '', description: '', location: '', tags: '', category: 'friendship' });
       setTaggedUsers([]);
       setImagePreview(null); setImageFile(null); setShowAddForm(false);
@@ -501,14 +527,14 @@ export default function MemoriesPage() {
   const renderCommentThread = (memoryId: number) => (
     <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5">
       <h4 className="flex items-center gap-2 text-sm font-black text-slate-800 mb-4 tracking-wider uppercase">
-        <MessageCircle className="w-4 h-4 text-[#1A1C23]" />
+        <MessageCircle className="w-4 h-4 text-teal-950" />
         Comments ({comments[memoryId]?.length ?? memories.find((m: any) => m.id === memoryId)?.comments ?? 0})
       </h4>
       <div className="space-y-4 max-h-60 overflow-y-auto mb-4 pr-1">
         {(comments[memoryId] || []).map((c: any, i: number) => (
           <div key={`${c.id}-${i}`} className="flex gap-3">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] text-[11px] font-black flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
-            <div className="flex-1 bg-slate-50/70 rounded-[16px] p-4 border border-slate-100/60">
+            <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 text-teal-950 text-[11px] font-black flex items-center justify-center shrink-0">{c.author.charAt(0)}</div>
+            <div className="flex-1 bg-[#f6f3eb]/70 rounded-[16px] p-4 border border-slate-100/60">
               <div className="flex items-start justify-between gap-3 mb-1.5">
                 <span className="text-[13px] font-black text-slate-800 leading-none shrink-0">{c.author}</span>
                 <span className="text-[10px] uppercase font-bold text-slate-400 text-right leading-tight break-words">{c.time}</span>
@@ -519,8 +545,8 @@ export default function MemoriesPage() {
         ))}
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-        <input id={`comment-input-${memoryId}`} value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment..." className="min-w-0 w-full px-4 py-2.5 text-[14px] rounded-[16px] border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" />
-        <button onClick={() => handleAddComment(memoryId)} className="w-11 h-11 inline-flex items-center justify-center bg-[#1A1C23] text-white rounded-[14px] text-sm font-bold hover:bg-[#1A1C23] transition-colors shadow-sm shadow-indigo-200 shrink-0">
+        <input id={`comment-input-${memoryId}`} value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(memoryId); } }} placeholder="Write a comment..." className="min-w-0 w-full px-4 py-2.5 text-[14px] rounded-[16px] border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-100 transition-all shadow-sm" />
+        <button onClick={() => handleAddComment(memoryId)} className="w-11 h-11 inline-flex items-center justify-center bg-teal-950 text-white rounded-[14px] text-sm font-bold hover:bg-teal-950 transition-colors shadow-sm shadow-teal-200 shrink-0">
           <Send className="w-4 h-4" />
         </button>
       </div>
@@ -533,16 +559,16 @@ export default function MemoriesPage() {
     return (
       <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_16px_40px_rgb(79,70,229,0.15)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
         {memory.image && (
-          <div className="relative h-52 overflow-hidden cursor-pointer bg-slate-100" onClick={async () => { setSelectedMemory(memory); try { const v = await apiClient.post(`/memories/${memory.id}/view`, {}); setMemories(p => p.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m)); } catch {} }}>
+          <div className="relative h-52 overflow-hidden cursor-pointer bg-[#f6f3eb]" onClick={async () => { setSelectedMemory(memory); try { const v = await apiClient.post(`/memories/${memory.id}/view`, {}); setMemories(p => p.map(m => m.id === memory.id ? { ...m, views: v?.views ?? (m.views || 0) + 1 } : m)); } catch {} }}>
             <img src={memory.image} alt={memory.title} className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-700" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/35 via-slate-900/5 to-transparent" />
             <div className="absolute top-3 left-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-white/95 backdrop-blur-md text-[10px] uppercase font-black tracking-widest text-slate-800 shadow-sm border border-white/20">
-                <CatIcon className="w-3.5 h-3.5 text-[#1A1C23]" />{memory.category}
+                <CatIcon className="w-3.5 h-3.5 text-teal-950" />{memory.category}
               </span>
             </div>
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
-              <span className="flex items-center gap-1.5 text-white/90 text-xs font-bold bg-slate-900/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10"><Eye className="w-3.5 h-3.5" />{memory.views || 0} views</span>
+              <span className="flex items-center gap-1.5 text-white/90 text-xs font-bold bg-teal-950/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10"><Eye className="w-3.5 h-3.5" />{memory.views || 0} views</span>
             </div>
             <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button onClick={() => setSelectedMemory(memory)} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full bg-white/90 text-slate-700 border border-white/30 backdrop-blur-md hover:bg-white">
@@ -554,19 +580,19 @@ export default function MemoriesPage() {
         <div className="p-6 flex flex-col min-h-[242px]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0 w-full">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] text-[12px] font-black flex items-center justify-center shrink-0 shadow-sm">{a.name.charAt(0)}</div>
+              <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-950 text-[12px] font-black flex items-center justify-center shrink-0 shadow-sm">{a.name.charAt(0)}</div>
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] sm:text-[14px] font-black text-slate-800 leading-tight break-words sm:truncate">{a.name}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 break-words sm:truncate">{a.batch}{a.department ? ` · ${a.department}` : ''}</p>
               </div>
             </div>
-            <span className="self-start sm:self-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
+            <span className="self-start sm:self-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 bg-[#f6f3eb] px-2.5 py-1.5 rounded-xl border border-slate-100">
               <Clock className="w-3 h-3" />
               {new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
           
-          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-[#1A1C23] transition-colors line-clamp-2 min-h-[44px]" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
+          <h4 className="font-extrabold text-slate-800 text-[16px] mb-2 cursor-pointer hover:text-teal-950 transition-colors line-clamp-2 min-h-[44px]" onClick={() => setSelectedMemory(memory)}>{memory.title}</h4>
           <div className="line-clamp-2 min-h-[40px] mb-4 leading-relaxed">
             {renderMemoryDescription(memory, 'text-[13px] font-medium text-slate-500')}
           </div>
@@ -579,7 +605,7 @@ export default function MemoriesPage() {
           
           {Array.isArray(memory.tags) && memory.tags.length > 0 ? (
             <div className="flex flex-wrap gap-2 mb-5 min-h-[30px]">
-              {memory.tags.slice(0, 3).map((t: string, i: number) => <span key={i} className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500">#{t}</span>)}
+              {memory.tags.slice(0, 3).map((t: string, i: number) => <span key={i} className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-[8px] bg-[#f6f3eb] border border-slate-100 text-slate-500">#{t}</span>)}
             </div>
           ) : (
             <div className="mb-5 min-h-[30px]" />
@@ -589,23 +615,23 @@ export default function MemoriesPage() {
             <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Open to like and comment</span>
             <button
               onClick={() => setSelectedMemory(memory)}
-              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-[#1A1C23] text-white hover:bg-[#1A1C23] transition-colors shadow-sm"
+              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-teal-950 text-white hover:bg-teal-950 transition-colors shadow-sm"
             >
               View Details
             </button>
           </div>
         </div>
-        <div className="h-1 w-full bg-gradient-to-r from-indigo-400/0 via-indigo-400 to-indigo-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="h-1 w-full bg-gradient-to-r from-teal-400/0 via-teal-400 to-teal-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
     );
   };
 
   return (
-    <AlumniNavigation>
+    <>
       <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans px-2 md:px-4">
 
         {/* Alumni Hero */}
-        <div className="bg-[#1A1C23] text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
+        <div className="bg-teal-950 text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
           <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
           </svg>
@@ -624,10 +650,10 @@ export default function MemoriesPage() {
           </div>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="relative z-10 bg-white hover:bg-slate-100 text-[#1A1C23] p-4 rounded-2xl shadow-sm border border-slate-100 transition-all duration-300 hidden sm:block hover:scale-105"
+            className="relative z-10 bg-white hover:bg-[#f6f3eb] text-teal-950 p-4 rounded-2xl shadow-sm border border-slate-100 transition-all duration-300 hidden sm:block hover:scale-105"
             title="Share Memory"
           >
-            <Camera className="w-8 h-8 text-[#1A1C23] stroke-[2.5]" />
+            <Camera className="w-8 h-8 text-teal-950 stroke-[2.5]" />
           </button>
         </div>
 
@@ -639,15 +665,15 @@ export default function MemoriesPage() {
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Community Likes</p>
-            <p className="text-2xl font-extrabold text-rose-600">{totalLikes}</p>
+            <p className="text-2xl font-extrabold text-teal-950">{totalLikes}</p>
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Active Authors</p>
-            <p className="text-2xl font-extrabold text-emerald-600">{activeAuthors}</p>
+            <p className="text-2xl font-extrabold text-teal-950">{activeAuthors}</p>
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">Top Category</p>
-            <p className="text-xl font-extrabold text-[#1A1C23] capitalize">{topCategory}</p>
+            <p className="text-xl font-extrabold text-teal-950 capitalize">{topCategory}</p>
             <p className="text-[11px] font-bold text-slate-400 mt-1">{totalComments} comments</p>
           </div>
         </div>
@@ -655,7 +681,7 @@ export default function MemoriesPage() {
         {/* Mobile FAB */}
         <button 
           onClick={() => setShowAddForm(!showAddForm)}
-          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#1A1C23] text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30 z-[90] hover:bg-[#1A1C23] transition-colors hover:scale-105"
+          className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-teal-950 text-white rounded-full flex items-center justify-center shadow-lg shadow-teal-500/30 z-[90] hover:bg-teal-950 transition-colors hover:scale-105"
         >
           <Camera className="w-6 h-6" />
         </button>
@@ -665,14 +691,14 @@ export default function MemoriesPage() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input placeholder="Search memories, people, tags…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-12 pr-10 py-3.5 text-[15px] font-medium rounded-[16px] border border-slate-200 bg-slate-50/50 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all shadow-sm" />
+              <input placeholder="Search memories, people, tags…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-12 pr-10 py-3.5 text-[15px] font-medium rounded-[16px] border border-slate-200 bg-[#f6f3eb] text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all shadow-sm" />
               {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 bg-white rounded-full p-1 shadow-sm border border-slate-100"><X className="w-3.5 h-3.5" /></button>}
             </div>
             
             <div className="flex gap-4">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full md:w-52 h-[52px] rounded-[16px] border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white text-[14px] font-bold text-slate-700 shadow-sm transition-colors">
-                  <Filter className="w-4 h-4 mr-2 text-[#1A1C23]" /><SelectValue placeholder="All Categories" />
+                <SelectTrigger className="w-full md:w-52 h-[52px] rounded-[16px] border-slate-200 bg-[#f6f3eb] hover:bg-white focus:bg-white text-[14px] font-bold text-slate-700 shadow-sm transition-colors">
+                  <Filter className="w-4 h-4 mr-2 text-teal-950" /><SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-slate-100 shadow-xl font-medium">
                   <SelectItem value="all">All Categories</SelectItem>
@@ -685,16 +711,16 @@ export default function MemoriesPage() {
                 </SelectContent>
               </Select>
               
-              <div className="hidden sm:flex gap-1.5 bg-slate-50 border border-slate-100 p-1.5 rounded-[16px] shrink-0">
-                <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-[#1A1C23] border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><Grid className="w-4 h-4" /></button>
-                <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[#1A1C23] border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><List className="w-4 h-4" /></button>
+              <div className="hidden sm:flex gap-1.5 bg-[#f6f3eb] border border-slate-100 p-1.5 rounded-[16px] shrink-0">
+                <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-teal-950 border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><Grid className="w-4 h-4" /></button>
+                <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-[12px] transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-teal-950 border border-slate-200/50' : 'text-slate-400 hover:text-slate-800 hover:bg-white/50'}`}><List className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 p-2 border border-slate-100">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-[#f6f3eb] p-2 border border-slate-100">
             {TABS.map(t => (
-              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-white text-[#1A1C23] shadow-sm border border-indigo-100' : 'text-slate-500 hover:bg-white hover:text-slate-800 border border-transparent'}`}>
+              <button key={t.value} onClick={() => setActiveTab(t.value)} className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[12px] font-black uppercase tracking-widest transition-all ${activeTab === t.value ? 'bg-white text-teal-950 shadow-sm border border-teal-100' : 'text-slate-500 hover:bg-white hover:text-slate-800 border border-transparent'}`}>
                 {t.icon}{t.label}
               </button>
             ))}
@@ -704,16 +730,16 @@ export default function MemoriesPage() {
 
         {/* Add Memory Form */}
         {showAddForm && (
-          <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 animate-in slide-in-from-top-4 fade-in duration-300">
+          <div ref={addFormRef} className="scroll-mt-28 bg-white rounded-[32px] p-6 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 animate-in slide-in-from-top-4 fade-in duration-300">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100"><Sparkles className="w-5 h-5 text-[#1A1C23]" /></div>
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center border border-teal-100"><Sparkles className="w-5 h-5 text-teal-950" /></div>
                 <div>
                   <h3 className="text-xl font-extrabold text-slate-800">Share a Memory</h3>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mt-1">Upload and Inspire</p>
                 </div>
               </div>
-              <button onClick={() => setShowAddForm(false)} className="p-2.5 bg-slate-50 border border-slate-100 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+              <button onClick={() => setShowAddForm(false)} className="p-2.5 bg-[#f6f3eb] border border-slate-100 hover:bg-[#f6f3eb] rounded-full text-slate-400 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -721,17 +747,17 @@ export default function MemoriesPage() {
             <div className="space-y-6">
               <div>
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="img-upload" />
-                <label htmlFor="img-upload" className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-slate-200 rounded-[28px] cursor-pointer bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-all overflow-hidden group relative">
+                <label htmlFor="img-upload" className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-slate-200 rounded-[28px] cursor-pointer bg-[#f6f3eb] hover:bg-[#f6f3eb] hover:border-teal-300 transition-all overflow-hidden group relative">
                   {imagePreview ? (
                     <div className="relative w-full h-full">
                       <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-sm">
-                        <span className="text-white font-bold text-sm bg-slate-900/60 border border-white/20 px-5 py-2.5 rounded-full shadow-lg">Change Photo</span>
+                      <div className="absolute inset-0 bg-teal-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-sm">
+                        <span className="text-white font-bold text-sm bg-teal-950/60 border border-white/20 px-5 py-2.5 rounded-full shadow-lg">Change Photo</span>
                       </div>
-                      <button onClick={e => { e.preventDefault(); setImagePreview(null); setImageFile(null); }} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-xl flex items-center justify-center text-slate-600 hover:text-rose-600 hover:scale-110 transition-all z-10"><X className="w-4 h-4" /></button>
+                      <button onClick={e => { e.preventDefault(); setImagePreview(null); setImageFile(null); }} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-xl flex items-center justify-center text-slate-600 hover:text-teal-950 hover:scale-110 transition-all z-10"><X className="w-4 h-4" /></button>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center text-slate-400 group-hover:text-[#1A1C23] transition-colors">
+                    <div className="flex flex-col items-center text-slate-400 group-hover:text-teal-950 transition-colors">
                       <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <Upload className="w-6 h-6" />
                       </div>
@@ -780,7 +806,7 @@ export default function MemoriesPage() {
 
                   {mentionOpen && (
                     <div className="absolute z-30 left-0 right-0 mt-2 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
-                      <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50">
+                      <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-[#f6f3eb]">
                         Mention users
                       </div>
                       <div className="max-h-64 overflow-y-auto">
@@ -793,17 +819,17 @@ export default function MemoriesPage() {
                             key={`${u.email || u.id || u.name}-${idx}`}
                             type="button"
                             onClick={() => insertMention(u)}
-                            className="w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0"
+                            className="w-full px-4 py-3 text-left hover:bg-teal-50 transition-colors border-b border-slate-50 last:border-0"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] text-[12px] font-black flex items-center justify-center shrink-0">
+                              <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-950 text-[12px] font-black flex items-center justify-center shrink-0">
                                 {String(u.name || 'U').charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-[13px] font-bold text-slate-800 truncate">{u.name}</p>
                                 <p className="text-[11px] text-slate-500 truncate">{u.department || 'Department not set'} {u.graduation_year ? `• ${u.graduation_year}` : ''}</p>
                               </div>
-                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${u.relation === 'following' ? 'bg-indigo-100 text-indigo-700' : u.relation === 'connected' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${u.relation === 'following' ? 'bg-teal-100 text-teal-700' : u.relation === 'connected' ? 'bg-emerald-100 text-emerald-700' : 'bg-[#f6f3eb] text-slate-600'}`}>
                                 {u.relation || 'all'}
                               </span>
                             </div>
@@ -832,7 +858,7 @@ export default function MemoriesPage() {
               {taggedUsers.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {taggedUsers.map((u, idx) => (
-                    <span key={`${u.email || u.name}-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">
+                    <span key={`${u.email || u.name}-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-50 text-teal-700 text-[11px] font-bold border border-teal-100">
                       @{u.name}
                     </span>
                   ))}
@@ -840,8 +866,8 @@ export default function MemoriesPage() {
               )}
 
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
-                <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); setTaggedUsers([]); setMentionOpen(false); }} className="px-6 py-3.5 text-sm font-black rounded-[16px] bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest text-center">Cancel</button>
-                <button onClick={handleAddMemory} disabled={isSharing} className="px-8 py-3.5 bg-[#1A1C23] text-white text-sm font-black rounded-[16px] hover:bg-[#1A1C23] transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-60 uppercase tracking-widest text-center">
+                <button onClick={() => { setShowAddForm(false); setImagePreview(null); setImageFile(null); setTaggedUsers([]); setMentionOpen(false); }} className="px-6 py-3.5 text-sm font-black rounded-[16px] bg-white border border-slate-200 text-slate-600 hover:bg-[#f6f3eb] transition-colors uppercase tracking-widest text-center">Cancel</button>
+                <button onClick={handleAddMemory} disabled={isSharing} className="px-8 py-3.5 bg-teal-950 text-white text-sm font-black rounded-[16px] hover:bg-teal-950 transition-colors shadow-lg shadow-teal-500/20 disabled:opacity-60 uppercase tracking-widest text-center">
                   {isSharing ? 'Sharing…' : 'Post Memory'}
                 </button>
               </div>
@@ -852,10 +878,10 @@ export default function MemoriesPage() {
         {/* Memory Grid/List */}
         {filteredMemories.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] text-center px-4">
-            <div className="w-20 h-20 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5"><Search className="w-8 h-8 text-indigo-300" /></div>
+            <div className="w-20 h-20 rounded-3xl bg-[#f6f3eb] border border-slate-100 flex items-center justify-center mb-5"><Search className="w-8 h-8 text-teal-300" /></div>
             <p className="font-extrabold text-slate-800 text-xl mb-2">No memories found</p>
             <p className="text-[15px] font-medium text-slate-500 mb-6 max-w-sm mx-auto">Try adjusting your search or filter criteria to see more memories from the community.</p>
-            <button onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} className="px-6 py-3 text-[12px] font-black rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-widest shadow-sm">Clear Filters</button>
+            <button onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} className="px-6 py-3 text-[12px] font-black rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-[#f6f3eb] transition-colors uppercase tracking-widest shadow-sm">Clear Filters</button>
           </div>
         ) : (
           <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6' : 'space-y-6 max-w-4xl mx-auto'}`}>
@@ -873,7 +899,7 @@ export default function MemoriesPage() {
           {selectedMemory && (
             <>
               {selectedMemory.image ? (
-                <div className="w-full md:w-1/2 h-72 md:h-auto bg-slate-100 relative overflow-hidden flex items-center justify-center border-r border-slate-100">
+                <div className="w-full md:w-1/2 h-72 md:h-auto bg-[#f6f3eb] relative overflow-hidden flex items-center justify-center border-r border-slate-100">
                   <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url(${selectedMemory.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
                   <img
                     src={selectedMemory.image}
@@ -884,33 +910,33 @@ export default function MemoriesPage() {
                   />
                   <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/90 text-slate-700 border border-white/40">
-                      <Eye className="w-3.5 h-3.5 text-[#1A1C23]" />
+                      <Eye className="w-3.5 h-3.5 text-teal-950" />
                       {selectedMemory.views || 0} views
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/90 text-slate-700 border border-white/40 capitalize">
                       {(selectedMemory.category || 'friendship')}
                     </span>
                   </div>
-                  <span className="absolute bottom-4 right-4 z-20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-slate-900/60 text-white border border-white/20 backdrop-blur-sm">
+                  <span className="absolute bottom-4 right-4 z-20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-teal-950/60 text-white border border-white/20 backdrop-blur-sm">
                     Double-click to expand
                   </span>
                 </div>
               ) : (
-                <div className="hidden md:flex w-[45%] bg-indigo-50 items-center justify-center border-r border-indigo-100">
-                  <Camera className="w-20 h-20 text-indigo-200" />
+                <div className="hidden md:flex w-[45%] bg-teal-50 items-center justify-center border-r border-teal-100">
+                  <Camera className="w-20 h-20 text-teal-200" />
                 </div>
               )}
               
               <div className="w-full flex-1 flex flex-col max-h-[92vh] overflow-y-auto bg-white">
                 <div className="p-5 sm:p-6 md:p-8 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
                   <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-indigo-50 border border-indigo-100 text-[#1A1C23] font-black text-[16px] sm:text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-teal-50 border border-teal-100 text-teal-950 font-black text-[16px] sm:text-[18px] flex items-center justify-center shrink-0 shadow-sm">{(selectedMemory.author?.name || 'A').charAt(0)}</div>
                     <div className="min-w-0 flex-1">
                       <p className="font-black text-slate-800 text-[16px] sm:text-[18px] leading-tight break-words">{selectedMemory.author?.name}</p>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1 break-words">{selectedMemory.author?.batch}{selectedMemory.author?.department ? ` · ${selectedMemory.author.department}` : ''}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 shadow-sm">{selectedMemory.category}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] shadow-sm">{selectedMemory.type || 'photo'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-[#f6f3eb] border border-slate-200 text-slate-600 shadow-sm">{selectedMemory.category}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-100 text-teal-950 shadow-sm">{selectedMemory.type || 'photo'}</span>
                       </div>
                     </div>
                   </div>
@@ -923,7 +949,7 @@ export default function MemoriesPage() {
                   
                     {Array.isArray(selectedMemory.tags) && selectedMemory.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-2 mb-6">
-                        {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-slate-50 border border-slate-100 text-slate-500 hover:bg-indigo-50 hover:border-indigo-100 hover:text-[#1A1C23] transition-colors">#{t}</span>)}
+                        {selectedMemory.tags.map((t: string, i: number) => <span key={i} className="text-[10px] uppercase tracking-[0.1em] font-black px-3 py-1 rounded-[8px] bg-[#f6f3eb] border border-slate-100 text-slate-500 hover:bg-teal-50 hover:border-teal-100 hover:text-teal-950 transition-colors">#{t}</span>)}
                       </div>
                     )}
                   
@@ -932,15 +958,15 @@ export default function MemoriesPage() {
                   
                   <div className="mt-auto space-y-4 pt-6 border-t border-slate-100">
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => { handleLike(selectedMemory.id); setSelectedMemory({ ...selectedMemory, isLiked: !selectedMemory.isLiked, likes: selectedMemory.isLiked ? selectedMemory.likes - 1 : selectedMemory.likes + 1 }); }} className={`h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] transition-all ${selectedMemory.isLiked ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shadow-sm shadow-rose-100' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}>
+                      <button onClick={() => { handleLike(selectedMemory.id); setSelectedMemory({ ...selectedMemory, isLiked: !selectedMemory.isLiked, likes: selectedMemory.isLiked ? selectedMemory.likes - 1 : selectedMemory.likes + 1 }); }} className={`h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] transition-all ${selectedMemory.isLiked ? 'bg-teal-50 text-teal-950 border border-rose-100 hover:bg-rose-100 shadow-sm shadow-rose-100' : 'bg-white border border-slate-200 text-slate-600 hover:bg-[#f6f3eb] shadow-sm'}`}>
                         <Heart className={`w-4 h-4 ${selectedMemory.isLiked ? 'fill-current' : ''}`} />
                         <span>{selectedMemory.likes || 0}</span>
                       </button>
                       <button
                         onClick={() => document.getElementById(`comment-input-${selectedMemory.id}`)?.focus()}
-                        className="h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] bg-slate-50 text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-100 transition-colors"
+                        className="h-12 flex items-center justify-center gap-2.5 text-[12px] font-bold uppercase tracking-widest rounded-[14px] bg-[#f6f3eb] text-slate-600 border border-slate-100 shadow-sm hover:bg-[#f6f3eb] transition-colors"
                       >
-                        <MessageCircle className="w-4 h-4 text-[#1A1C23]" />
+                        <MessageCircle className="w-4 h-4 text-teal-950" />
                         <span>{comments[selectedMemory.id]?.length || selectedMemory.comments || 0}</span>
                       </button>
                     </div>
@@ -960,7 +986,7 @@ export default function MemoriesPage() {
             {tagProfile && (
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-[#1A1C23] font-black text-[18px] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-100 text-teal-950 font-black text-[18px] flex items-center justify-center">
                     {String(tagProfile.name || tagProfile.email || 'U').charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -970,7 +996,7 @@ export default function MemoriesPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 mb-5">
+                <div className="rounded-2xl border border-slate-100 bg-[#f6f3eb] p-4 mb-5">
                   {tagProfileConnectionStatus === 'accepted' ? (
                     <p className="text-[13px] text-slate-600 font-medium">You are connected. Full profile context is visible.</p>
                   ) : (
@@ -986,7 +1012,7 @@ export default function MemoriesPage() {
                     <button
                       onClick={requestConnectFromTag}
                       disabled={tagActionBusy || !user?.email || !tagProfile?.email}
-                      className="flex-1 h-11 rounded-xl bg-[#1A1C23] text-white text-[13px] font-bold hover:bg-black transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                      className="flex-1 h-11 rounded-xl bg-teal-950 text-white text-[13px] font-bold hover:bg-teal-900 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
                     >
                       <UserPlus className="w-4 h-4" />
                       Connect
@@ -996,14 +1022,14 @@ export default function MemoriesPage() {
                       <button
                         onClick={() => respondToTagConnection('accept')}
                         disabled={tagActionBusy}
-                        className="flex-1 h-11 rounded-xl bg-emerald-600 text-white text-[13px] font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                        className="flex-1 h-11 rounded-xl bg-[#f3b13a] text-teal-950 font-bold text-[13px] font-bold hover:bg-[#d89c30] transition-colors disabled:opacity-50"
                       >
                         Accept
                       </button>
                       <button
                         onClick={() => respondToTagConnection('reject')}
                         disabled={tagActionBusy}
-                        className="flex-1 h-11 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 text-[13px] font-bold hover:bg-rose-100 transition-colors disabled:opacity-50"
+                        className="flex-1 h-11 rounded-xl bg-teal-50 text-teal-950 border border-rose-200 text-[13px] font-bold hover:bg-rose-100 transition-colors disabled:opacity-50"
                       >
                         Decline
                       </button>
@@ -1011,7 +1037,7 @@ export default function MemoriesPage() {
                   ) : (
                     <button
                       disabled
-                      className="flex-1 h-11 rounded-xl bg-slate-100 text-slate-500 text-[13px] font-bold"
+                      className="flex-1 h-11 rounded-xl bg-[#f6f3eb] text-slate-500 text-[13px] font-bold"
                     >
                       {tagProfileConnectionStatus === 'accepted' ? 'Connected' : 'Request Sent'}
                     </button>
@@ -1044,6 +1070,6 @@ export default function MemoriesPage() {
           </div>
         </div>
       )}
-    </AlumniNavigation>
+    </>
   );
 }

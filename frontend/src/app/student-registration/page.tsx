@@ -189,9 +189,9 @@ export default function StudentRegistrationPage() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-green-50">
+            <div className="flex items-center justify-center min-h-screen bg-[#f6f3eb]">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4" />
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-teal-500 mx-auto mb-4" />
                     <p className="text-gray-600 font-medium">Loading...</p>
                 </div>
             </div>
@@ -200,12 +200,12 @@ export default function StudentRegistrationPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-green-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-[#f6f3eb] flex items-center justify-center p-4">
                 <Card className="w-full max-w-md shadow-xl border-0">
                     <CardHeader className="text-center pb-6">
                         <div className="flex justify-center mb-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                <GraduationCap className="h-8 w-8 text-white" />
+                            <div className="w-16 h-16 bg-white rounded-2xl p-2 shadow-lg border border-teal-900/10 flex items-center justify-center overflow-hidden">
+                                <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="w-full h-full object-contain" />
                             </div>
                         </div>
                         <CardTitle className="text-2xl font-bold text-gray-900">
@@ -214,7 +214,7 @@ export default function StudentRegistrationPage() {
                     </CardHeader>
                     <CardContent>
                         <a href="/api/auth/login?returnTo=/post-login" className="w-full">
-                            <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-xl font-semibold shadow-lg">
+                            <Button className="w-full bg-teal-950 hover:bg-teal-900 text-white font-bold py-3 rounded-xl font-semibold shadow-lg">
                                 <User className="w-5 h-5 mr-2" />
                                 Sign In
                             </Button>
@@ -226,13 +226,13 @@ export default function StudentRegistrationPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-green-50 py-8 px-4">
+        <div className="min-h-screen bg-[#f6f3eb] py-8 px-4">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="mb-8 text-center">
                     <div className="flex justify-center mb-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl">
-                            <GraduationCap className="h-8 w-8 text-white" />
+                        <div className="w-16 h-16 bg-white rounded-2xl p-2 shadow-lg border border-teal-900/10 flex items-center justify-center overflow-hidden">
+                            <img src="/NEWCNLOGO.png" alt="Alumnex Logo" className="w-full h-full object-contain" />
                         </div>
                     </div>
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
@@ -240,16 +240,16 @@ export default function StudentRegistrationPage() {
                     </h1>
                     <p className="text-gray-600">
                         Signed in as{" "}
-                        <span className="font-semibold text-blue-600">{user.email}</span>
+                        <span className="font-semibold text-teal-900">{user.email}</span>
                     </p>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                     {/* ── Left: Form ── */}
                     <Card className="shadow-2xl border border-white/60 w-full lg:w-2/3 bg-white/90 backdrop-blur-sm">
-                        <CardHeader className="pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl border-b border-blue-100">
+                        <CardHeader className="pb-6 bg-teal-900/10 rounded-t-xl border-b border-teal-100">
                             <CardTitle className="text-lg flex items-center text-gray-900 font-bold">
-                                <BookOpen className="w-6 h-6 mr-3 text-blue-600" />
+                                <BookOpen className="w-6 h-6 mr-3 text-teal-900" />
                                 Engineering Student Details
                             </CardTitle>
                             <p className="text-sm text-gray-600 mt-1">
@@ -267,7 +267,7 @@ export default function StudentRegistrationPage() {
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 {/* ── Section 1: Personal Info ── */}
                                 <div className="space-y-5">
-                                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-3 rounded-xl shadow-md">
+                                    <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white px-5 py-3 rounded-xl shadow-md">
                                         <h3 className="text-sm font-bold uppercase tracking-wide flex items-center">
                                             <User className="w-4 h-4 mr-2" />
                                             Personal Information
@@ -287,7 +287,7 @@ export default function StudentRegistrationPage() {
                                                 onChange={handleChange}
                                                 required
                                                 placeholder="e.g. Vinayak Gorivale"
-                                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
+                                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-300 focus:border-teal-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
                                             />
                                         </div>
 
@@ -297,14 +297,14 @@ export default function StudentRegistrationPage() {
                                                 Phone Number
                                             </label>
                                             <div className="relative">
-                                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 w-4 h-4" />
+                                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-400 w-4 h-4" />
                                                 <input
                                                     type="tel"
                                                     name="phone"
                                                     value={formData.phone}
                                                     onChange={handleChange}
                                                     placeholder="+91 9876543210"
-                                                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
+                                                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-300 focus:border-teal-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
                                                 />
                                             </div>
                                         </div>
@@ -451,14 +451,14 @@ export default function StudentRegistrationPage() {
                                             LinkedIn Profile
                                         </label>
                                         <div className="relative">
-                                            <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 w-4 h-4" />
+                                            <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-900 w-4 h-4" />
                                             <input
                                                 type="url"
                                                 name="linkedIn"
                                                 value={formData.linkedIn}
                                                 onChange={handleChange}
                                                 placeholder="https://linkedin.com/in/yourprofile"
-                                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
+                                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-300 focus:border-teal-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
                                             />
                                         </div>
                                     </div>
@@ -466,7 +466,7 @@ export default function StudentRegistrationPage() {
 
                                 {/* ── Section 3: Additional ── */}
                                 <div className="border-t border-gray-100 pt-6 space-y-5">
-                                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-3 rounded-xl shadow-md">
+                                    <div className="bg-gradient-to-r from-teal-600 to-teal-600 text-white px-5 py-3 rounded-xl shadow-md">
                                         <h3 className="text-sm font-bold uppercase tracking-wide flex items-center">
                                             <FileText className="w-4 h-4 mr-2" />
                                             Additional Information
@@ -484,7 +484,7 @@ export default function StudentRegistrationPage() {
                                             onChange={handleChange}
                                             rows={4}
                                             placeholder="Tell us about yourself — your interests, goals, projects, and what you're passionate about..."
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300 resize-none"
+                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-300 focus:border-teal-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300 resize-none"
                                         />
                                     </div>
 
@@ -499,7 +499,7 @@ export default function StudentRegistrationPage() {
                                             value={formData.skills}
                                             onChange={handleChange}
                                             placeholder="e.g. Python, Java, React, Machine Learning, AutoCAD"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
+                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-300 focus:border-teal-500 bg-white text-gray-900 placeholder-gray-400 transition-all hover:border-gray-300"
                                         />
                                         <p className="text-xs text-gray-500 mt-1.5">
                                             Separate skills with commas
@@ -512,7 +512,7 @@ export default function StudentRegistrationPage() {
                                     <Button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white py-4 rounded-xl font-bold text-base shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-[1.01]"
+                                        className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white py-4 rounded-xl font-bold text-base shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-[1.01]"
                                     >
                                         {isSubmitting ? (
                                             <>
@@ -534,7 +534,7 @@ export default function StudentRegistrationPage() {
                     {/* ── Right: Live Preview ── */}
                     <div className="w-full lg:w-1/3 lg:sticky lg:top-6">
                         <Card className="shadow-2xl border border-white/60 bg-white/90 backdrop-blur-sm">
-                            <CardHeader className="pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl border-b border-blue-100">
+                            <CardHeader className="pb-4 bg-teal-900/10 rounded-t-xl border-b border-teal-100">
                                 <CardTitle className="text-lg text-gray-900 font-bold flex items-center">
                                     <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
                                     Live Preview
@@ -547,7 +547,7 @@ export default function StudentRegistrationPage() {
                             <CardContent className="p-5 space-y-4">
                                 {/* Avatar + Name */}
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-md">
                                         <span className="text-white text-xl font-bold">
                                             {formData.fullName?.[0]?.toUpperCase() || "S"}
                                         </span>
@@ -556,7 +556,7 @@ export default function StudentRegistrationPage() {
                                         <p className="text-lg font-bold text-gray-900">
                                             {formData.fullName || "Your Name"}
                                         </p>
-                                        <p className="text-sm text-blue-600 font-medium">
+                                        <p className="text-sm text-teal-900 font-medium">
                                             {formData.yearOfStudy || "Year of Study"}
                                         </p>
                                     </div>
@@ -571,8 +571,8 @@ export default function StudentRegistrationPage() {
                                         </div>
                                     )}
                                     {formData.rollNumber && (
-                                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
-                                            <Hash className="w-4 h-4 text-blue-600 shrink-0" />
+                                        <div className="flex items-center gap-2 p-2 bg-teal-50 rounded-lg">
+                                            <Hash className="w-4 h-4 text-teal-900 shrink-0" />
                                             <span>{formData.rollNumber}</span>
                                         </div>
                                     )}
@@ -583,8 +583,8 @@ export default function StudentRegistrationPage() {
                                         </div>
                                     )}
                                     {formData.semester && (
-                                        <div className="flex items-center gap-2 p-2 bg-indigo-50 rounded-lg">
-                                            <BookOpen className="w-4 h-4 text-indigo-600 shrink-0" />
+                                        <div className="flex items-center gap-2 p-2 bg-teal-50 rounded-lg">
+                                            <BookOpen className="w-4 h-4 text-teal-600 shrink-0" />
                                             <span>{formData.semester}</span>
                                         </div>
                                     )}
@@ -592,7 +592,7 @@ export default function StudentRegistrationPage() {
 
                                 {/* Bio preview */}
                                 {formData.bio && (
-                                    <p className="text-sm text-gray-600 italic border-l-4 border-blue-200 pl-3">
+                                    <p className="text-sm text-gray-600 italic border-l-4 border-teal-200 pl-3">
                                         {formData.bio}
                                     </p>
                                 )}
@@ -608,7 +608,7 @@ export default function StudentRegistrationPage() {
                                             .map((s) => (
                                                 <span
                                                     key={s}
-                                                    className="px-2.5 py-1 rounded-full text-xs bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 font-medium"
+                                                    className="px-2.5 py-1 rounded-full text-xs bg-gradient-to-r from-teal-100 to-teal-100 text-teal-700 font-medium"
                                                 >
                                                     {s}
                                                 </span>
@@ -622,7 +622,7 @@ export default function StudentRegistrationPage() {
                                         href={formData.linkedIn}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                                        className="flex items-center gap-2 text-sm text-teal-900 hover:underline"
                                     >
                                         <Linkedin className="w-4 h-4" />
                                         LinkedIn Profile
@@ -632,11 +632,11 @@ export default function StudentRegistrationPage() {
                         </Card>
 
                         {/* Tip card */}
-                        <div className="mt-4 p-4 bg-blue-600/10 border border-blue-200 rounded-2xl">
-                            <p className="text-sm text-blue-800 font-semibold mb-1">
+                        <div className="mt-4 p-4 bg-teal-950/10 border border-teal-200 rounded-2xl">
+                            <p className="text-sm text-teal-800 font-semibold mb-1">
                                 🎓 Why fill this out?
                             </p>
-                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <ul className="text-xs text-teal-700 space-y-1 list-disc list-inside">
                                 <li>Get matched with the right mentors</li>
                                 <li>Find job & internship opportunities</li>
                                 <li>Connect with alumni in your branch</li>

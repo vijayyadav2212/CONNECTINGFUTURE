@@ -14,7 +14,7 @@ export default function FeaturesStrip() {
             Build your dream career with us!
           </h2>
           <a href="/api/auth/login?screen_hint=signup">
-            <Button className="bg-[#f3b13a] hover:bg-[#d89c30] text-teal-950 font-bold px-8 py-5 rounded-lg text-sm shadow-md transition-transform hover:scale-102">
+            <Button className="bg-black hover:bg-gray-900 text-white font-bold px-8 py-5 rounded-lg text-sm shadow-md transition-transform hover:scale-102">
               Get In Touch
             </Button>
           </a>

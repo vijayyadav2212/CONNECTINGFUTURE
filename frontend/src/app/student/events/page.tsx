@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { toast } from 'sonner';
-import StudentNavigation from '../StudentNavigation/StudentNavigation';
+
 import { Calendar, MapPin, Clock, Users, Search, Filter, Plus, ExternalLink, Share2, BookmarkPlus, Sparkles, GraduationCap } from 'lucide-react';
 import Image from 'next/image';
 
@@ -240,24 +240,24 @@ function EventsContent() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'workshop': return 'bg-blue-100 text-blue-600';
+      case 'workshop': return 'bg-teal-100 text-teal-600';
       case 'seminar': return 'bg-green-100 text-green-600';
-      case 'networking': return 'bg-purple-100 text-purple-600';
+      case 'networking': return 'bg-teal-100 text-teal-600';
       case 'career-fair': return 'bg-orange-100 text-orange-600';
       case 'hackathon': return 'bg-red-100 text-red-600';
-      case 'webinar': return 'bg-indigo-100 text-indigo-600';
+      case 'webinar': return 'bg-teal-100 text-teal-600';
       default: return 'bg-gray-100 text-gray-600';
     }
   };
 
   const getTypeAccent = (type: string) => {
     switch (type) {
-      case 'workshop': return 'from-blue-500/20 via-blue-500/8 to-transparent';
+      case 'workshop': return 'from-teal-500/20 via-teal-500/8 to-transparent';
       case 'seminar': return 'from-emerald-500/20 via-emerald-500/8 to-transparent';
-      case 'networking': return 'from-purple-500/20 via-purple-500/8 to-transparent';
+      case 'networking': return 'from-teal-500/20 via-teal-500/8 to-transparent';
       case 'career-fair': return 'from-orange-500/20 via-orange-500/8 to-transparent';
       case 'hackathon': return 'from-rose-500/20 via-rose-500/8 to-transparent';
-      case 'webinar': return 'from-indigo-500/20 via-indigo-500/8 to-transparent';
+      case 'webinar': return 'from-teal-500/20 via-teal-500/8 to-transparent';
       default: return 'from-slate-500/20 via-slate-500/8 to-transparent';
     }
   };
@@ -290,16 +290,16 @@ function EventsContent() {
     .slice(0, 3);
 
   return (
-    <StudentNavigation>
-      <div className="min-h-screen bg-[#F5F6FA] py-4 px-4 sm:px-6 lg:px-8">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb] py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#1A1B23] p-8 lg:p-10 shadow-2xl">
+            <div className="relative overflow-hidden rounded-[32px] border border-teal-900/10 bg-teal-950 p-8 lg:p-10 shadow-2xl">
               <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
               <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
-                  <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                  <div className="flex items-center gap-2 text-teal-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
                     <GraduationCap className="w-4 h-4" />
                     <span>Campus Events</span>
                   </div>
@@ -315,7 +315,7 @@ function EventsContent() {
                       <span>{events.length} Events</span>
                     </div>
                     <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-[14px] border border-white/10">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      <div className="w-2 h-2 bg-teal-500 rounded-full" />
                       <span>{events.filter(e => e.isRegistered).length} Registered</span>
                     </div>
                     <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-[14px] border border-white/10">
@@ -331,8 +331,8 @@ function EventsContent() {
           {/* Upcoming Events Highlight */}
           <div className="mb-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] lg:p-8">
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h2 className="flex items-center gap-3 text-2xl font-extrabold text-[#11233f]">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-[#11233f]">
+              <h2 className="flex items-center gap-3 text-2xl font-extrabold text-teal-950">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-teal-950">
                 🚀
                 </div>
                 Upcoming Events
@@ -355,11 +355,11 @@ function EventsContent() {
                   <h3 className="mb-3 text-[17px] font-extrabold leading-tight text-slate-950 transition-colors group-hover:text-emerald-700">{event.title}</h3>
                   <div className="space-y-2">
                     <div className="flex items-center text-xs font-bold text-slate-800">
-                      <Calendar className="w-3.5 h-3.5 mr-2 text-emerald-500" />
+                      <Calendar className="w-3.5 h-3.5 mr-2 text-teal-950" />
                       {formatDate(event.date ?? '')} <span className="mx-2 text-slate-300">•</span> {event.time}
                     </div>
                     <div className="flex items-center text-xs font-bold text-slate-800">
-                      <MapPin className="w-3.5 h-3.5 mr-2 text-blue-500" />
+                      <MapPin className="w-3.5 h-3.5 mr-2 text-teal-500" />
                       {event.location}
                     </div>
                   </div>
@@ -372,20 +372,20 @@ function EventsContent() {
           <div className="mb-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] lg:p-8">
             <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center">
               <div className="flex-1 relative group">
-                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
+                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-teal-950 transition-colors" />
                 <input
                   type="text"
                   placeholder="Search events by title, description, or tags..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-[20px] bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-medium text-slate-900 placeholder-slate-400 transition-all duration-200 shadow-sm"
+                  className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-[20px] bg-[#f6f3eb]/60 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-medium text-slate-900 placeholder-slate-400 transition-all duration-200 shadow-sm"
                 />
               </div>
               <div className="flex gap-4">
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
-                  className="px-6 py-4 border border-slate-200 rounded-[20px] bg-slate-50/60 focus:bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[180px] appearance-none cursor-pointer transition-all shadow-sm"
+                  className="px-6 py-4 border border-slate-200 rounded-[20px] bg-[#f6f3eb]/60 focus:bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[180px] appearance-none cursor-pointer transition-all shadow-sm"
                 >
                   {eventTypes.map(type => (
                     <option key={type.value} value={type.value}>
@@ -396,7 +396,7 @@ function EventsContent() {
                 <select
                   value={selectedTime}
                   onChange={(e) => setSelectedTime(e.target.value)}
-                  className="px-6 py-4 border border-slate-200 rounded-[20px] bg-slate-50/60 focus:bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[150px] appearance-none cursor-pointer transition-all shadow-sm"
+                  className="px-6 py-4 border border-slate-200 rounded-[20px] bg-[#f6f3eb]/60 focus:bg-white focus:outline-none focus:border-emerald-500/30 font-bold text-slate-700 min-w-[150px] appearance-none cursor-pointer transition-all shadow-sm"
                 >
                   {timeFilters.map(filter => (
                     <option key={filter.value} value={filter.value}>
@@ -415,7 +415,7 @@ function EventsContent() {
                     onChange={(e) => setVirtualOnly(e.target.checked)}
                     className="sr-only"
                   />
-                  <div className={`w-10 h-5 rounded-full transition-colors ${virtualOnly ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  <div className={`w-10 h-5 rounded-full transition-colors ${virtualOnly ? 'bg-[#f6f3eb]0' : 'bg-slate-200'}`} />
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${virtualOnly ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
                 <span className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Virtual Only</span>
@@ -429,7 +429,7 @@ function EventsContent() {
                     onChange={(e) => setAutoRefresh(e.target.checked)}
                     className="sr-only"
                   />
-                  <div className={`w-10 h-5 rounded-full transition-colors ${autoRefresh ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  <div className={`w-10 h-5 rounded-full transition-colors ${autoRefresh ? 'bg-[#f6f3eb]0' : 'bg-slate-200'}`} />
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoRefresh ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
                 <span className="text-[11px] font-bold text-[#8a94a6] uppercase tracking-[0.1em]">Auto-refresh (10s)</span>
@@ -442,7 +442,7 @@ function EventsContent() {
             {filteredEvents.map(event => (
               <div key={event.id} className="group relative overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(15,23,42,0.12)]">
                 <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${getTypeAccent(event.eventType ?? '')}`} />
-                <div className="relative aspect-video overflow-hidden bg-slate-100">
+                <div className="relative aspect-video overflow-hidden bg-[#f6f3eb]">
                   <a
                     href={getPreviewUrl(event.image_url || event.image || '', `${event.title || 'event'}.jpg`)}
                     target="_blank"
@@ -468,7 +468,7 @@ function EventsContent() {
 
                   <div className="absolute right-5 top-5 flex gap-2">
                     {event.isVirtual && (
-                      <div className="px-4 py-2 bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-xl border border-white/20">
+                      <div className="px-4 py-2 bg-[#f3b13a]/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-xl border border-white/20">
                         🌐 Virtual
                       </div>
                     )}
@@ -489,27 +489,27 @@ function EventsContent() {
                   <p className="mb-8 text-[15px] font-semibold leading-relaxed text-slate-800 line-clamp-2">{event.description}</p>
 
                   <div className="mb-8 grid grid-cols-2 gap-3">
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
-                      <Calendar className="w-4 h-4 mr-3 text-emerald-500" />
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-[#f6f3eb]/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
+                      <Calendar className="w-4 h-4 mr-3 text-teal-950" />
                       <span>{formatDate(event.date ?? '')}</span>
                     </div>
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
-                      <Clock className="w-4 h-4 mr-3 text-blue-500" />
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-[#f6f3eb]/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
+                      <Clock className="w-4 h-4 mr-3 text-teal-500" />
                       <span>{event.time}</span>
                     </div>
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
-                      <MapPin className="w-4 h-4 mr-3 text-purple-500" />
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-[#f6f3eb]/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
+                      <MapPin className="w-4 h-4 mr-3 text-teal-500" />
                       <span className="truncate">{event.location}</span>
                     </div>
-                    <div className="flex items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
-                      <Users className="w-4 h-4 mr-3 text-indigo-500" />
+                    <div className="flex items-center rounded-2xl border border-slate-100 bg-[#f6f3eb]/70 p-3 text-xs font-bold text-slate-800 shadow-sm">
+                      <Users className="w-4 h-4 mr-3 text-teal-500" />
                       <span>{event.currentAttendees}{event.maxAttendees ? `/${event.maxAttendees}` : ''} joined</span>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-8">
                     {(event.tags ?? []).slice(0, 3).map(tag => (
-                      <span key={tag} className="px-4 py-1.5 bg-slate-50 text-slate-700 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-200 hover:bg-white hover:text-emerald-600 transition-all cursor-default">
+                      <span key={tag} className="px-4 py-1.5 bg-[#f6f3eb] text-slate-700 text-[11px] rounded-full font-black uppercase tracking-widest border border-slate-200 hover:bg-white hover:text-teal-950 transition-all cursor-default">
                         #{tag}
                       </span>
                     ))}
@@ -517,7 +517,7 @@ function EventsContent() {
 
                   <div className="flex flex-col gap-5 pt-7 border-t border-slate-100 sm:flex-row sm:items-end sm:justify-between">
                     <div className="flex min-w-0 flex-col">
-                      <span className="text-2xl font-black text-emerald-600 tracking-tight leading-none">
+                      <span className="text-2xl font-black text-teal-950 tracking-tight leading-none">
                         {event.price === 0 ? 'FREE' : `$${event.price}`}
                       </span>
                       <span className="mt-1 max-w-[16rem] truncate text-[10px] font-black text-slate-700 uppercase tracking-widest">
@@ -528,24 +528,24 @@ function EventsContent() {
                       <button
                         className={`p-3 rounded-2xl transition-all duration-300 shadow-sm border ${event.isSaved
                           ? 'bg-amber-500 text-white border-amber-600 hover:scale-110'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white hover:text-emerald-500 hover:scale-110'
+                          : 'bg-[#f6f3eb] text-slate-600 border-slate-200 hover:bg-white hover:text-teal-950 hover:scale-110'
                           }`}
                       >
                         <BookmarkPlus className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleShare(event)}
-                        className="p-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl hover:bg-white hover:text-emerald-500 hover:scale-110 transition-all duration-300 shrink-0"
+                        className="p-3 bg-[#f6f3eb] text-slate-600 border border-slate-200 rounded-2xl hover:bg-white hover:text-teal-950 hover:scale-110 transition-all duration-300 shrink-0"
                         title="Share Event"
                       >
                         <Share2 className="w-5 h-5" />
                       </button>
                       <button
                         className={`px-5 py-3 rounded-2xl font-black text-[13px] uppercase tracking-widest transition-all duration-300 shadow-lg active:scale-95 shrink-0 whitespace-nowrap ${event.isRegistered
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-not-allowed shadow-none'
+                          ? 'bg-[#f6f3eb] text-teal-950 border border-teal-900/10 cursor-not-allowed shadow-none'
                           : registeringEventId === event.id
                             ? 'bg-slate-200 text-slate-400 cursor-wait'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20 hover:shadow-xl hover:-translate-y-0.5'
+                            : 'bg-[#f3b13a] hover:bg-[#d89c30] text-white shadow-emerald-500/20 hover:shadow-xl hover:-translate-y-0.5'
                           }`}
                         disabled={event.isRegistered || registeringEventId === event.id}
                         onClickCapture={(ev) => {
@@ -564,7 +564,7 @@ function EventsContent() {
 
           {filteredEvents.length === 0 && (
             <div className="bg-white rounded-[40px] p-20 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-slate-100 text-center">
-              <div className="bg-slate-50 w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto mb-8">
+              <div className="bg-[#f6f3eb] w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto mb-8">
                 <Calendar className="w-12 h-12 text-slate-300" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">No Events Found</h3>
@@ -576,9 +576,9 @@ function EventsContent() {
 
       {/* Loading Modal */}
       {isRegistering && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="relative w-full max-w-md animate-in zoom-in-95 duration-300 rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-2xl">
-            <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-emerald-50">
+            <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-[#f6f3eb]">
               <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
             <h3 className="mb-3 text-2xl font-black tracking-tight text-slate-900 uppercase">Processing...</h3>
@@ -591,27 +591,27 @@ function EventsContent() {
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="relative w-full max-w-lg animate-in zoom-in-95 duration-300 rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-2xl">
-            <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-emerald-500 shadow-xl shadow-emerald-500/20 animate-bounce">
+            <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-[#f6f3eb]0 shadow-xl shadow-emerald-500/20 animate-bounce">
               <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
               </svg>
             </div>
             <h2 className="mb-4 text-3xl font-black tracking-tight text-slate-900 uppercase">Registration Confirmed!</h2>
             <p className="mb-10 px-4 text-lg font-medium leading-relaxed text-slate-600">
-              Awesome! You've successfully registered for <span className="font-extrabold text-emerald-600">"{successEventTitle}"</span>.
+              Awesome! You've successfully registered for <span className="font-extrabold text-teal-950">"{successEventTitle}"</span>.
               Check your inbox for the confirmation details.
             </p>
             <button
               onClick={() => setShowSuccessModal(false)}
-              className="w-full py-5 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-[24px] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 uppercase tracking-widest text-sm"
+              className="w-full py-5 px-8 bg-[#f3b13a] hover:bg-[#d89c30] text-white font-black rounded-[24px] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 uppercase tracking-widest text-sm"
             >
               Okay, Let's Go!
             </button>
           </div>
         </div>
       )}
-    </StudentNavigation>
+    </>
   );
 }

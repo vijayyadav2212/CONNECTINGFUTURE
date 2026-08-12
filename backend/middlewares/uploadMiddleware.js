@@ -1,18 +1,20 @@
 const multer = require('multer');
 
-// --- Event Image Uploads ---
-const allowedEventImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const isImageMime = (mime) => {
+  if (!mime) return true;
+  const lower = String(mime).toLowerCase();
+  return lower.startsWith('image/') || lower === 'application/octet-stream';
+};
 
 const eventImageUpload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (allowedEventImageTypes.has(file.mimetype)) return cb(null, true);
-    return cb(new Error('Invalid image type. Only JPG, PNG, WEBP, GIF are allowed.'));
+    if (isImageMime(file.mimetype)) return cb(null, true);
+    return cb(new Error('Invalid image type. Please select a valid image file.'));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
 });
 
-// --- Memory Image Uploads (Flexible config) ---
 const createMemoryUpload = ({ fileSize, mimeCheck, invalidMessage }) => multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
@@ -21,17 +23,16 @@ const createMemoryUpload = ({ fileSize, mimeCheck, invalidMessage }) => multer({
     }
     return cb(null, true);
   },
-  limits: { fileSize: fileSize || 5 * 1024 * 1024 },
+  limits: { fileSize: fileSize || 20 * 1024 * 1024 },
 });
 
-// Specific memory image upload instance
 const memoryImageUpload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (allowedEventImageTypes.has(file.mimetype)) return cb(null, true);
-    return cb(new Error('Invalid image type. Only JPG, PNG, WEBP, GIF are allowed.'));
+    if (isImageMime(file.mimetype)) return cb(null, true);
+    return cb(new Error('Invalid image type. Please select a valid image file.'));
   },
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
 });
 
 module.exports = {

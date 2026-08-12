@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import type React from "react"
 import {
   Briefcase, Users, Building2, Calendar, MapPin, Eye, Search, Filter,
-  DollarSign, FileText, Link2, Clock, ChevronRight, CheckCircle2,
+  DollarSign, FileText, Link2, Clock, ChevronRight, ChevronDown, CheckCircle2,
   X, Edit3, Globe, Plus, AlertTriangle, Bookmark, BookmarkCheck, CheckCircle, Loader2, RefreshCw, TrendingUp, Building, ExternalLink
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -11,31 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@auth0/nextjs-auth0/client"
-import AlumniNavigation from "../AluminaNavigation/AlumniNavigation"
 
-const API_BASE = (() => {
-  const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
-  const base = raw.replace(/\/$/, "")
-  if (base.endsWith("/api")) return base
-  return `${base}/api`
-})()
-
-async function readJsonResponse(res: Response) {
-  const body = await res.text().catch(() => "")
-  if (!body) return {}
-  try {
-    return JSON.parse(body)
-  } catch {
-    const compact = body.replace(/\s+/g, " ").trim().slice(0, 120)
-    throw new Error(`Invalid JSON response (${res.status}): ${compact}`)
-  }
-}
-
-type JobItem = {
-  id: number; title: string; company: string; location: string;
-  postedDate: string; description: string; salary: string;
-  tags: string[]; views: number; applied: number; status: string;
-  featured: boolean; jobType: string; isRemote: boolean; postedBy?: string; industry?: string;
+type Job = {
+  id: string;
+  title: string; company: string; location: string;
+postedDate: string; description: string; salary: string;
+tags: string[]; views: number; applied: number; status: string;
+featured: boolean; jobType: string; isRemote: boolean; postedBy ?: string; industry ?: string;
 }
 
 type ExternalJob = {
@@ -59,6 +41,23 @@ type JobSearchSettings = {
   role: string
   location: string
   employment_type: string
+}
+
+type JobItem = any
+
+const API_BASE = (() => {
+  const raw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+  const clean = raw.replace(/\/$/, '');
+  return clean.endsWith('/api') ? clean : `${clean}/api`;
+})();
+
+async function readJsonResponse(res: Response) {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return {};
+  }
 }
 
 const EXTERNAL_BOOKMARK_STORAGE_KEY = "alumni-external-job-bookmarks"
@@ -187,7 +186,7 @@ export default function AlumniJobBoard() {
       const res = await fetch(`${API_BASE}/applications?applicant_email=${encodeURIComponent(user.email)}`)
       const data = await readJsonResponse(res)
       const ids = new Set<number>()
-      ;(data.applications || []).forEach((a: any) => ids.add(Number(a.job_id)))
+        ; (data.applications || []).forEach((a: any) => ids.add(Number(a.job_id)))
       setAppliedPortalJobIds(ids)
     } catch {
       // no-op
@@ -233,7 +232,10 @@ export default function AlumniJobBoard() {
     setIsApplicantModalOpen(true)
     setLoadingApplicants(true)
     try {
-      const res = await fetch(`${API_BASE}/applications/by-job?job_id=${job.id}`)
+      let res = await fetch(`${API_BASE}/jobs/applications/by-job?job_id=${job.id}`)
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/applications/by-job?job_id=${job.id}`)
+      }
       if (res.ok) {
         const data = await readJsonResponse(res)
         setApplicants(data.applications || [])
@@ -599,16 +601,17 @@ export default function AlumniJobBoard() {
         company: formData.companyName,
         location: formData.location,
         description: formData.jobDescription,
+        responsibilities: formData.responsibilities,
         requirements: formData.requirements,
         salary_min: formData.salaryMin,
         salary_max: formData.salaryMax,
         currency: formData.currency,
-        job_type: formData.jobType,
-        industry: formData.industry,
+        job_type: formData.jobType || "Full-time",
+        industry: formData.industry || "General",
         is_remote: formData.remoteAvailable,
-        posted_by: user?.email,
+        posted_by: user?.email || 'alumni@vppcoe.ac.in',
         application_url: formData.applicationUrl,
-        application_method: formData.applicationMethod,
+        application_method: formData.applicationMethod || 'company',
         application_deadline: formData.applicationDeadline,
         contact_person: formData.contactPerson,
         tags: formData.tags ? formData.tags.split(',').map(s => s.trim()) : [],
@@ -622,16 +625,20 @@ export default function AlumniJobBoard() {
         body: JSON.stringify(payload)
       })
 
-      if (res.ok) {
+      const resJson = await res.json().catch(() => ({}))
+
+      if (res.ok && (resJson.success || resJson.job)) {
         toast({ title: "Job Posted!", description: "Your post is under review." })
         setActiveTab("My Posts")
         setFormData({ jobTitle: "", companyName: "", location: "", remoteAvailable: false, jobType: "", industry: "", jobDescription: "", responsibilities: "", requirements: "", salaryMin: "", salaryMax: "", currency: "USD", applicationUrl: "", applicationDeadline: "", contactPerson: "", tags: "", applicationMethod: "" })
         setActiveStep(1)
+        fetchJobs()
+        fetchMyJobs()
       } else {
-        throw new Error("Failed to post")
+        toast({ title: "Submission Failed", description: resJson.error || "Failed to post job. Please try again.", variant: "destructive" })
       }
-    } catch (e) {
-      toast({ title: "Submission Failed", description: "Could not connect to the server.", variant: "destructive" })
+    } catch (e: any) {
+      toast({ title: "Submission Failed", description: e?.message || "Could not connect to the server.", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -639,10 +646,10 @@ export default function AlumniJobBoard() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-gradient-to-b from-blue-50 to-purple-50">
+      <div className="h-screen w-full flex items-center justify-center bg-gradient-to-b from-teal-50 to-teal-50">
         <div className="flex flex-col items-center gap-6 text-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" strokeWidth={2} />
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-100 to-teal-100 flex items-center justify-center">
+            <Loader2 className="w-12 h-12 text-teal-600 animate-spin" strokeWidth={2} />
           </div>
           <div>
             <h2 className="text-3xl font-bold text-gray-900 mb-3">Loading Portal...</h2>
@@ -691,14 +698,14 @@ export default function AlumniJobBoard() {
   }
 
   return (
-    <AlumniNavigation>
+    <>
       <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col font-sans mb-8">
 
         {/* Header */}
-        <div className="bg-[#1A1C23] text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
-        <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-        </svg>
+        <div className="bg-teal-950 text-white rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-8 mb-2">
+          <svg className="absolute right-0 bottom-0 w-[300px] h-full pointer-events-none opacity-50" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M40,70 C60,70 70,30 90,30 C110,30 120,60 140,60 C160,60 170,20 190,20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
           <div className="relative z-10 max-w-2xl">
             <div className="flex items-center gap-2 text-white font-semibold text-[15px] mb-3">
               <Briefcase size={18} className="text-white" />
@@ -718,9 +725,8 @@ export default function AlumniJobBoard() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 rounded-xl text-[15px] font-bold transition-all duration-300 ${
-                  activeTab === tab ? "bg-[#1A1C23] text-white shadow-sm border border-[#3A3D4A]" : "text-gray-400 hover:text-white hover:bg-[#3A3D4A]/50 border border-transparent"
-                }`}
+                className={`px-6 py-3 rounded-xl text-[15px] font-bold transition-all duration-300 ${activeTab === tab ? "bg-teal-950 text-white shadow-sm border border-[#3A3D4A]" : "text-gray-400 hover:text-white hover:bg-[#3A3D4A]/50 border border-transparent"
+                  }`}
               >
                 {tab}
               </button>
@@ -731,549 +737,572 @@ export default function AlumniJobBoard() {
         {/* TAB: BROWSE JOBS */}
         {activeTab === "Browse Jobs" && (
           <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="bg-white p-6 rounded-[32px] border border-gray-50 shadow-sm mb-6">
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <div className="relative flex-1 group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1A1C23] transition-all" />
-                    <input
-                      className="w-full bg-white border border-slate-100 rounded-2xl pl-12 pr-12 py-4 outline-none focus:ring-4 focus:ring-blue-500/10 text-slate-900 font-medium"
-                      placeholder="Search roles, companies, location, or tags..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery.trim().length > 0 ? (
+            <div className="bg-white p-6 rounded-[32px] border border-gray-50 shadow-sm mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="relative flex-1 group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-950 transition-all" />
+                  <input
+                    className="w-full bg-white border border-slate-100 rounded-2xl pl-12 pr-12 py-4 outline-none focus:ring-4 focus:ring-teal-500/10 text-slate-900 font-medium"
+                    placeholder="Search roles, companies, location, or tags..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery.trim().length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-[#f6f3eb] transition-colors"
+                      title="Clear search"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBrowseFilters((prev) => !prev)}
+                  className="sm:w-auto w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 flex items-center justify-center gap-2 hover:bg-[#f6f3eb] transition-colors"
+                >
+                  <Filter className="w-4 h-4" /> Filters
+                </button>
+              </div>
+              {showBrowseFilters ? (
+                <div className="mt-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Industry</label>
+                      <div className="relative">
+                        <select
+                          value={browseIndustry}
+                          onChange={e => setBrowseIndustry(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-[#f6f3eb] border border-slate-200 rounded-xl text-slate-900 font-medium outline-none focus:ring-4 focus:ring-teal-500/20 transition-all cursor-pointer appearance-none pr-10"
+                        >
+                          <option value="all">All industries</option>
+                          {availableIndustries.map((industry) => (
+                            <option key={industry} value={industry}>{industry}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Job Type</label>
+                      <div className="relative">
+                        <select
+                          value={browseJobType}
+                          onChange={e => setBrowseJobType(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-[#f6f3eb] border border-slate-200 rounded-xl text-slate-900 font-medium outline-none focus:ring-4 focus:ring-teal-500/20 transition-all cursor-pointer appearance-none pr-10"
+                        >
+                          <option value="all">All job types</option>
+                          {availableJobTypes.map((jobType) => (
+                            <option key={jobType} value={jobType}>{jobType}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-end">
+                      <label className="w-full h-[42px] px-4 rounded-xl bg-[#f6f3eb] border border-slate-200 flex items-center gap-2.5 cursor-pointer">
+                        <Checkbox checked={browseRemoteOnly} onCheckedChange={(checked) => setBrowseRemoteOnly(checked === true)} />
+                        <span className="text-sm font-semibold text-slate-700">Remote only</span>
+                      </label>
+                    </div>
+
+                    <div className="flex items-end">
                       <button
                         type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                        title="Clear search"
-                        aria-label="Clear search"
+                        onClick={() => {
+                          setBrowseIndustry("all")
+                          setBrowseJobType("all")
+                          setBrowseRemoteOnly(false)
+                        }}
+                        className="w-full h-[42px] px-4 rounded-xl bg-[#f6f3eb] text-slate-700 font-bold hover:bg-slate-200 transition-colors"
                       >
-                        <X className="w-4 h-4" />
+                        Clear Filters
                       </button>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowBrowseFilters((prev) => !prev)}
-                    className="sm:w-auto w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"
-                  >
-                    <Filter className="w-4 h-4" /> Filters
-                  </button>
-                </div>
-                {showBrowseFilters ? (
-                  <div className="mt-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Industry</label>
-                        <Select value={browseIndustry} onValueChange={setBrowseIndustry}>
-                          <SelectTrigger className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium [&>span]:text-slate-900">
-                            <SelectValue className="text-slate-900" placeholder="All industries" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 rounded-xl text-slate-900 shadow-xl">
-                            <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" value="all">All industries</SelectItem>
-                            {availableIndustries.map((industry) => (
-                              <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" key={industry} value={industry}>{industry}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Job Type</label>
-                        <Select value={browseJobType} onValueChange={setBrowseJobType}>
-                          <SelectTrigger className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium [&>span]:text-slate-900">
-                            <SelectValue className="text-slate-900" placeholder="All job types" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 rounded-xl text-slate-900 shadow-xl">
-                            <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" value="all">All job types</SelectItem>
-                            {availableJobTypes.map((jobType) => (
-                              <SelectItem className="text-slate-800 focus:text-slate-900 focus:bg-slate-100 cursor-pointer" key={jobType} value={jobType}>{jobType}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex items-end">
-                        <label className="w-full h-[42px] px-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 cursor-pointer">
-                          <Checkbox checked={browseRemoteOnly} onCheckedChange={(checked) => setBrowseRemoteOnly(checked === true)} />
-                          <span className="text-sm font-semibold text-slate-700">Remote only</span>
-                        </label>
-                      </div>
-
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBrowseIndustry("all")
-                            setBrowseJobType("all")
-                            setBrowseRemoteOnly(false)
-                          }}
-                          className="w-full h-[42px] px-4 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors"
-                        >
-                          Clear Filters
-                        </button>
-                      </div>
                     </div>
                   </div>
-                ) : null}
-                <div className="mt-3 px-1 flex items-center justify-between gap-3">
-                  <p className="text-xs sm:text-sm font-semibold text-slate-500">
-                    Showing {filteredJobs.length} of {jobs.length} jobs
-                  </p>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {searchQuery.trim() ? (
-                      <span className="text-[11px] font-bold text-[#1A1C23] bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
-                        Search: {searchQuery.trim()}
-                      </span>
-                    ) : null}
-                    {browseIndustry !== "all" ? <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Industry: {browseIndustry}</span> : null}
-                    {browseJobType !== "all" ? <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Type: {browseJobType}</span> : null}
-                    {browseRemoteOnly ? <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">Remote only</span> : null}
-                  </div>
+                </div>
+              ) : null}
+              <div className="mt-3 px-1 flex items-center justify-between gap-3">
+                <p className="text-xs sm:text-sm font-semibold text-slate-500">
+                  Showing {filteredJobs.length} of {jobs.length} jobs
+                </p>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {searchQuery.trim() ? (
+                    <span className="text-[11px] font-bold text-teal-950 bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
+                      Search: {searchQuery.trim()}
+                    </span>
+                  ) : null}
+                  {browseIndustry !== "all" ? <span className="text-[11px] font-bold text-slate-700 bg-[#f6f3eb] px-2.5 py-1 rounded-full border border-slate-200">Industry: {browseIndustry}</span> : null}
+                  {browseJobType !== "all" ? <span className="text-[11px] font-bold text-slate-700 bg-[#f6f3eb] px-2.5 py-1 rounded-full border border-slate-200">Type: {browseJobType}</span> : null}
+                  {browseRemoteOnly ? <span className="text-[11px] font-bold text-emerald-700 bg-[#f6f3eb] px-2.5 py-1 rounded-full border border-teal-900/10">Remote only</span> : null}
                 </div>
               </div>
+            </div>
 
-              <div className="mb-6">
-                <div className="inline-flex w-full sm:w-auto p-1 rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setBrowseSection("portal")}
-                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "portal" ? "bg-[#1A1C23] text-white" : "text-slate-700 hover:bg-slate-100"}`}
-                  >
-                    Portal Jobs
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBrowseSection("external")}
-                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "external" ? "bg-black text-white" : "text-slate-700 hover:bg-slate-100"}`}
-                  >
-                    External Jobs
-                  </button>
-                </div>
+            <div className="mb-6">
+              <div className="inline-flex w-full sm:w-auto p-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setBrowseSection("portal")}
+                  className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "portal" ? "bg-teal-950 text-white" : "text-slate-700 hover:bg-[#f6f3eb]"}`}
+                >
+                  Portal Jobs
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBrowseSection("external")}
+                  className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${browseSection === "external" ? "bg-teal-950 text-white" : "text-slate-700 hover:bg-[#f6f3eb]"}`}
+                >
+                  External Jobs
+                </button>
               </div>
+            </div>
 
-              {browseSection === "portal" && (
-                <>
-                  <div className="mb-4">
-                    <h2 className="text-2xl font-extrabold text-slate-900">Portal Jobs</h2>
-                    <p className="text-sm text-slate-500">Jobs posted directly on the platform.</p>
-                  </div>
+            {browseSection === "portal" && (
+              <>
+                <div className="mb-4">
+                  <h2 className="text-2xl font-extrabold text-slate-900">Portal Jobs</h2>
+                  <p className="text-sm text-slate-500">Jobs posted directly on the platform.</p>
+                </div>
 
-                  <div className="grid grid-cols-1 gap-8">
-                {filteredJobs.map((job) => (
-                  <div key={job.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden p-8 hover:border-gray-200 transition-all">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="flex gap-3 md:gap-4 items-center flex-wrap">
-                        <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-tight">{job.title}</h3>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-purple-50 text-purple-600 rounded-full border border-purple-100">
-                          {job.jobType}
-                        </span>
-                        {job.isRemote ? (
-                          <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
-                            Remote
+                <div className="grid grid-cols-1 gap-8">
+                  {filteredJobs.map((job) => (
+                    <div key={job.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden p-8 hover:border-gray-200 transition-all">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex gap-3 md:gap-4 items-center flex-wrap">
+                          <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-tight">{job.title}</h3>
+                          <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-teal-50 text-teal-600 rounded-full border border-teal-100">
+                            {job.jobType}
                           </span>
-                        ) : null}
+                          {job.isRemote ? (
+                            <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-[#f6f3eb] text-teal-950 rounded-full border border-teal-900/10">
+                              Remote
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><Building2 className="w-5 h-5 text-[#1A1C23]" /></div>
-                        <div><p className="text-[10px] font-bold text-slate-400 uppercase">Company</p><p className="font-bold text-slate-700">{job.company}</p></div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="bg-[#f6f3eb] p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><Building2 className="w-5 h-5 text-teal-950" /></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Company</p><p className="font-bold text-slate-700">{job.company}</p></div>
+                        </div>
+                        <div className="bg-[#f6f3eb] p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><MapPin className="w-5 h-5 text-teal-950" /></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Location</p><p className="font-bold text-slate-700">{job.location}</p></div>
+                        </div>
+                        <div className="bg-[#f6f3eb] p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><DollarSign className="w-5 h-5 text-teal-500" /></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Salary</p><p className="font-bold text-slate-700">{job.salary}</p></div>
+                        </div>
                       </div>
-                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><MapPin className="w-5 h-5 text-emerald-500" /></div>
-                        <div><p className="text-[10px] font-bold text-slate-400 uppercase">Location</p><p className="font-bold text-slate-700">{job.location}</p></div>
-                      </div>
-                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm"><DollarSign className="w-5 h-5 text-purple-500" /></div>
-                        <div><p className="text-[10px] font-bold text-slate-400 uppercase">Salary</p><p className="font-bold text-slate-700">{job.salary}</p></div>
-                      </div>
-                    </div>
 
-                    <p className="text-slate-600 mb-6 font-medium leading-relaxed text-sm md:text-[15px] line-clamp-3">{job.description}</p>
+                      <p className="text-slate-600 mb-6 font-medium leading-relaxed text-sm md:text-[15px] line-clamp-3">{job.description}</p>
 
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {(job.tags || []).map((tag, i) => (
-                        <span key={i} className="text-[11px] font-black px-4 py-1.5 bg-gray-100 text-[#1A1C23] rounded-xl">#{tag}</span>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-between items-center pt-6 border-t border-slate-100">
-                      <div className="flex flex-wrap gap-4 md:gap-6 text-slate-400 font-bold text-xs">
-                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> Posted {job.postedDate}</span>
-                        <span className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> {job.views} Views</span>
-                        <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {job.applied} Applied</span>
+                      <div className="flex flex-wrap gap-2 mb-8">
+                        {(job.tags || []).map((tag, i) => (
+                          <span key={i} className="text-[11px] font-black px-4 py-1.5 bg-gray-100 text-teal-950 rounded-xl">#{tag}</span>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="px-5 md:px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-2xl font-black hover:bg-slate-50 transition-all whitespace-nowrap">View Details</button>
-                        <button
-                          onClick={() => openPortalApplyForm(job)}
-                          disabled={appliedPortalJobIds.has(job.id) || String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()}
-                          className={`px-8 py-3 rounded-xl font-semibold shadow-lg transition-all duration-200 whitespace-nowrap ${appliedPortalJobIds.has(job.id)
-                            ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-                            : String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()
+
+                      <div className="flex justify-between items-center pt-6 border-t border-slate-100">
+                        <div className="flex flex-wrap gap-4 md:gap-6 text-slate-400 font-bold text-xs">
+                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> Posted {job.postedDate}</span>
+                          <span className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> {job.views} Views</span>
+                          <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {job.applied} Applied</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="px-5 md:px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-2xl font-black hover:bg-[#f6f3eb] transition-all whitespace-nowrap">View Details</button>
+                          <button
+                            onClick={() => openPortalApplyForm(job)}
+                            disabled={appliedPortalJobIds.has(job.id) || String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()}
+                            className={`px-8 py-3 rounded-xl font-semibold shadow-lg transition-all duration-200 whitespace-nowrap ${appliedPortalJobIds.has(job.id)
                               ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-                              : "bg-[#1A1C23] hover:bg-black text-white hover:shadow-xl transform hover:scale-105"
-                            }`}
-                        >
-                          {String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()
-                            ? "Your Post"
-                            : appliedPortalJobIds.has(job.id)
+                              : String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()
+                                ? "bg-gray-300 text-gray-700 cursor-not-allowed"
+                                : "bg-teal-950 hover:bg-teal-900 text-white hover:shadow-xl transform hover:scale-105"
+                              }`}
+                          >
+                            {String(job.postedBy || "").toLowerCase() === String(user?.email || "").toLowerCase()
+                              ? "Your Post"
+                              : appliedPortalJobIds.has(job.id)
                                 ? "Applied"
                                 : "Apply Now"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {filteredJobs.length === 0 ? (
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-10 text-center">
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 mx-auto flex items-center justify-center mb-4">
-                      <Briefcase className="w-7 h-7 text-slate-300" />
-                    </div>
-                    <p className="text-lg font-bold text-slate-800">No jobs found</p>
-                    <p className="text-sm text-slate-500 mt-1">Try a different keyword, company name, location, or clear your search.</p>
-                    {searchQuery.trim() ? (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors"
-                      >
-                        <X className="w-4 h-4" /> Clear Search
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-                  </div>
-                </>
-              )}
-
-              {browseSection === "external" && (
-                <>
-                  <div className="mt-1 mb-4">
-                    <h2 className="text-2xl font-extrabold text-slate-900">External Jobs</h2>
-                    <p className="text-sm text-slate-500">Jobs sourced from external providers.</p>
-                  </div>
-
-                  <div className="space-y-3">
-                {externalError ? (
-                  <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-sm">Jobs fetch issue</p>
-                      <p className="text-sm">{externalError}</p>
-                    </div>
-                  </div>
-                ) : null}
-
-                {externalLoading ? (
-                  <div className="flex items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
-                    <Loader2 className="w-6 h-6 text-rose-500 animate-spin mr-3" />
-                    <p className="text-sm text-gray-500">Loading external jobs...</p>
-                  </div>
-                ) : externalJobs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><Briefcase className="w-6 h-6 text-gray-300" /></div>
-                    <p className="font-bold text-gray-900 text-xl">No jobs found</p>
-                    <p className="text-sm text-gray-500 mt-1">Try refreshing external jobs.</p>
-                  </div>
-                ) : (
-                  externalJobs.map(job => {
-                    const isBookmarked = externalBookmarkedIds.includes(job.job_id)
-                    return (
-                      <div key={job.job_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-gray-100 text-[#1A1C23] flex items-center justify-center shrink-0 overflow-hidden">
-                            {job.logo_url ? <img src={job.logo_url} alt={job.company} className="w-full h-full object-contain" /> : <Briefcase className="w-5 h-5" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="font-bold text-gray-900 text-sm truncate">{job.title}</p>
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-blue-700 border border-blue-200"><Clock className="w-3 h-3" />{formatExternalDate(job.posted_date)}</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 mb-2">
-                              <span className="flex items-center gap-1"><Building className="w-3 h-3" />{job.company}</span>
-                              <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200">{job.employment_type || "Not specified"}</span>
-                            </div>
-                            <p className="text-xs text-gray-500">Salary: <span className="font-semibold text-gray-700">{job.salary || "Not specified"}</span></p>
-                          </div>
-                          <div className="flex flex-col gap-2 shrink-0">
-                            <button onClick={() => toggleExternalBookmark(job.job_id)} className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors">
-                              {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-rose-600" /> : <Bookmark className="w-3.5 h-3.5" />}
-                            </button>
-                            <button onClick={() => handleExternalApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-black text-white hover:bg-rose-700 transition-colors">
-                              Apply <ExternalLink className="w-3 h-3" />
-                            </button>
-                          </div>
+                          </button>
                         </div>
-                      </div>
-                    )
-                  })
-                )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* TAB: POST JOB */}
-          {activeTab === "Post Job" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="lg:col-span-1 bg-white rounded-[32px] p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col">
-                <div className="mb-6">
-                  <h1 className="text-[22px] font-bold text-slate-900 tracking-tight">Post a New Opportunity</h1>
-                  <p className="text-[13px] font-medium text-slate-500 mt-1">Complete each section in sequence, like mentorship profile setup.</p>
-                </div>
-
-                <div className="space-y-4">
-                  {postJobSteps.map((step, idx) => (
-                    <div key={step.s} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all ${activeStep >= step.s ? "bg-[#1A1C23] text-white border-[#1A1C23]" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
-                          {step.s}
-                        </div>
-                        {idx < postJobSteps.length - 1 ? <div className="w-px h-7 bg-slate-200 mt-2" /> : null}
-                      </div>
-                      <div className="pt-1.5">
-                        <p className={`text-[12px] font-bold uppercase tracking-wide ${activeStep >= step.s ? "text-slate-800" : "text-slate-400"}`}>{step.label}</p>
-                        <p className="text-[12px] text-slate-500 mt-0.5">{step.hint}</p>
                       </div>
                     </div>
                   ))}
+
+                  {filteredJobs.length === 0 ? (
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-10 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-[#f6f3eb] border border-slate-100 mx-auto flex items-center justify-center mb-4">
+                        <Briefcase className="w-7 h-7 text-slate-300" />
+                      </div>
+                      <p className="text-lg font-bold text-slate-800">No jobs found</p>
+                      <p className="text-sm text-slate-500 mt-1">Try a different keyword, company name, location, or clear your search.</p>
+                      {searchQuery.trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#f6f3eb] text-slate-700 font-bold hover:bg-slate-200 transition-colors"
+                        >
+                          <X className="w-4 h-4" /> Clear Search
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            )}
+
+            {browseSection === "external" && (
+              <>
+                <div className="mt-1 mb-4">
+                  <h2 className="text-2xl font-extrabold text-slate-900">External Jobs</h2>
+                  <p className="text-sm text-slate-500">Jobs sourced from external providers.</p>
                 </div>
 
-                <div className="mt-6 p-4 rounded-[16px] border border-slate-200 bg-slate-50">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Required In This Step</p>
-                  {getMissingFieldsForStep(activeStep).length === 0 ? (
-                    <p className="text-[13px] font-semibold text-emerald-600">All required fields completed.</p>
+                <div className="space-y-3">
+                  {externalError ? (
+                    <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-sm">Jobs fetch issue</p>
+                        <p className="text-sm">{externalError}</p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {externalLoading ? (
+                    <div className="flex items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+                      <Loader2 className="w-6 h-6 text-teal-950 animate-spin mr-3" />
+                      <p className="text-sm text-gray-500">Loading external jobs...</p>
+                    </div>
+                  ) : externalJobs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100 text-center">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><Briefcase className="w-6 h-6 text-gray-300" /></div>
+                      <p className="font-bold text-gray-900 text-xl">No jobs found</p>
+                      <p className="text-sm text-gray-500 mt-1">Try refreshing external jobs.</p>
+                    </div>
                   ) : (
-                    <ul className="space-y-1">
-                      {getMissingFieldsForStep(activeStep).map((f) => (
-                        <li key={f.key} className="text-[12px] text-slate-700">• {f.label}</li>
-                      ))}
-                    </ul>
+                    externalJobs.map(job => {
+                      const isBookmarked = externalBookmarkedIds.includes(job.job_id)
+                      return (
+                        <div key={job.job_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-gray-100 text-teal-950 flex items-center justify-center shrink-0 overflow-hidden">
+                              {job.logo_url ? <img src={job.logo_url} alt={job.company} className="w-full h-full object-contain" /> : <Briefcase className="w-5 h-5" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="font-bold text-gray-900 text-sm truncate">{job.title}</p>
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-teal-700 border border-teal-200"><Clock className="w-3 h-3" />{formatExternalDate(job.posted_date)}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 mb-2">
+                                <span className="flex items-center gap-1"><Building className="w-3 h-3" />{job.company}</span>
+                                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200">{job.employment_type || "Not specified"}</span>
+                              </div>
+                              <p className="text-xs text-gray-500">Salary: <span className="font-semibold text-gray-700">{job.salary || "Not specified"}</span></p>
+                            </div>
+                            <div className="flex flex-col gap-2 shrink-0">
+                              <button onClick={() => toggleExternalBookmark(job.job_id)} className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#f6f3eb] border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors">
+                                {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-teal-950" /> : <Bookmark className="w-3.5 h-3.5" />}
+                              </button>
+                              <button onClick={() => handleExternalApply(job)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-teal-950 text-white hover:bg-[#d89c30] transition-colors">
+                                Apply <ExternalLink className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
                   )}
                 </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* TAB: POST JOB */}
+        {activeTab === "Post Job" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="lg:col-span-1 bg-white rounded-[32px] p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col">
+              <div className="mb-6">
+                <h1 className="text-[22px] font-bold text-slate-900 tracking-tight">Post a New Opportunity</h1>
+                <p className="text-[13px] font-medium text-slate-500 mt-1">Complete each section in sequence, like mentorship profile setup.</p>
               </div>
 
-              <div className="lg:col-span-2 bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-                <div className="mb-5">
-                  <p className="text-[12px] font-bold text-[#1A1C23] uppercase tracking-widest">Step {activeStep} of 4</p>
-                  <h2 className="text-[24px] font-bold text-slate-900 tracking-tight mt-1">{postJobSteps.find(s => s.s === activeStep)?.title}</h2>
-                  <p className="text-[13px] text-slate-500 mt-1">{postJobSteps.find(s => s.s === activeStep)?.hint}</p>
-                </div>
-
-                <div className="rounded-[20px] border border-slate-100 bg-slate-50/50 p-6 mb-6">
-                  {activeStep === 1 && (
-                    <div className="space-y-8 animate-in fade-in">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Job/Internship Title <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., Senior Software Engineer" value={formData.jobTitle} onChange={e => handleInputChange('jobTitle', e.target.value)} />
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Company Name <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., TechCorp Inc." value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)} />
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Location <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., San Francisco, CA" value={formData.location} onChange={e => handleInputChange('location', e.target.value)} />
-                        </div>
-                        <div className="flex items-center gap-3 pt-8">
-                          <Checkbox id="rem" checked={formData.remoteAvailable} onCheckedChange={v => handleInputChange('remoteAvailable', v)} />
-                          <label htmlFor="rem" className="text-[14px] font-medium text-slate-500">Remote work available</label>
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Job Type <span className="text-red-500">*</span></label>
-                          <Select value={formData.jobType} onValueChange={v => handleInputChange('jobType', v)}>
-                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue placeholder="Select job type" /></SelectTrigger>
-                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Full-time">Full-time</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Part-time">Part-time</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Internship (Paid)">Internship (Paid)</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Internship (Unpaid)">Internship (Unpaid)</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Contract">Contract</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Temporary">Temporary</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Volunteer">Volunteer</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Industry <span className="text-red-500">*</span></label>
-                          <Select value={formData.industry} onValueChange={v => handleInputChange('industry', v)}>
-                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue placeholder="Select industry" /></SelectTrigger>
-                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Technology">Technology</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Finance">Finance</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Healthcare">Healthcare</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Marketing">Marketing</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Consulting">Consulting</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Manufacturing">Manufacturing</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Education">Education</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Non-profit">Non-profit</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Government">Government</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Retail">Retail</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="Media">Media</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+              <div className="space-y-4">
+                {postJobSteps.map((step, idx) => (
+                  <div key={step.s} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border transition-all ${activeStep >= step.s ? "bg-teal-950 text-white border-teal-950" : "bg-[#f6f3eb] text-slate-500 border-slate-200"}`}>
+                        {step.s}
                       </div>
+                      {idx < postJobSteps.length - 1 ? <div className="w-px h-7 bg-slate-200 mt-2" /> : null}
                     </div>
-                  )}
-
-                  {activeStep === 2 && (
-                    <div className="space-y-8 animate-in fade-in">
-                      <div className="space-y-2.5">
-                        <label className="text-[14px] font-bold text-slate-700">Job Description <span className="text-red-500">*</span></label>
-                        <textarea rows={5} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="Provide a detailed description of the role..." value={formData.jobDescription} onChange={e => handleInputChange('jobDescription', e.target.value)} />
-                      </div>
-                      <div className="space-y-2.5">
-                        <label className="text-[14px] font-bold text-slate-700">Key Responsibilities <span className="text-red-500">*</span></label>
-                        <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="List the main responsibilities..." value={formData.responsibilities} onChange={e => handleInputChange('responsibilities', e.target.value)} />
-                      </div>
-                      <div className="space-y-2.5">
-                        <label className="text-[14px] font-bold text-slate-700">Requirements/Qualifications <span className="text-red-500">*</span></label>
-                        <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="List required skills, experience, education..." value={formData.requirements} onChange={e => handleInputChange('requirements', e.target.value)} />
-                      </div>
+                    <div className="pt-1.5">
+                      <p className={`text-[12px] font-bold uppercase tracking-wide ${activeStep >= step.s ? "text-slate-800" : "text-slate-400"}`}>{step.label}</p>
+                      <p className="text-[12px] text-slate-500 mt-0.5">{step.hint}</p>
                     </div>
-                  )}
-
-                  {activeStep === 3 && (
-                    <div className="space-y-8 animate-in fade-in">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Min Salary</label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., 60000" value={formData.salaryMin} onChange={e => handleInputChange('salaryMin', e.target.value)} />
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Max Salary</label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g., 120000" value={formData.salaryMax} onChange={e => handleInputChange('salaryMax', e.target.value)} />
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Currency</label>
-                          <Select value={formData.currency} onValueChange={v => handleInputChange('currency', v)}>
-                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="USD">USD</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="INR">INR</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="EUR">EUR</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeStep === 4 && (
-                    <div className="space-y-8 animate-in fade-in">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Application Deadline</label>
-                          <input type="date" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all " value={formData.applicationDeadline} onChange={e => handleInputChange('applicationDeadline', e.target.value)} />
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Contact Person</label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="Contact person name" value={formData.contactPerson} onChange={e => handleInputChange('contactPerson', e.target.value)} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Application Method</label>
-                          <Select value={formData.applicationMethod} onValueChange={v => handleInputChange('applicationMethod', v)}>
-                            <SelectTrigger className="w-full px-5 py-6 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 font-medium"><SelectValue placeholder="e.g. Email or URL" /></SelectTrigger>
-                            <SelectContent className="bg-slate-50 border-slate-200 text-slate-900 rounded-[16px]">
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="company">Apply on company site</SelectItem>
-                              <SelectItem className="cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 text-slate-700" value="email">Apply via email</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Application URL / Email <span className="text-red-500">*</span></label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g. hr@company.com" value={formData.applicationUrl} onChange={e => handleInputChange('applicationUrl', e.target.value)} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 gap-8">
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Tags (comma separated)</label>
-                          <input className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="e.g. React, Remote, Full Time" value={formData.tags} onChange={e => handleInputChange('tags', e.target.value)} />
-                        </div>
-                        <div className="space-y-2.5">
-                          <label className="text-[14px] font-bold text-slate-700">Benefits / Perks</label>
-                          <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-indigo-500/20 font-medium transition-all" placeholder="List any benefits, health insurance..." value={(formData as any).benefits || ''} onChange={e => handleInputChange('benefits', e.target.value)} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-between items-center px-2">
-                  {activeStep > 1 ? (
-                    <button onClick={() => setActiveStep(activeStep - 1)} className="px-8 py-3.5 bg-slate-100 text-slate-600 rounded-[14px] font-bold hover:bg-slate-200 transition-all">Back</button>
-                  ) : <div />}
-                  <button
-                    onClick={() => activeStep < 4 ? goToNextStep() : handleSubmit()}
-                    disabled={isSubmitting}
-                    className="px-10 py-3.5 bg-[#1A1C23] hover:bg-black text-white rounded-[14px] font-bold shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50"
-                  >
-                    {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : activeStep === 1 ? "Next: Job Details" : activeStep === 2 ? "Next: Compensation" : "Next: Application"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: MY POSTS */}
-          {activeTab === "My Posts" && (
-            <div className="space-y-10 animate-in fade-in duration-500">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {[
-                  { label: "Total Posts", val: myJobs.length, icon: <FileText className="text-[#1A1C23]" />, bg: "bg-blue-50", plus: true },
-                  { label: "Active Posts", val: myJobs.filter(j => j.status === 'Approved').length, icon: <CheckCircle2 className="text-emerald-500" />, bg: "bg-emerald-50" },
-                  { label: "Total Views", val: "0", icon: <Eye className="text-purple-500" />, bg: "bg-purple-50" },
-                  { label: "Applications", val: "0", icon: <Users className="text-orange-500" />, bg: "bg-orange-50" }
-                ].map((s, i) => (
-                  <div key={i} className="bg-white p-8 rounded-[2rem] border border-white shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className={`w-14 h-14 ${s.bg} rounded-2xl flex items-center justify-center`}>{s.icon}</div>
-                      <div><p className="text-[11px] font-black text-slate-400 uppercase">{s.label}</p><p className="text-3xl font-black text-slate-800">{s.val}</p></div>
-                    </div>
-                    {s.plus && <button onClick={() => setActiveTab("Post Job")} className="p-3 bg-[#1A1C23] text-white rounded-xl shadow-lg"><Plus className="w-4 h-4" /></button>}
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-6">
-                <h3 className="text-xl font-black text-slate-800 ml-2">Your Job Postings</h3>
-                {myJobs.map(job => (
-                  <div key={job.id} className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-[2.5rem] border border-white flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-xl transition-all">
-                    <div className="w-full flex items-start gap-4 sm:gap-6">
-                      <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center font-bold text-slate-400">{job.company.charAt(0)}</div>
-                      <div className="min-w-0">
-                        <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-1">
-                          <h4 className="text-xl font-black text-slate-800 truncate">{job.title}</h4>
-                          <span className="text-[10px] font-black px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md border border-amber-100 capitalize">{job.status}</span>
+              <div className="mt-6 p-4 rounded-[16px] border border-slate-200 bg-[#f6f3eb]">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Required In This Step</p>
+                {getMissingFieldsForStep(activeStep).length === 0 ? (
+                  <p className="text-[13px] font-semibold text-teal-950">All required fields completed.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {getMissingFieldsForStep(activeStep).map((f) => (
+                      <li key={f.key} className="text-[12px] text-slate-700">• {f.label}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+              <div className="mb-5">
+                <p className="text-[12px] font-bold text-teal-950 uppercase tracking-widest">Step {activeStep} of 4</p>
+                <h2 className="text-[24px] font-bold text-slate-900 tracking-tight mt-1">{postJobSteps.find(s => s.s === activeStep)?.title}</h2>
+                <p className="text-[13px] text-slate-500 mt-1">{postJobSteps.find(s => s.s === activeStep)?.hint}</p>
+              </div>
+
+              <div className="rounded-[20px] border border-slate-100 bg-[#f6f3eb] p-6 mb-6">
+                {activeStep === 1 && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Job/Internship Title <span className="text-red-500">*</span></label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g., Senior Software Engineer" value={formData.jobTitle} onChange={e => handleInputChange('jobTitle', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Company Name <span className="text-red-500">*</span></label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g., TechCorp Inc." value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Location <span className="text-red-500">*</span></label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g., San Francisco, CA" value={formData.location} onChange={e => handleInputChange('location', e.target.value)} />
+                      </div>
+                      <div className="flex items-center gap-3 pt-8">
+                        <Checkbox id="rem" checked={formData.remoteAvailable} onCheckedChange={v => handleInputChange('remoteAvailable', v)} />
+                        <label htmlFor="rem" className="text-[14px] font-medium text-slate-500">Remote work available</label>
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Job Type <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                          <select
+                            value={formData.jobType}
+                            onChange={e => handleInputChange('jobType', e.target.value)}
+                            className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 font-medium outline-none focus:ring-4 focus:ring-teal-500/20 transition-all cursor-pointer appearance-none pr-10"
+                          >
+                            <option value="" disabled>Select job type</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Internship (Paid)">Internship (Paid)</option>
+                            <option value="Internship (Unpaid)">Internship (Unpaid)</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Temporary">Temporary</option>
+                            <option value="Volunteer">Volunteer</option>
+                          </select>
+                          <ChevronDown className="w-5 h-5 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
-                        <div className="text-sm font-bold text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4" /> {job.company}</span>
-                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatPostedDate(job.postedDate)}</span>
-                          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {formatPostedTime(job.postedDate)}</span>
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Industry <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                          <select
+                            value={formData.industry}
+                            onChange={e => handleInputChange('industry', e.target.value)}
+                            className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 font-medium outline-none focus:ring-4 focus:ring-teal-500/20 transition-all cursor-pointer appearance-none pr-10"
+                          >
+                            <option value="" disabled>Select industry</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Consulting">Consulting</option>
+                            <option value="Manufacturing">Manufacturing</option>
+                            <option value="Education">Education</option>
+                            <option value="Non-profit">Non-profit</option>
+                            <option value="Government">Government</option>
+                            <option value="Retail">Retail</option>
+                            <option value="Media">Media</option>
+                          </select>
+                          <ChevronDown className="w-5 h-5 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
                       </div>
                     </div>
-                    <div className="w-full md:w-auto flex flex-wrap md:flex-nowrap gap-3 md:justify-end">
-                      <button onClick={() => openEditModal(job as any)} className="flex-1 md:flex-none px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-black hover:bg-slate-200 transition-colors">Edit</button>
-                      <button onClick={() => handleViewApplicants(job)} className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black hover:bg-slate-50 transition-colors">Applicants</button>
-                      <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="flex-1 md:flex-none px-6 py-3 bg-[#1A1C23] text-white rounded-xl font-black shadow-lg shadow-blue-500/20 hover:bg-black transition-colors">View Details</button>
+                  </div>
+                )}
+
+                {activeStep === 2 && (
+                  <div className="space-y-8">
+                    <div className="space-y-2.5">
+                      <label className="text-[14px] font-bold text-slate-700">Job Description <span className="text-red-500">*</span></label>
+                      <textarea rows={5} className="w-full px-5 py-4 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="Provide a detailed description of the role..." value={formData.jobDescription} onChange={e => handleInputChange('jobDescription', e.target.value)} />
+                    </div>
+                    <div className="space-y-2.5">
+                      <label className="text-[14px] font-bold text-slate-700">Key Responsibilities <span className="text-red-500">*</span></label>
+                      <textarea rows={3} className="w-full px-5 py-4 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="List the main responsibilities..." value={formData.responsibilities} onChange={e => handleInputChange('responsibilities', e.target.value)} />
+                    </div>
+                    <div className="space-y-2.5">
+                      <label className="text-[14px] font-bold text-slate-700">Requirements/Qualifications <span className="text-red-500">*</span></label>
+                      <textarea rows={3} className="w-full px-5 py-4 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="List required skills, experience, education..." value={formData.requirements} onChange={e => handleInputChange('requirements', e.target.value)} />
                     </div>
                   </div>
-                ))}
+                )}
+
+                {activeStep === 3 && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Min Salary</label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g., 60000" value={formData.salaryMin} onChange={e => handleInputChange('salaryMin', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Max Salary</label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g., 120000" value={formData.salaryMax} onChange={e => handleInputChange('salaryMax', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Currency</label>
+                        <div className="relative">
+                          <select
+                            value={formData.currency}
+                            onChange={e => handleInputChange('currency', e.target.value)}
+                            className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 font-medium outline-none focus:ring-4 focus:ring-teal-500/20 transition-all cursor-pointer appearance-none pr-10"
+                          >
+                            <option value="USD">USD</option>
+                            <option value="INR">INR</option>
+                            <option value="EUR">EUR</option>
+                          </select>
+                          <ChevronDown className="w-5 h-5 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeStep === 4 && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Application Deadline</label>
+                        <input type="date" className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all " value={formData.applicationDeadline} onChange={e => handleInputChange('applicationDeadline', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Contact Person</label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="Contact person name" value={formData.contactPerson} onChange={e => handleInputChange('contactPerson', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Application Method</label>
+                        <div className="relative">
+                          <select
+                            value={formData.applicationMethod}
+                            onChange={e => handleInputChange('applicationMethod', e.target.value)}
+                            className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 font-medium outline-none focus:ring-4 focus:ring-teal-500/20 transition-all cursor-pointer appearance-none pr-10"
+                          >
+                            <option value="" disabled>e.g. Email or URL</option>
+                            <option value="company">Apply on company site</option>
+                            <option value="email">Apply via email</option>
+                          </select>
+                          <ChevronDown className="w-5 h-5 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Application URL / Email <span className="text-red-500">*</span></label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g. hr@company.com" value={formData.applicationUrl} onChange={e => handleInputChange('applicationUrl', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-8">
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Tags (comma separated)</label>
+                        <input className="w-full px-5 py-3.5 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="e.g. React, Remote, Full Time" value={formData.tags} onChange={e => handleInputChange('tags', e.target.value)} />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[14px] font-bold text-slate-700">Benefits / Perks</label>
+                        <textarea rows={3} className="w-full px-5 py-4 bg-[#f6f3eb] border border-slate-200 rounded-[16px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-4 focus:ring-teal-500/20 font-medium transition-all" placeholder="List any benefits, health insurance..." value={(formData as any).benefits || ''} onChange={e => handleInputChange('benefits', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center px-2">
+                {activeStep > 1 ? (
+                  <button onClick={() => setActiveStep(activeStep - 1)} className="px-8 py-3.5 bg-[#f6f3eb] text-slate-600 rounded-[14px] font-bold hover:bg-slate-200 transition-all">Back</button>
+                ) : <div />}
+                <button
+                  onClick={() => activeStep < 4 ? goToNextStep() : handleSubmit()}
+                  disabled={isSubmitting}
+                  className="px-10 py-3.5 bg-teal-950 hover:bg-teal-900 text-white rounded-[14px] font-bold shadow-lg hover:shadow-teal-500/25 transition-all disabled:opacity-50"
+                >
+                  {activeStep === 4 ? (isSubmitting ? "Posting..." : "Post Job") : activeStep === 1 ? "Next: Job Details" : activeStep === 2 ? "Next: Compensation" : "Next: Application"}
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* TAB: MY POSTS */}
+        {activeTab === "My Posts" && (
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[
+                { label: "Total Posts", val: myJobs.length, icon: <FileText className="text-teal-950" />, bg: "bg-teal-50", plus: true },
+                { label: "Active Posts", val: myJobs.filter(j => j.status === 'Approved').length, icon: <CheckCircle2 className="text-teal-950" />, bg: "bg-[#f6f3eb]" },
+                { label: "Total Views", val: "0", icon: <Eye className="text-teal-500" />, bg: "bg-teal-50" },
+                { label: "Applications", val: "0", icon: <Users className="text-orange-500" />, bg: "bg-orange-50" }
+              ].map((s, i) => (
+                <div key={i} className="bg-white p-8 rounded-[2rem] border border-white shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className={`w-14 h-14 ${s.bg} rounded-2xl flex items-center justify-center`}>{s.icon}</div>
+                    <div><p className="text-[11px] font-black text-slate-400 uppercase">{s.label}</p><p className="text-3xl font-black text-slate-800">{s.val}</p></div>
+                  </div>
+                  {s.plus && <button onClick={() => setActiveTab("Post Job")} className="p-3 bg-teal-950 text-white rounded-xl shadow-lg"><Plus className="w-4 h-4" /></button>}
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              <h3 className="text-xl font-black text-slate-800 ml-2">Your Job Postings</h3>
+              {myJobs.map(job => (
+                <div key={job.id} className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-[2.5rem] border border-white flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-xl transition-all">
+                  <div className="w-full flex items-start gap-4 sm:gap-6">
+                    <div className="w-16 h-16 bg-[#f6f3eb] rounded-2xl flex items-center justify-center font-bold text-slate-400">{job.company.charAt(0)}</div>
+                    <div className="min-w-0">
+                      <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-1">
+                        <h4 className="text-xl font-black text-slate-800 truncate">{job.title}</h4>
+                        <span className="text-[10px] font-black px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md border border-amber-100 capitalize">{job.status}</span>
+                      </div>
+                      <div className="text-sm font-bold text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4" /> {job.company}</span>
+                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatPostedDate(job.postedDate)}</span>
+                        <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {formatPostedTime(job.postedDate)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full md:w-auto flex flex-wrap md:flex-nowrap gap-3 md:justify-end">
+                    <button onClick={() => openEditModal(job as any)} className="flex-1 md:flex-none px-6 py-3 bg-[#f6f3eb] text-slate-600 rounded-xl font-black hover:bg-slate-200 transition-colors">Edit</button>
+                    <button onClick={() => handleViewApplicants(job)} className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black hover:bg-[#f6f3eb] transition-colors">Applicants</button>
+                    <button onClick={() => { setSelectedJob(job); setIsModalOpen(true); }} className="flex-1 md:flex-none px-6 py-3 bg-teal-950 text-white rounded-xl font-black shadow-lg shadow-teal-500/20 hover:bg-teal-900 transition-colors">View Details</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
@@ -1283,69 +1312,69 @@ export default function AlumniJobBoard() {
           </DialogHeader>
 
           <div className="flex-1 min-h-0 px-6 sm:px-8 py-5 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Title</label>
-              <input value={editFormData.jobTitle} onChange={(e) => handleEditInputChange("jobTitle", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Title</label>
+                <input value={editFormData.jobTitle} onChange={(e) => handleEditInputChange("jobTitle", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Company</label>
+                <input value={editFormData.companyName} onChange={(e) => handleEditInputChange("companyName", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Location</label>
+                <input value={editFormData.location} onChange={(e) => handleEditInputChange("location", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Job Type</label>
+                <Select value={editFormData.jobType} onValueChange={(v) => handleEditInputChange("jobType", v)}>
+                  <SelectTrigger className="w-full px-4 py-6 bg-[#f6f3eb] border border-slate-200 rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 rounded-xl">
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Internship (Paid)">Internship (Paid)</SelectItem>
+                    <SelectItem value="Internship (Unpaid)">Internship (Unpaid)</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Temporary">Temporary</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Industry</label>
+                <input value={editFormData.industry} onChange={(e) => handleEditInputChange("industry", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
+                  <Checkbox checked={editFormData.remoteAvailable} onCheckedChange={(checked) => handleEditInputChange("remoteAvailable", checked === true)} />
+                  Remote Available
+                </label>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-700">Description</label>
+                <textarea rows={4} value={editFormData.jobDescription} onChange={(e) => handleEditInputChange("jobDescription", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-700">Requirements</label>
+                <textarea rows={3} value={editFormData.requirements} onChange={(e) => handleEditInputChange("requirements", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Salary Min</label>
+                <input value={editFormData.salaryMin} onChange={(e) => handleEditInputChange("salaryMin", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Salary Max</label>
+                <input value={editFormData.salaryMax} onChange={(e) => handleEditInputChange("salaryMax", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-700">Application URL / Email</label>
+                <input value={editFormData.applicationUrl} onChange={(e) => handleEditInputChange("applicationUrl", e.target.value)} className="w-full px-4 py-3 bg-[#f6f3eb] border border-slate-200 rounded-xl" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Company</label>
-              <input value={editFormData.companyName} onChange={(e) => handleEditInputChange("companyName", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Location</label>
-              <input value={editFormData.location} onChange={(e) => handleEditInputChange("location", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Job Type</label>
-              <Select value={editFormData.jobType} onValueChange={(v) => handleEditInputChange("jobType", v)}>
-                <SelectTrigger className="w-full px-4 py-6 bg-slate-50 border border-slate-200 rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 rounded-xl">
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
-                  <SelectItem value="Internship (Paid)">Internship (Paid)</SelectItem>
-                  <SelectItem value="Internship (Unpaid)">Internship (Unpaid)</SelectItem>
-                  <SelectItem value="Contract">Contract</SelectItem>
-                  <SelectItem value="Temporary">Temporary</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Industry</label>
-              <input value={editFormData.industry} onChange={(e) => handleEditInputChange("industry", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-                <Checkbox checked={editFormData.remoteAvailable} onCheckedChange={(checked) => handleEditInputChange("remoteAvailable", checked === true)} />
-                Remote Available
-              </label>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700">Description</label>
-              <textarea rows={4} value={editFormData.jobDescription} onChange={(e) => handleEditInputChange("jobDescription", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700">Requirements</label>
-              <textarea rows={3} value={editFormData.requirements} onChange={(e) => handleEditInputChange("requirements", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Salary Min</label>
-              <input value={editFormData.salaryMin} onChange={(e) => handleEditInputChange("salaryMin", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Salary Max</label>
-              <input value={editFormData.salaryMax} onChange={(e) => handleEditInputChange("salaryMax", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700">Application URL / Email</label>
-              <input value={editFormData.applicationUrl} onChange={(e) => handleEditInputChange("applicationUrl", e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-          </div>
           </div>
 
           <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-white flex justify-end gap-3">
-            <button onClick={() => setIsEditModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">Cancel</button>
-            <button onClick={saveEditedJob} disabled={isSavingEdit} className="px-6 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black disabled:opacity-60">
+            <button onClick={() => setIsEditModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-[#f6f3eb] text-slate-700 font-bold hover:bg-slate-200">Cancel</button>
+            <button onClick={saveEditedJob} disabled={isSavingEdit} className="px-6 py-2.5 rounded-xl bg-teal-950 text-white font-bold hover:bg-teal-900 disabled:opacity-60">
               {isSavingEdit ? "Saving..." : "Save Changes"}
             </button>
           </div>
@@ -1365,7 +1394,7 @@ export default function AlumniJobBoard() {
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handlePortalResumeFileChange}
                 disabled={uploading}
-                className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-blue-700 hover:file:bg-blue-100"
+                className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-teal-700 hover:file:bg-teal-100"
               />
               <div className="text-xs text-slate-500">PDF, DOC, DOCX up to 10MB. Or paste a URL below.</div>
               <input
@@ -1373,7 +1402,7 @@ export default function AlumniJobBoard() {
                 placeholder="Or paste a public resume URL (Google Drive, etc.)"
                 value={resumeUrl}
                 onChange={(e) => setResumeUrl(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-slate-300 rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
               {uploadedFileName ? <div className="text-sm text-emerald-700">Selected: {uploadedFileName}</div> : null}
             </div>
@@ -1385,7 +1414,7 @@ export default function AlumniJobBoard() {
                 value={coverLetter}
                 onChange={(e) => setCoverLetter(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-3 border border-slate-300 rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-slate-300 rounded-md bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
             </div>
 
@@ -1393,13 +1422,13 @@ export default function AlumniJobBoard() {
               <button
                 onClick={submitPortalApplication}
                 disabled={applySubmitting}
-                className="px-5 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black disabled:opacity-60"
+                className="px-5 py-2.5 rounded-xl bg-teal-950 text-white font-bold hover:bg-teal-900 disabled:opacity-60"
               >
                 {applySubmitting ? "Submitting..." : "Submit Application"}
               </button>
               <button
                 onClick={() => setApplyOpen(false)}
-                className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+                className="px-5 py-2.5 rounded-xl bg-[#f6f3eb] text-slate-700 font-bold hover:bg-slate-200"
               >
                 Cancel
               </button>
@@ -1417,7 +1446,7 @@ export default function AlumniJobBoard() {
           <div className="mt-5 flex justify-end">
             <button
               onClick={() => setIsEditSuccessOpen(false)}
-              className="px-5 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black"
+              className="px-5 py-2.5 rounded-xl bg-teal-950 text-white font-bold hover:bg-teal-900"
             >
               OK
             </button>
@@ -1443,14 +1472,14 @@ export default function AlumniJobBoard() {
             <button
               onClick={() => submitExternalApplicationFeedback(true)}
               disabled={submittingExternalFeedback}
-              className="px-5 py-2.5 rounded-xl bg-[#1A1C23] text-white font-bold hover:bg-black disabled:opacity-60"
+              className="px-5 py-2.5 rounded-xl bg-teal-950 text-white font-bold hover:bg-teal-900 disabled:opacity-60"
             >
               Yes, I Applied
             </button>
             <button
               onClick={() => submitExternalApplicationFeedback(false)}
               disabled={submittingExternalFeedback}
-              className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-60"
+              className="px-5 py-2.5 rounded-xl bg-[#f6f3eb] text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-60"
             >
               No, Not Yet
             </button>
@@ -1466,15 +1495,15 @@ export default function AlumniJobBoard() {
           {selectedJob && (
             <div className="space-y-6 animate-in fade-in">
               <div className="flex items-start">
-                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center border border-slate-100"><Building2 className="w-10 h-10 text-slate-300" /></div>
+                <div className="w-20 h-20 bg-[#f6f3eb] rounded-3xl flex items-center justify-center border border-slate-100"><Building2 className="w-10 h-10 text-slate-300" /></div>
               </div>
               <div>
                 <h2 className="text-3xl font-black text-slate-900">{selectedJob.title}</h2>
                 <p className="text-lg text-slate-500 font-bold">{selectedJob.company} • {selectedJob.location}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Salary Range</p><p className="text-xl font-black text-emerald-600">{selectedJob.salary}</p></div>
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Job Type</p><p className="text-xl font-black text-slate-800">{selectedJob.jobType}</p></div>
+                <div className="bg-[#f6f3eb] p-6 rounded-2xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Salary Range</p><p className="text-xl font-black text-teal-950">{selectedJob.salary}</p></div>
+                <div className="bg-[#f6f3eb] p-6 rounded-2xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Job Type</p><p className="text-xl font-black text-slate-800">{selectedJob.jobType}</p></div>
               </div>
               <div className="space-y-4 pt-4 border-t border-slate-100">
                 <h4 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">About the role</h4>
@@ -1484,14 +1513,14 @@ export default function AlumniJobBoard() {
               {selectedJob.postedBy === user?.email && (
                 <div className="pt-6 border-t border-slate-100 space-y-4">
                   <h4 className="font-black text-slate-800 uppercase text-xs tracking-widest">Registered Applicants ({selectedJob.applied || 0})</h4>
-                  <button onClick={() => {setIsModalOpen(false); handleViewApplicants(selectedJob);}} className="text-sm text-[#1A1C23] font-bold flex items-center gap-2 hover:text-[#1A1C23] tracking-wide transition-all">View Full Applicant List <ChevronRight className="w-4 h-4" /></button>
+                  <button onClick={() => { setIsModalOpen(false); handleViewApplicants(selectedJob); }} className="text-sm text-teal-950 font-bold flex items-center gap-2 hover:text-teal-950 tracking-wide transition-all">View Full Applicant List <ChevronRight className="w-4 h-4" /></button>
                 </div>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
-      
+
       <Dialog open={isApplicantModalOpen} onOpenChange={setIsApplicantModalOpen}>
         <DialogContent className="max-w-3xl rounded-[2.5rem] p-10 border-none bg-white">
           <DialogHeader className="sr-only">
@@ -1505,48 +1534,48 @@ export default function AlumniJobBoard() {
                   <p className="text-lg text-slate-500 font-bold">{selectedJob.title} @{selectedJob.company}</p>
                 </div>
               </div>
-              
+
               {loadingApplicants ? (
                 <div className="py-20 flex justify-center text-slate-400 font-bold animate-pulse">Loading Applicants...</div>
               ) : applicants.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 space-y-4 bg-slate-50 rounded-[2rem] border border-slate-100">
+                <div className="py-16 text-center text-slate-400 space-y-4 bg-[#f6f3eb] rounded-[2rem] border border-slate-100">
                   <Users className="w-12 h-12 mx-auto text-slate-300" />
                   <p className="font-bold text-lg">No one has applied yet.</p>
                 </div>
               ) : (
                 <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
                   {applicants.map((app) => (
-                    <div key={app.id} className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                       <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-[#1A1C23]">
-                           {app.applicant_email.charAt(0).toUpperCase()}
-                         </div>
-                         <div>
-                           <p className="font-bold text-slate-800">{app.applicant_email}</p>
-                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Applied: {new Date(app.created_at).toLocaleDateString()}</p>
-                         </div>
-                       </div>
-                       <div className="flex items-center gap-3">
-                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'applied' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}`}>{app.status}</span>
-                         {app.resume_url && (
+                    <div key={app.id} className="bg-[#f6f3eb] p-6 rounded-[2rem] border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center font-bold text-teal-950">
+                          {app.applicant_email.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800">{app.applicant_email}</p>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Applied: {new Date(app.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'applied' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}`}>{app.status}</span>
+                        {app.resume_url && (
                           (() => {
                             const targetUrl = app.resume_url.startsWith('http')
                               ? app.resume_url
                               : `${API_BASE.replace('/api', '')}${app.resume_url.startsWith('/') ? '' : '/'}${app.resume_url}`;
                             const previewHref = `${API_BASE}/files/preview?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent('resume.pdf')}`;
                             return (
-                           <a 
-                             href={previewHref}
-                             target="_blank" 
-                             rel="noreferrer" 
-                             className="px-6 py-3 bg-[#1A1C23] text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 text-sm hover:scale-105 transition-all"
-                           >
-                             Open Resume
-                           </a>
+                              <a
+                                href={previewHref}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-6 py-3 bg-teal-950 text-white rounded-xl font-bold shadow-lg shadow-teal-500/20 text-sm hover:scale-105 transition-all"
+                              >
+                                Open Resume
+                              </a>
                             );
                           })()
-                         )}
-                       </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1555,6 +1584,6 @@ export default function AlumniJobBoard() {
           )}
         </DialogContent>
       </Dialog>
-    </AlumniNavigation>
+    </>
   )
 }

@@ -109,7 +109,7 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
       <CardHeader className="pb-6">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+            <div className="p-3 bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg">
               <Filter className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -131,16 +131,16 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
       <CardContent className="space-y-8">
         {/* Skills Filter */}
         <Collapsible>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 border border-blue-100">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-teal-50 to-teal-50 rounded-xl hover:from-teal-100 hover:to-teal-100 transition-all duration-200 border border-teal-100">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-sm">
+              <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-sm">
                 <Users className="w-4 h-4 text-white" />
               </div>
               <span className="font-bold text-gray-900">Skills & Expertise</span>
             </div>
             <div className="flex items-center gap-3">
               {selectedSkills.length > 0 && (
-                <Badge className="bg-blue-100 text-blue-700 border-blue-200 shadow-sm">
+                <Badge className="bg-teal-100 text-teal-700 border-teal-200 shadow-sm">
                   {selectedSkills.length} selected
                 </Badge>
               )}
@@ -148,18 +148,18 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-6 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-xl border border-blue-100">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-6 bg-gradient-to-r from-teal-50/50 to-teal-50/50 rounded-xl border border-teal-100">
               {skillsList.map(skill => (
-                <div key={skill} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/80 transition-all duration-200 border border-transparent hover:border-blue-200">
+                <div key={skill} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/80 transition-all duration-200 border border-transparent hover:border-teal-200">
                   <Checkbox
                     id={`skill-${skill}`}
                     checked={selectedSkills.includes(skill)}
                     onCheckedChange={() => handleSkillToggle(skill)}
-                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                    className="data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
                   />
                   <Label 
                     htmlFor={`skill-${skill}`}
-                    className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                    className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-teal-600 transition-colors"
                   >
                     {skill}
                   </Label>
@@ -171,16 +171,16 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
 
         {/* Company Filter */}
         <Collapsible>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl hover:from-indigo-100 hover:to-purple-100 transition-all duration-200 border border-indigo-100">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-teal-50 to-teal-50 rounded-xl hover:from-teal-100 hover:to-teal-100 transition-all duration-200 border border-teal-100">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+              <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-sm">
                 <Building className="w-4 h-4 text-white" />
               </div>
               <span className="font-bold text-gray-900">Companies</span>
             </div>
             <div className="flex items-center gap-3">
               {selectedCompanies.length > 0 && (
-                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 shadow-sm">
+                <Badge className="bg-teal-100 text-teal-700 border-teal-200 shadow-sm">
                   {selectedCompanies.length} selected
                 </Badge>
               )}
@@ -188,18 +188,18 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-6 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 rounded-xl border border-indigo-100">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-6 bg-gradient-to-r from-teal-50/50 to-teal-50/50 rounded-xl border border-teal-100">
               {companiesList.map(company => (
-                <div key={company} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/80 transition-all duration-200 border border-transparent hover:border-indigo-200">
+                <div key={company} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/80 transition-all duration-200 border border-transparent hover:border-teal-200">
                   <Checkbox
                     id={`company-${company}`}
                     checked={selectedCompanies.includes(company)}
                     onCheckedChange={() => handleCompanyToggle(company)}
-                    className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                    className="data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
                   />
                   <Label 
                     htmlFor={`company-${company}`}
-                    className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-indigo-600 transition-colors"
+                    className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-teal-600 transition-colors"
                   >
                     {company}
                   </Label>
@@ -211,16 +211,16 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
 
         {/* Location Filter */}
         <Collapsible>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl hover:from-purple-100 hover:to-pink-100 transition-all duration-200 border border-purple-100">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-teal-50 to-pink-50 rounded-xl hover:from-teal-100 hover:to-pink-100 transition-all duration-200 border border-teal-100">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-sm">
+              <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-sm">
                 <MapPin className="w-4 h-4 text-white" />
               </div>
               <span className="font-bold text-gray-900">Locations</span>
             </div>
             <div className="flex items-center gap-3">
               {selectedLocations.length > 0 && (
-                <Badge className="bg-purple-100 text-purple-700 border-purple-200 shadow-sm">
+                <Badge className="bg-teal-100 text-teal-700 border-teal-200 shadow-sm">
                   {selectedLocations.length} selected
                 </Badge>
               )}
@@ -228,18 +228,18 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-6 bg-gradient-to-r from-purple-50/50 to-pink-50/50 rounded-xl border border-purple-100">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-6 bg-gradient-to-r from-teal-50/50 to-pink-50/50 rounded-xl border border-teal-100">
               {locationsList.map(location => (
-                <div key={location} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/80 transition-all duration-200 border border-transparent hover:border-purple-200">
+                <div key={location} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/80 transition-all duration-200 border border-transparent hover:border-teal-200">
                   <Checkbox
                     id={`location-${location}`}
                     checked={selectedLocations.includes(location)}
                     onCheckedChange={() => handleLocationToggle(location)}
-                    className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    className="data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
                   />
                   <Label 
                     htmlFor={`location-${location}`}
-                    className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-purple-600 transition-colors"
+                    className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-teal-600 transition-colors"
                   >
                     {location}
                   </Label>
@@ -285,7 +285,7 @@ export function AdvancedFilters({ isOpen, onFiltersChange, onClearFilters }: Adv
             </div>
           </div>
 
-          <div className="p-6 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-100">
+          <div className="p-6 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-teal-900/10">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg shadow-sm">
                 <Heart className="w-4 h-4 text-white" />

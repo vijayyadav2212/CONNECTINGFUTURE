@@ -2,7 +2,7 @@
 
 import { useUser, withPageAuthRequired } from "@auth0/nextjs-auth0/client";
 import { useState } from "react";
-import AlumniNavigation from '../AluminaNavigation';
+
 
 function AMAPage() {
   const { user, error, isLoading } = useUser();
@@ -11,10 +11,10 @@ function AMAPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900">
         <div className="text-center">
           <div className="relative">
-            <div className="w-24 h-24 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-6"></div>
+            <div className="w-24 h-24 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto mb-6"></div>
             <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-pink-400 rounded-full animate-spin mx-auto mt-4 ml-4"></div>
           </div>
           <p className="text-white text-xl font-medium">Loading your AMA dashboard...</p>
@@ -25,7 +25,7 @@ function AMAPage() {
 
   if (error || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-900 via-purple-900 to-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-900 via-teal-900 to-slate-900">
         <div className="text-center bg-white/10 backdrop-blur-xl rounded-3xl p-12 border border-white/20">
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-red-400 text-4xl">⚠️</span>
@@ -34,7 +34,7 @@ function AMAPage() {
           <p className="text-red-200 mb-6">Please log in to access your AMA dashboard</p>
           <a 
             href="/api/auth/login" 
-            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg"
+            className="bg-gradient-to-r from-teal-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-bold hover:from-teal-700 hover:to-pink-700 transition-all duration-300 shadow-lg"
           >
             Login to Continue
           </a>
@@ -44,15 +44,15 @@ function AMAPage() {
   }
 
   return (
-    <AlumniNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb]">
         {/* Enhanced Hero Section */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-90"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-600 via-pink-600 to-red-600 opacity-90"></div>
           <div className="absolute inset-0">
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
             <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-yellow-300/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
           </div>
           
           <div className="relative z-10 px-8 py-16">
@@ -65,7 +65,7 @@ function AMAPage() {
                     </div>
                     <div>
                       <h1 className="text-5xl font-black mb-2">Ask Me Anything</h1>
-                      <p className="text-purple-100 text-xl">Share your expertise, inspire the next generation</p>
+                      <p className="text-teal-100 text-xl">Share your expertise, inspire the next generation</p>
                     </div>
                   </div>
                   
@@ -78,7 +78,7 @@ function AMAPage() {
                       />
                       <div>
                         <p className="font-bold text-lg">Welcome back, {user.name?.split(' ')[0]}!</p>
-                        <p className="text-purple-200 text-sm">Ready to share your knowledge?</p>
+                        <p className="text-teal-200 text-sm">Ready to share your knowledge?</p>
                       </div>
                     </div>
                   </div>
@@ -87,15 +87,15 @@ function AMAPage() {
                   <div className="flex space-x-6">
                     <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
                       <p className="text-2xl font-bold">12</p>
-                      <p className="text-purple-200 text-sm">Sessions Hosted</p>
+                      <p className="text-teal-200 text-sm">Sessions Hosted</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
                       <p className="text-2xl font-bold">348</p>
-                      <p className="text-purple-200 text-sm">Lives Impacted</p>
+                      <p className="text-teal-200 text-sm">Lives Impacted</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
                       <p className="text-2xl font-bold">4.9</p>
-                      <p className="text-purple-200 text-sm">Avg Rating</p>
+                      <p className="text-teal-200 text-sm">Avg Rating</p>
                     </div>
                   </div>
                 </div>
@@ -103,11 +103,11 @@ function AMAPage() {
                 <div className="text-center lg:text-right">
                   <button 
                     onClick={() => setShowScheduleModal(true)}
-                    className="bg-white text-purple-600 px-10 py-5 rounded-3xl font-bold text-lg hover:bg-purple-50 transition-all duration-300 shadow-2xl transform hover:scale-105 mb-4"
+                    className="bg-white text-teal-600 px-10 py-5 rounded-3xl font-bold text-lg hover:bg-teal-50 transition-all duration-300 shadow-2xl transform hover:scale-105 mb-4"
                   >
                     🚀 Schedule New AMA
                   </button>
-                  <p className="text-purple-200 text-sm">Next available slot: Tomorrow 7:00 PM</p>
+                  <p className="text-teal-200 text-sm">Next available slot: Tomorrow 7:00 PM</p>
                 </div>
               </div>
             </div>
@@ -130,7 +130,7 @@ function AMAPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex-1 px-6 py-4 rounded-2xl font-bold transition-all duration-300 ${
                       activeTab === tab.id
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-teal-600 to-pink-600 text-white shadow-lg'
                         : 'text-slate-600 hover:bg-white/50'
                     }`}
                   >
@@ -156,10 +156,10 @@ function AMAPage() {
                   {/* Sample Upcoming AMA */}
                   <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
                     <div className="flex items-start justify-between mb-6">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-2xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-r from-teal-400 to-teal-500 rounded-2xl flex items-center justify-center">
                         <span className="text-white text-xl">💼</span>
                       </div>
-                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                      <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm font-medium">
                         In 2 days
                       </span>
                     </div>
@@ -183,10 +183,10 @@ function AMAPage() {
                     </div>
                     
                     <div className="flex space-x-3">
-                      <button className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all duration-300">
+                      <button className="flex-1 bg-gradient-to-r from-teal-600 to-teal-600 text-white py-3 rounded-xl font-bold hover:from-teal-700 hover:to-teal-700 transition-all duration-300">
                         Edit Session
                       </button>
-                      <button className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors duration-200">
+                      <button className="px-4 py-3 bg-[#f6f3eb] text-slate-600 rounded-xl hover:bg-slate-200 transition-colors duration-200">
                         📋
                       </button>
                     </div>
@@ -225,7 +225,7 @@ function AMAPage() {
                       <button className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all duration-300">
                         Edit Session
                       </button>
-                      <button className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors duration-200">
+                      <button className="px-4 py-3 bg-[#f6f3eb] text-slate-600 rounded-xl hover:bg-slate-200 transition-colors duration-200">
                         📋
                       </button>
                     </div>
@@ -234,10 +234,10 @@ function AMAPage() {
                   {/* Create New AMA Card */}
                   <div 
                     onClick={() => setShowScheduleModal(true)}
-                    className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-dashed border-purple-300 rounded-3xl p-8 hover:border-purple-400 transition-all duration-300 cursor-pointer transform hover:scale-105"
+                    className="bg-gradient-to-br from-teal-50 to-pink-50 border-2 border-dashed border-teal-300 rounded-3xl p-8 hover:border-teal-400 transition-all duration-300 cursor-pointer transform hover:scale-105"
                   >
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-white text-2xl">➕</span>
                       </div>
                       <h3 className="text-xl font-bold text-slate-900 mb-2">Schedule New AMA</h3>
@@ -275,8 +275,8 @@ function AMAPage() {
                       duration: "2h 15m",
                       attendees: 124,
                       rating: 4.9,
-                      color: "from-blue-500 to-cyan-500",
-                      bgColor: "from-blue-50 to-cyan-50"
+                      color: "from-teal-500 to-teal-500",
+                      bgColor: "from-teal-50 to-teal-50"
                     },
                     {
                       title: "Product Management Essentials",
@@ -293,8 +293,8 @@ function AMAPage() {
                       duration: "1h 30m", 
                       attendees: 156,
                       rating: 4.7,
-                      color: "from-purple-500 to-pink-500",
-                      bgColor: "from-purple-50 to-pink-50"
+                      color: "from-teal-500 to-pink-500",
+                      bgColor: "from-teal-50 to-pink-50"
                     },
                     {
                       title: "Building Technical Teams",
@@ -355,9 +355,9 @@ function AMAPage() {
               <div className="space-y-8">
                 {/* Analytics Overview Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-8 shadow-xl border border-blue-200">
+                  <div className="bg-gradient-to-br from-teal-50 to-teal-50 rounded-3xl p-8 shadow-xl border border-teal-200">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-teal-500 rounded-2xl flex items-center justify-center">
                         <span className="text-white text-xl">👥</span>
                       </div>
                       <span className="text-green-600 text-sm font-bold bg-green-100 px-2 py-1 rounded-full">+23%</span>
@@ -377,9 +377,9 @@ function AMAPage() {
                     <p className="text-slate-600">Average Rating</p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 shadow-xl border border-purple-200">
+                  <div className="bg-gradient-to-br from-teal-50 to-pink-50 rounded-3xl p-8 shadow-xl border border-teal-200">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-pink-500 rounded-2xl flex items-center justify-center">
                         <span className="text-white text-xl">🎙️</span>
                       </div>
                       <span className="text-green-600 text-sm font-bold bg-green-100 px-2 py-1 rounded-full">+4</span>
@@ -417,13 +417,13 @@ function AMAPage() {
 
         {/* Schedule Modal */}
         {showScheduleModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-teal-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-3xl font-bold text-slate-900">🚀 Schedule New AMA</h2>
                 <button 
                   onClick={() => setShowScheduleModal(false)}
-                  className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors duration-200"
+                  className="w-10 h-10 bg-[#f6f3eb] rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors duration-200"
                 >
                   ✕
                 </button>
@@ -435,7 +435,7 @@ function AMAPage() {
                   <input 
                     type="text" 
                     placeholder="e.g., Breaking into Product Management"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200"
                   />
                 </div>
 
@@ -444,7 +444,7 @@ function AMAPage() {
                   <textarea 
                     rows={4}
                     placeholder="Describe what you'll cover in this AMA session..."
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200"
                   />
                 </div>
 
@@ -453,7 +453,7 @@ function AMAPage() {
                     <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
                     <input 
                       type="date" 
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200"
                     />
                   </div>
 
@@ -461,7 +461,7 @@ function AMAPage() {
                     <label className="block text-sm font-bold text-slate-700 mb-2">Time</label>
                     <input 
                       type="time" 
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200"
                     />
                   </div>
                 </div>
@@ -469,7 +469,7 @@ function AMAPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Duration (minutes)</label>
-                    <select className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200">
+                    <select className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200">
                       <option>60</option>
                       <option>90</option>
                       <option>120</option>
@@ -482,14 +482,14 @@ function AMAPage() {
                     <input 
                       type="number" 
                       placeholder="100"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
-                  <select className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200">
+                  <select className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200">
                     <option>Career Development</option>
                     <option>Technical Skills</option>
                     <option>Leadership</option>
@@ -502,13 +502,13 @@ function AMAPage() {
                 <div className="flex space-x-4 pt-6">
                   <button 
                     onClick={() => setShowScheduleModal(false)}
-                    className="flex-1 px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all duration-300"
+                    className="flex-1 px-6 py-4 bg-[#f6f3eb] text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all duration-300"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={() => setShowScheduleModal(false)}
-                    className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg"
+                    className="flex-1 px-6 py-4 bg-gradient-to-r from-teal-600 to-pink-600 text-white rounded-2xl font-bold hover:from-teal-700 hover:to-pink-700 transition-all duration-300 shadow-lg"
                   >
                     Schedule AMA
                   </button>
@@ -518,7 +518,7 @@ function AMAPage() {
           </div>
         )}
       </div>
-    </AlumniNavigation>
+    </>
   );
 }
 

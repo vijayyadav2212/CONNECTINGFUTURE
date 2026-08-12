@@ -91,10 +91,25 @@ async function getUserProfile(req, res) {
   });
 }
 
+// GET user profile by email
+async function getUserByEmail(req, res) {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    const { rows } = await dbQuery('SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [email]);
+    if (!rows || !rows.length) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    return res.json({ user: rows[0] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 // PUT create/update user profile
 async function updateUserProfile(req, res) {
   try {
-    const auth0Id = req.auth && req.auth.sub;
+    const auth0Id = (req.auth && req.auth.sub) || req.body.auth0_id || (req.body.email ? `local|${req.body.email.split('@')[0]}` : 'local|user');
     const email = req.body.email || (req.auth && (req.auth["https://schemas.quickstart/email"] || req.auth.email));
     if (!auth0Id || !email) return res.status(400).json({ error: 'Missing auth0_id or email' });
 
@@ -248,11 +263,40 @@ async function updateUserProfile(req, res) {
   }
 }
 
-// GET list of all users (for admin)
+// GET list of users (filtered by user_type, search query, approval status, etc.)
 async function listUsers(req, res) {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit, 10) : 1000;
-    const { rows } = await dbQuery('SELECT * FROM users ORDER BY created_at DESC LIMIT ?', [limit]);
+    const type = req.query.type || req.query.user_type;
+    const q = req.query.q || req.query.search;
+    const status = req.query.status || req.query.approval_status;
+
+    let sql = 'SELECT * FROM users WHERE 1=1';
+    const params = [];
+
+    if (type) {
+      sql += ' AND LOWER(user_type) = LOWER(?)';
+      params.push(type);
+    }
+
+    if (status) {
+      sql += ' AND LOWER(approval_status) = LOWER(?)';
+      params.push(status);
+    } else if (type && type.toLowerCase() === 'alumni') {
+      // By default for alumni directory, show approved alumni (or legacy records without explicit approval status)
+      sql += " AND (LOWER(approval_status) = 'approved' OR approval_status IS NULL)";
+    }
+
+    if (q) {
+      sql += ' AND (LOWER(name) LIKE ? OR LOWER(email) LIKE ? OR LOWER(company) LIKE ? OR LOWER(job_title) LIKE ? OR LOWER(major) LIKE ?)';
+      const term = `%${q.toLowerCase()}%`;
+      params.push(term, term, term, term, term);
+    }
+
+    sql += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(limit);
+
+    const { rows } = await dbQuery(sql, params);
     return res.json({ users: rows || [] });
   } catch (error) {
     console.error('Error listing users:', error.message);
@@ -308,6 +352,7 @@ async function changePassword(req, res) {
 
 module.exports = {
   getUserProfile,
+  getUserByEmail,
   updateUserProfile,
   listUsers,
   changePassword

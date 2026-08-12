@@ -25,8 +25,10 @@ async function register(req, res) {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Enforce role based on email domain
-    const user_type = emailLower.endsWith('@pvppcoe.ac.in') ? 'student' : 'alumni';
+    // Enforce role based on explicit request or email domain
+    const user_type = (requestedUserType && ['student', 'alumni'].includes(String(requestedUserType).toLowerCase()))
+      ? String(requestedUserType).toLowerCase()
+      : (emailLower.endsWith('@pvppcoe.ac.in') ? 'student' : 'alumni');
 
     // Check auto-approve setting for alumni
     let shouldAutoApproveAlumni = false;

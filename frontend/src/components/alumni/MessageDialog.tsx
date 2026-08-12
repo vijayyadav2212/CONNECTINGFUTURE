@@ -51,22 +51,22 @@ export function MessageDialog({
         <DialogHeader className="space-y-4 pb-6 border-b border-gray-100">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <Avatar className="w-16 h-16 border-4 border-gradient-to-br from-blue-100 to-indigo-100 shadow-lg">
+              <Avatar className="w-16 h-16 border-4 border-gradient-to-br from-teal-100 to-teal-100 shadow-lg">
                 <AvatarImage src={alumni.profilePicture} alt={alumni.name} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                <AvatarFallback className="bg-gradient-to-br from-teal-500 to-teal-600 text-white font-bold text-lg">
                   {alumni.name.split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-2">
                 <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
+                  <User className="w-5 h-5 text-teal-600" />
                   Send Message to {alumni.name}
                 </DialogTitle>
                 <p className="text-sm text-gray-700 font-semibold">
                   {alumni.currentPosition} at {alumni.company}
                 </p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border-blue-200">
+                  <Badge variant="secondary" className="text-xs bg-gradient-to-r from-teal-100 to-teal-100 text-teal-800 border-teal-200">
                     {alumni.branch}
                   </Badge>
                   <Badge variant="outline" className="text-xs text-gray-600 border-gray-300">
@@ -115,7 +115,7 @@ export function MessageDialog({
 
           <div className="space-y-3">
             <Label htmlFor="subject" className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
               Subject (Optional)
             </Label>
             <Input
@@ -123,13 +123,13 @@ export function MessageDialog({
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Enter a subject for your message"
-              className="h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm text-gray-900 placeholder:text-gray-500"
+              className="h-12 border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl bg-white shadow-sm text-gray-900 placeholder:text-gray-500"
             />
           </div>
 
           <div className="space-y-3">
             <Label htmlFor="message" className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
               Message <span className="text-red-500 ml-1">*</span>
             </Label>
             <Textarea
@@ -140,7 +140,7 @@ export function MessageDialog({
                 ? "Write your message here..." 
                 : "Hi! I'd love to connect and learn more about your experience in Technology. I'm also working in a similar field and would appreciate any insights you might share."
               }
-              className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl bg-white shadow-sm text-gray-900 placeholder:text-gray-500"
+              className="min-h-[120px] resize-none border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl bg-white shadow-sm text-gray-900 placeholder:text-gray-500"
               maxLength={500}
               required
             />
@@ -159,7 +159,7 @@ export function MessageDialog({
           {/* Message Templates */}
           <div className="space-y-4">
             <Label className="text-sm font-bold text-gray-800 flex items-center gap-2">
-              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
               Quick Templates:
             </Label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -168,7 +168,7 @@ export function MessageDialog({
                 variant="outline"
                 size="sm"
                 onClick={() => setMessage("Hi! I'd love to connect and learn more about your experience in " + (alumni.industry || "Technology") + ". I'm also working in a similar field and would appreciate any insights you might share.")}
-                className="text-left justify-start h-auto py-3 px-4 text-xs font-semibold hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-200 hover:text-blue-700 transition-all duration-200 rounded-xl shadow-sm"
+                className="text-left justify-start h-auto py-3 px-4 text-xs font-semibold hover:bg-gradient-to-r hover:from-teal-50 hover:to-teal-50 hover:border-teal-200 hover:text-teal-700 transition-all duration-200 rounded-xl shadow-sm"
               >
                 Career Advice
               </Button>
@@ -186,7 +186,7 @@ export function MessageDialog({
                 variant="outline"
                 size="sm"
                 onClick={() => setMessage("Hi! I noticed we have similar backgrounds and I'd love to learn more about your journey at " + alumni.company + ". Would you be open to a brief conversation?")}
-                className="text-left justify-start h-auto py-3 px-4 text-xs font-semibold hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:border-purple-200 hover:text-purple-700 transition-all duration-200 rounded-xl shadow-sm"
+                className="text-left justify-start h-auto py-3 px-4 text-xs font-semibold hover:bg-gradient-to-r hover:from-teal-50 hover:to-pink-50 hover:border-teal-200 hover:text-teal-700 transition-all duration-200 rounded-xl shadow-sm"
               >
                 Networking
               </Button>
@@ -197,7 +197,7 @@ export function MessageDialog({
             <Button 
               onClick={handleSend}
               disabled={!message.trim()}
-              className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+              className="flex-1 h-12 bg-gradient-to-r from-teal-600 to-teal-600 hover:from-teal-700 hover:to-teal-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
             >
               <Send className="w-4 h-4 mr-2" />
               {alumni.isConnected ? "Send Message" : "Send Request"}
@@ -206,7 +206,7 @@ export function MessageDialog({
               type="button"
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              className="h-12 px-8 border-gray-300 hover:bg-gray-50 hover:border-gray-400 font-semibold rounded-xl transition-all duration-200"
+              className="h-12 px-8 border-gray-300 hover:bg-[#f6f3eb] hover:border-gray-400 font-semibold rounded-xl transition-all duration-200"
             >
               Cancel
             </Button>

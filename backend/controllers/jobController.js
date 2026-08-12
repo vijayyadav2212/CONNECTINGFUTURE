@@ -163,6 +163,258 @@ async function handleExternalJobsRequest(req, res) {
   }
 }
 
+async function getAllJobs(req, res) {
+  try {
+    const { status, posted_by } = req.query;
+    let query = 'SELECT * FROM jobs';
+    const params = [];
+    const conditions = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      conditions.push(`status = $${params.length}`);
+    }
+    if (posted_by) {
+      params.push(posted_by.toLowerCase());
+      conditions.push(`LOWER(posted_by) = $${params.length}`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' ORDER BY created_at DESC';
+
+    const { rows } = await dbQuery(query, params);
+    return res.json({ jobs: rows || [] });
+  } catch (error) {
+    console.error('getAllJobs error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch jobs' });
+  }
+}
+
+async function createJob(req, res) {
+  try {
+    const {
+      title, company, location, description, responsibilities,
+      requirements, benefits, salary_min, salary_max, currency,
+      tags, status, industry, job_type, is_remote,
+      application_deadline, contact_person, application_method,
+      application_url, posted_by
+    } = req.body;
+
+    const authorEmail = posted_by || 'alumni@vppcoe.ac.in';
+    if (!title || !company || !location || !description) {
+      return res.status(400).json({ error: 'Missing required fields: title, company, location, description' });
+    }
+
+    const tagsString = Array.isArray(tags) ? tags.join(',') : (tags || '');
+    const sMin = salary_min ? parseFloat(salary_min) : null;
+    const sMax = salary_max ? parseFloat(salary_max) : null;
+
+    const { rows } = await dbQuery(
+      `INSERT INTO jobs (
+        title, company, location, description, responsibilities,
+        requirements, benefits, salary_min, salary_max, currency,
+        tags, status, industry, job_type, is_remote,
+        application_deadline, contact_person, application_method,
+        application_url, posted_by, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, NOW(), NOW()
+      ) RETURNING *`,
+      [
+        title, company, location, description, responsibilities || '',
+        requirements || '', benefits || '', sMin, sMax, currency || 'USD',
+        tagsString, status || 'Approved', industry || 'General', job_type || 'Full-time', Boolean(is_remote),
+        application_deadline ? new Date(application_deadline) : null, contact_person || '', application_method || '',
+        application_url || '', authorEmail
+      ]
+    );
+
+    return res.status(201).json({ success: true, job: rows[0] });
+  } catch (error) {
+    console.error('createJob error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to create job' });
+  }
+}
+
+async function updateJob(req, res) {
+  try {
+    const { id } = req.params;
+    const {
+      title, company, location, description, responsibilities,
+      requirements, benefits, salary_min, salary_max, currency,
+      tags, status, industry, job_type, is_remote,
+      application_deadline, contact_person, application_method,
+      application_url
+    } = req.body;
+
+    const tagsString = Array.isArray(tags) ? tags.join(',') : (tags || '');
+    const sMin = salary_min ? parseFloat(salary_min) : null;
+    const sMax = salary_max ? parseFloat(salary_max) : null;
+
+    const { rows } = await dbQuery(
+      `UPDATE jobs SET
+        title = COALESCE($1, title),
+        company = COALESCE($2, company),
+        location = COALESCE($3, location),
+        description = COALESCE($4, description),
+        responsibilities = COALESCE($5, responsibilities),
+        requirements = COALESCE($6, requirements),
+        benefits = COALESCE($7, benefits),
+        salary_min = COALESCE($8, salary_min),
+        salary_max = COALESCE($9, salary_max),
+        currency = COALESCE($10, currency),
+        tags = COALESCE($11, tags),
+        status = COALESCE($12, status),
+        industry = COALESCE($13, industry),
+        job_type = COALESCE($14, job_type),
+        is_remote = COALESCE($15, is_remote),
+        application_deadline = COALESCE($16, application_deadline),
+        contact_person = COALESCE($17, contact_person),
+        application_method = COALESCE($18, application_method),
+        application_url = COALESCE($19, application_url),
+        updated_at = NOW()
+      WHERE id = $20
+      RETURNING *`,
+      [
+        title, company, location, description, responsibilities,
+        requirements, benefits, sMin, sMax, currency,
+        tagsString, status, industry, job_type, is_remote,
+        application_deadline ? new Date(application_deadline) : null, contact_person, application_method,
+        application_url, id
+      ]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    return res.json({ success: true, job: rows[0] });
+  } catch (error) {
+    console.error('updateJob error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update job' });
+  }
+}
+
+async function deleteJob(req, res) {
+  try {
+    const { id } = req.params;
+    await dbQuery('DELETE FROM jobs WHERE id = $1', [id]);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('deleteJob error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete job' });
+  }
+}
+
+async function applyToJob(req, res) {
+  try {
+    const { id } = req.params;
+    const { applicant_email, resume_url, cover_letter } = req.body;
+
+    if (!applicant_email) {
+      return res.status(400).json({ error: 'Applicant email is required' });
+    }
+
+    const { rows } = await dbQuery(
+      `INSERT INTO applications (job_id, applicant_email, resume_url, cover_letter, applied_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
+       ON CONFLICT (job_id, applicant_email)
+       DO UPDATE SET resume_url = EXCLUDED.resume_url, cover_letter = EXCLUDED.cover_letter, updated_at = NOW()
+       RETURNING *`,
+      [id, applicant_email, resume_url || '', cover_letter || '']
+    );
+
+    await dbQuery('UPDATE jobs SET applied = applied + 1 WHERE id = $1', [id]);
+
+    return res.status(201).json({ success: true, application: rows[0] });
+  } catch (error) {
+    console.error('applyToJob error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to submit application' });
+  }
+}
+
+async function getApplications(req, res) {
+  try {
+    const { applicant_email, job_id } = req.query;
+    let query = 'SELECT a.*, j.title as job_title, j.company as job_company FROM applications a JOIN jobs j ON a.job_id = j.id';
+    const params = [];
+    const conditions = [];
+
+    if (applicant_email) {
+      params.push(applicant_email.toLowerCase());
+      conditions.push(`LOWER(a.applicant_email) = $${params.length}`);
+    }
+    if (job_id) {
+      params.push(job_id);
+      conditions.push(`a.job_id = $${params.length}`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' ORDER BY a.applied_at DESC';
+
+    const { rows } = await dbQuery(query, params);
+    return res.json({ applications: rows || [] });
+  } catch (error) {
+    console.error('getApplications error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch applications' });
+  }
+}
+
+async function getApplicationsByJob(req, res) {
+  try {
+    const { job_id } = req.query;
+    if (!job_id) {
+      return res.status(400).json({ error: 'job_id is required' });
+    }
+
+    const { rows } = await dbQuery(
+      `SELECT a.*, u.name as applicant_name, u.picture as applicant_avatar
+       FROM applications a
+       LEFT JOIN users u ON LOWER(a.applicant_email) = LOWER(u.email)
+       WHERE a.job_id = $1 OR a.job_id::text = $1::text
+       ORDER BY a.applied_at DESC`,
+      [job_id]
+    );
+
+    return res.json({ applications: rows || [] });
+  } catch (error) {
+    console.error('getApplicationsByJob error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch applicants' });
+  }
+}
+
+async function getExternalJobAnalytics(req, res) {
+  try {
+    const { rows } = await dbQuery(
+      `SELECT 
+        COUNT(*)::int as total_external_jobs,
+        COALESCE(SUM(view_count), 0)::int as total_views,
+        COALESCE(SUM(apply_click_count), 0)::int as total_apply_clicks,
+        COALESCE(SUM(applied_confirm_count), 0)::int as total_confirmed_applies,
+        COALESCE(SUM(application_response_count), 0)::int as total_responses
+       FROM external_jobs_cache`
+    );
+    return res.json(rows[0] || {});
+  } catch (error) {
+    console.error('getExternalJobAnalytics error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to load analytics' });
+  }
+}
+
 module.exports = {
-  handleExternalJobsRequest
+  handleExternalJobsRequest,
+  getAllJobs,
+  createJob,
+  updateJob,
+  deleteJob,
+  applyToJob,
+  getApplications,
+  getApplicationsByJob,
+  getExternalJobAnalytics
 };

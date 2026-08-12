@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AlumniNavigation from '../AluminaNavigation/AlumniNavigation';
+
 import {
   Search, Bell, SlidersHorizontal, 
   ChevronLeft, ChevronRight, MessageCircle, Video, Clock, 
@@ -62,15 +62,15 @@ export default function AlumniDashboard() {
   }, [router]);
 
   if (loading) return (
-    <AlumniNavigation>
+    <>
         <div className="flex h-full min-h-[60vh] items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-black" />
         </div>
-    </AlumniNavigation>
+    </>
   );
 
   if (error) return (
-    <AlumniNavigation>
+    <>
       <div className="p-8 h-full">
         <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-6 rounded-[20px] shadow-sm flex items-start gap-3">
           <XCircle className="text-red-500 mt-1 flex-shrink-0" />
@@ -80,14 +80,14 @@ export default function AlumniDashboard() {
           </div>
         </div>
       </div>
-    </AlumniNavigation>
+    </>
   );
 
   const totalImpact = Number(profile?.impact_score ?? profile?.total_points ?? profile?.impactScore ?? 0);
   const impactBreakdown = profile?.impact_breakdown || {};
   
   return (
-    <AlumniNavigation>
+    <>
       <div className="max-w-[1400px] mx-auto text-[#111111]">
         {/* Top Header */}
         <div className="flex items-center justify-between mb-10">
@@ -100,11 +100,11 @@ export default function AlumniDashboard() {
               />
            </div>
            <div className="flex items-center gap-4">
-              <button className="w-[46px] h-[46px] bg-white rounded-full flex items-center justify-center hover:bg-gray-50 relative border border-transparent hover:border-gray-100">
+              <button className="w-[46px] h-[46px] bg-white rounded-full flex items-center justify-center hover:bg-[#f6f3eb] relative border border-transparent hover:border-gray-100">
                  <Bell size={20} className="text-gray-700" strokeWidth={2} />
-                 <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-black rounded-full border-2 border-white" />
+                 <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-teal-950 rounded-full border-2 border-white" />
               </button>
-              <button className="w-[46px] h-[46px] bg-white rounded-full flex items-center justify-center hover:bg-gray-50 border border-transparent hover:border-gray-100">
+              <button className="w-[46px] h-[46px] bg-white rounded-full flex items-center justify-center hover:bg-[#f6f3eb] border border-transparent hover:border-gray-100">
                  <SlidersHorizontal size={20} className="text-gray-700" strokeWidth={2} />
               </button>
            </div>
@@ -121,7 +121,7 @@ export default function AlumniDashboard() {
                 <h2 className="text-[28px] font-bold mb-6 tracking-tight">Community Contribution</h2>
                 
                 {/* Main Dark Card */}
-                <div className="bg-[#1A1C23] rounded-[32px] p-8 text-white mb-6 relative overflow-hidden shadow-lg">
+                <div className="bg-teal-950 rounded-[32px] p-8 text-white mb-6 relative overflow-hidden shadow-lg">
                    <div className="relative z-10">
                      <h3 className="text-[17px] font-bold mb-1.5 tracking-wide">Welcome Back</h3>
                      <p className="text-[#8F93A3] text-[13px] font-medium max-w-[280px] leading-[1.6]">
@@ -244,12 +244,12 @@ export default function AlumniDashboard() {
                                  !hasEvent ? 'hover:bg-gray-100 hover:text-black' : ''
                                }`}
                              >
-                               <span className={`relative z-10 ${isPrimaryEvent ? 'text-white' : 'text-[#1A1C23]'}`}>
+                               <span className={`relative z-10 ${isPrimaryEvent ? 'text-white' : 'text-teal-950'}`}>
                                  {day}
                                </span>
-                               {isPrimaryEvent && <div className="absolute w-8 h-8 bg-[#1A1C23] rounded-full shadow-md" />}
+                               {isPrimaryEvent && <div className="absolute w-8 h-8 bg-teal-950 rounded-full shadow-md" />}
                                {isSecondaryEvent && <div className="absolute w-8 h-8 border-2 border-black rounded-full" />}
-                               {hasEvent && !isPrimaryEvent && !isSecondaryEvent && <div className="absolute bottom-0 w-1 h-1 bg-blue-500 rounded-full" />}
+                               {hasEvent && !isPrimaryEvent && !isSecondaryEvent && <div className="absolute bottom-0 w-1 h-1 bg-teal-500 rounded-full" />}
                              </div>
                            )
                          })}
@@ -265,19 +265,19 @@ export default function AlumniDashboard() {
                      >
                         <button 
                           onClick={() => setIsCalendarFlipped(false)}
-                          className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 text-gray-600 mb-4 transition-colors"
+                          className="w-8 h-8 rounded-full bg-[#f6f3eb] flex items-center justify-center hover:bg-gray-100 text-gray-600 mb-4 transition-colors"
                         >
                            <ChevronLeft size={16} />
                         </button>
                         
                         <div className="flex-1 flex flex-col items-center justify-center text-center">
-                           <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-4">
+                           <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-500 flex items-center justify-center mb-4">
                               <span className="text-[24px] font-black">{selectedDate}</span>
                            </div>
                            
                            {eventsMap[selectedDate!] ? (
                              <>
-                               <span className="text-[11px] font-bold tracking-widest text-indigo-500 uppercase mb-2">
+                               <span className="text-[11px] font-bold tracking-widest text-teal-500 uppercase mb-2">
                                  {eventsMap[selectedDate!].type}
                                </span>
                                <h4 className="text-[18px] font-bold text-gray-900 mb-2 leading-tight">
@@ -286,13 +286,13 @@ export default function AlumniDashboard() {
                                <p className="text-[14px] text-gray-500 font-medium mb-6">
                                  {eventsMap[selectedDate!].time}
                                </p>
-                               <button className="px-6 py-2.5 bg-black text-white text-[14px] font-bold rounded-xl shadow-sm hover:bg-gray-800 transition-colors">
+                               <button className="px-6 py-2.5 bg-teal-950 text-white text-[14px] font-bold rounded-xl shadow-sm hover:bg-gray-800 transition-colors">
                                  View Event
                                </button>
                              </>
                            ) : (
                              <>
-                               <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                               <div className="w-12 h-12 bg-[#f6f3eb] rounded-full flex items-center justify-center mb-3">
                                  <Clock size={20} className="text-gray-400" />
                                </div>
                                <h4 className="text-[16px] font-bold text-gray-900 mb-1">No events scheduled</h4>
@@ -321,20 +321,20 @@ export default function AlumniDashboard() {
                    </p>
                    
                    <div className="flex gap-4 mb-8 w-full justify-center">
-                      <button className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
+                      <button className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center hover:bg-[#f6f3eb] transition-colors">
                         <MessageCircle size={18} className="text-gray-400" />
                       </button>
-                      <button className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
+                      <button className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center hover:bg-[#f6f3eb] transition-colors">
                         <Video size={18} className="text-gray-400" />
                       </button>
-                      <button className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
+                      <button className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center hover:bg-[#f6f3eb] transition-colors">
                         <Clock size={18} className="text-gray-400" />
                       </button>
                    </div>
                    
                    <button 
                      onClick={() => router.push('/alumni/settings')}
-                     className="w-full bg-[#1A1C23] text-white rounded-2xl py-4 font-semibold text-[15px] flex items-center justify-center gap-3 hover:bg-black transition-colors mt-auto shadow-md"
+                     className="w-full bg-teal-950 text-white rounded-2xl py-4 font-semibold text-[15px] flex items-center justify-center gap-3 hover:bg-teal-900 transition-colors mt-auto shadow-md"
                    >
                      <div className="flex items-center gap-1.5">
                        <UserIcon />
@@ -360,7 +360,7 @@ export default function AlumniDashboard() {
                    >
                      {/* FRONT FACE */}
                      <div 
-                       className="w-full h-full absolute top-0 left-0 bg-[#1A1C23] rounded-[32px] p-6 text-white flex flex-col shadow-xl cursor-pointer hover:shadow-2xl transition-all"
+                       className="w-full h-full absolute top-0 left-0 bg-teal-950 rounded-[32px] p-6 text-white flex flex-col shadow-xl cursor-pointer hover:shadow-2xl transition-all"
                        style={{ backfaceVisibility: 'hidden' }}
                        onClick={() => setIsImpactFlipped(true)}
                      >
@@ -390,9 +390,9 @@ export default function AlumniDashboard() {
                                 {/* Abstract chart */}
                                 <div className="w-[140px] h-[40px] relative">
                                    <svg viewBox="0 0 140 40" fill="none" className="w-full h-full overflow-visible">
-                                      <path d="M0,35 Q30,35 60,15 T100,25 T140,5" stroke="#1A1C23" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                                      <path d="M0,35 Q30,35 60,15 T100,25 T140,5" stroke="#042f2e" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                                    </svg>
-                                   <div className="absolute top-[20px] left-[70%] w-[20px] h-[44px] bg-[#1A1C23] rounded-full -translate-y-1/2 flex items-center justify-center shadow-lg">
+                                   <div className="absolute top-[20px] left-[70%] w-[20px] h-[44px] bg-teal-950 rounded-full -translate-y-1/2 flex items-center justify-center shadow-lg">
                                      <span className="text-white text-[10px] font-bold absolute -top-5">16</span>
                                      <div className="w-2.5 h-2.5 rounded-full border-2 border-white" />
                                    </div>
@@ -414,7 +414,7 @@ export default function AlumniDashboard() {
                                 <div className="flex items-end gap-[8px] h-[45px]">
                                    {['S','M','T','W','T','F','S'].map((day, i) => (
                                      <div key={i} className="flex flex-col items-center gap-2">
-                                        <div className={`w-3 rounded-full ${i === 3 ? 'bg-[#1A1C23] h-[35px]' : 'bg-gray-200 h-[15px]'}`} style={i !== 3 ? {height: `${12 + Math.random() * 20}px`} : {}} />
+                                        <div className={`w-3 rounded-full ${i === 3 ? 'bg-teal-950 h-[35px]' : 'bg-gray-200 h-[15px]'}`} style={i !== 3 ? {height: `${12 + Math.random() * 20}px`} : {}} />
                                         <span className="text-[9px] font-bold text-gray-400">{day}</span>
                                      </div>
                                    ))}
@@ -426,7 +426,7 @@ export default function AlumniDashboard() {
 
                      {/* BACK FACE */}
                      <div 
-                       className="w-full h-full absolute top-0 left-0 bg-[#1A1C23] rounded-[32px] p-8 text-white flex flex-col shadow-xl border border-[#2A2C33]"
+                       className="w-full h-full absolute top-0 left-0 bg-teal-950 rounded-[32px] p-8 text-white flex flex-col shadow-xl border border-[#2A2C33]"
                        style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                      >
                         <div className="flex items-center justify-between mb-8">
@@ -477,7 +477,7 @@ export default function AlumniDashboard() {
 
         </div>
       </div>
-    </AlumniNavigation>
+    </>
   );
 }
 
@@ -488,7 +488,7 @@ function ContributionCard({ title, subtitle, icon, onClick }: { title: string; s
          <h4 className="text-[18px] font-bold mb-1.5">{title}</h4>
          <p className="text-[13px] text-gray-500 font-bold">{subtitle}</p>
        </div>
-       <div className="w-[60px] h-[60px] rounded-2xl bg-[#F4F6FB] flex items-center justify-center text-gray-600">
+       <div className="w-[60px] h-[60px] rounded-2xl bg-[#f6f3eb] flex items-center justify-center text-gray-600">
           {icon === 'math' ? (
             <div className="flex flex-col items-center leading-none text-sm font-bold tracking-widest -space-y-1">
               <span>+-</span>
@@ -522,7 +522,7 @@ function TaskRow({ title, subtitle, completed, icon, onClick }: { title: string;
        </div>
        <div className="flex items-center gap-2.5 text-[14px] font-bold text-gray-600 shrink-0">
          {completed ? (
-           <div className="w-[22px] h-[22px] bg-[#1A1C23] rounded-md flex items-center justify-center">
+           <div className="w-[22px] h-[22px] bg-teal-950 rounded-md flex items-center justify-center">
              <Check size={14} className="text-white" strokeWidth={3} />
            </div>
          ) : (

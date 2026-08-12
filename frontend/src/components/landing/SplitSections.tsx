@@ -89,7 +89,7 @@ export default function SplitSections() {
             </p>
             <div>
               <Link href="/api/auth/login">
-                <Button className="bg-[#f3b13a] hover:bg-[#d89c30] text-teal-950 font-bold px-8 py-4 rounded-lg text-sm flex items-center gap-2">
+                <Button className="bg-black hover:bg-gray-900 text-white font-bold px-8 py-4 rounded-lg text-sm flex items-center gap-2">
                   <span>Meet Now</span>
                   <ArrowUpRight className="w-4 h-4" />
                 </Button>

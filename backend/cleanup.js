@@ -23,8 +23,8 @@ async function cleanup() {
   }
 
   try {
-    await dbQuery("DELETE FROM users WHERE LOWER(email) != 'admin@pvppcoe.ac.in' AND LOWER(user_type) != 'admin'");
-    console.log('- Cleared users table (preserving admin accounts)');
+    await dbQuery("DELETE FROM users");
+    console.log('- Cleared all entries from users table');
   } catch (err) {
     console.error('- Failed to clear users table:', err.message);
   }

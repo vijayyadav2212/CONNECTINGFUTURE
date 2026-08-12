@@ -63,6 +63,7 @@ async function createEvent(req, res) {
       RETURNING id
     `;
 
+    const statusVal = req.body.approval_status || 'approved';
     const values = [
       user_auth0_id,
       title,
@@ -76,7 +77,7 @@ async function createEvent(req, res) {
       image_url,
       tagsVal,
       organizer,
-      'pending'
+      statusVal
     ];
 
     if (!title) return res.status(400).json({ error: 'Title is required' });

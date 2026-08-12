@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import StudentNavigation from '../StudentNavigation/StudentNavigation';
+
 import { Search, Filter, MapPin, Building, GraduationCap, Linkedin, Mail, MessageSquare, Star, Users, Clock, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,8 @@ const AlumniDirectoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterExpertise, setFilterExpertise] = useState<string>('all');
   const [loading, setLoading] = useState(true);
-  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '') + '/api';
+  const rawApi = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+  const API_BASE = rawApi.replace(/\/$/, '').replace(/\/api$/, '') + '/api';
   const currentUserEmail = (user?.email as string | undefined) || '';
   const [connections, setConnections] = useState<Array<{ id: number; pair_key: string; requester_email: string; target_email: string; status: 'pending' | 'accepted' | 'rejected' | 'removed'; }>>([]);
   const [connLoading, setConnLoading] = useState(false);
@@ -195,8 +196,8 @@ const AlumniDirectoryPage = () => {
 
   if (loading) {
     return (
-      <StudentNavigation>
-        <div className="min-h-screen bg-[#F5F6FA] p-8">
+      <>
+        <div className="min-h-screen bg-[#f6f3eb] p-8">
           <div className="animate-pulse max-w-7xl mx-auto">
             <div className="h-32 bg-white rounded-[24px] shadow-sm border border-gray-100 w-full mb-8"></div>
             <div className="h-20 bg-white rounded-2xl shadow-sm border border-gray-100 w-full mb-8"></div>
@@ -207,13 +208,13 @@ const AlumniDirectoryPage = () => {
             </div>
           </div>
         </div>
-      </StudentNavigation>
+      </>
     );
   }
 
   return (
-    <StudentNavigation>
-      <div className="min-h-screen bg-[#F5F6FA] p-8">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb] p-8">
         <div className="max-w-7xl mx-auto">
           
           {/* Header Section (Black Rounded) */}
@@ -224,14 +225,14 @@ const AlumniDirectoryPage = () => {
             transition={{ duration: 0.6 }}
             className="mb-8"
           >
-            <div className="bg-[#16161c] rounded-[24px] p-8 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center">
+            <div className="bg-teal-950 rounded-[24px] p-8 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center">
               <div className="mb-6 lg:mb-0">
                 <h1 className="text-3xl font-bold text-white mb-2">Alumni Directory</h1>
                 <p className="text-sm text-gray-400">Connect with successful alumni and find experienced mentors.</p>
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2 bg-[#2a2a35] text-white px-4 py-2 rounded-full border border-white/10">
-                  <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
                   <span className="font-medium">{alumni.length} Registered</span>
                 </div>
                 <div className="flex items-center gap-2 bg-[#2a2a35] text-white px-4 py-2 rounded-full border border-white/10">
@@ -273,7 +274,7 @@ const AlumniDirectoryPage = () => {
                           className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between"
                         >
                           <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-[#16161c] flex items-center justify-center text-white font-bold">{initials}</div>
+                            <div className="w-12 h-12 rounded-full bg-teal-950 flex items-center justify-center text-white font-bold">{initials}</div>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-[#16161c] truncate">{displayName}</p>
                               <p className="text-xs text-gray-500 truncate">{email}</p>
@@ -285,7 +286,7 @@ const AlumniDirectoryPage = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => respondRequest(email, 'accept')} disabled={connLoading} className="flex-1 py-2 rounded-xl bg-[#16161c] text-white text-xs font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors">Accept</button>
+                            <button onClick={() => respondRequest(email, 'accept')} disabled={connLoading} className="flex-1 py-2 rounded-xl bg-teal-950 text-white text-xs font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors">Accept</button>
                             <button onClick={() => respondRequest(email, 'reject')} disabled={connLoading} className="flex-1 py-2 rounded-xl bg-red-50 text-red-600 border border-red-100 text-xs font-bold hover:bg-red-100 disabled:opacity-50 transition-colors">Decline</button>
                           </div>
                         </motion.div>
@@ -313,7 +314,7 @@ const AlumniDirectoryPage = () => {
                   placeholder="Search by name, company, position..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-[#16161c]/20 transition-all font-medium text-[#16161c] placeholder-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-[#f6f3eb] rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-[#16161c]/20 transition-all font-medium text-[#16161c] placeholder-gray-400"
                 />
               </div>
               <div className="relative w-full lg:w-auto">
@@ -321,7 +322,7 @@ const AlumniDirectoryPage = () => {
                 <select
                   value={filterExpertise}
                   onChange={(e) => setFilterExpertise(e.target.value)}
-                  className="w-full lg:w-auto pl-12 pr-8 py-3 bg-gray-50 rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-[#16161c]/20 font-medium text-[#16161c] transition-all"
+                  className="w-full lg:w-auto pl-12 pr-8 py-3 bg-[#f6f3eb] rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-[#16161c]/20 font-medium text-[#16161c] transition-all"
                 >
                   {expertiseOptions.map((option: string) => (
                     <option key={option} value={option}>
@@ -350,7 +351,7 @@ const AlumniDirectoryPage = () => {
             {filteredAlumni.length === 0 ? (
               <div className="col-span-full">
                 <div className="bg-white rounded-[32px] p-12 text-center border border-gray-100 shadow-sm max-w-2xl mx-auto">
-                  <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="w-20 h-20 bg-[#f6f3eb] rounded-full flex items-center justify-center mx-auto mb-6">
                     <Search className="w-8 h-8 text-gray-400" />
                   </div>
                   <h3 className="text-xl font-bold text-[#16161c] mb-2">No Alumni Found</h3>
@@ -359,7 +360,7 @@ const AlumniDirectoryPage = () => {
                   </p>
                   <button
                     onClick={() => { setSearchTerm(''); setFilterExpertise('all'); }}
-                    className="px-6 py-2.5 bg-[#16161c] text-white rounded-full font-bold text-sm hover:bg-gray-800 transition-colors"
+                    className="px-6 py-2.5 bg-teal-950 text-white rounded-full font-bold text-sm hover:bg-gray-800 transition-colors"
                   >
                     Clear Filters
                   </button>
@@ -384,7 +385,7 @@ const AlumniDirectoryPage = () => {
 
                   {/* Profile Header */}
                   <div className="flex items-center gap-5 mb-6">
-                    <div className="w-16 h-16 rounded-full bg-[#16161c] flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-teal-950 flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
                       {alum.name.split(' ').map((n: string) => n[0]).join('').slice(0,2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0 pr-16">
@@ -398,7 +399,7 @@ const AlumniDirectoryPage = () => {
 
                   {/* Professional Info */}
                   <div className="space-y-4 mb-6 flex-1">
-                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50">
+                    <div className="bg-[#f6f3eb] p-4 rounded-2xl border border-gray-100/50">
                       <div className="flex items-start gap-3 mb-3">
                         <Building className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                         <div>
@@ -422,7 +423,7 @@ const AlumniDirectoryPage = () => {
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Expertise</p>
                         <div className="flex flex-wrap gap-2">
                           {alum.expertise.slice(0, 3).map((exp: string, index: number) => (
-                            <span key={index} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">
+                            <span key={index} className="px-3 py-1.5 bg-teal-50 text-teal-700 text-xs font-bold rounded-lg">
                               {exp}
                             </span>
                           ))}
@@ -448,7 +449,7 @@ const AlumniDirectoryPage = () => {
                           <button
                             className={`flex-1 py-3 rounded-2xl font-bold text-sm transition-colors flex items-center justify-center gap-2 ${
                               alum.email
-                                ? 'bg-[#16161c] text-white hover:bg-gray-800'
+                                ? 'bg-teal-950 text-white hover:bg-gray-800'
                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             }`}
                             disabled={!alum.email}
@@ -468,7 +469,7 @@ const AlumniDirectoryPage = () => {
                       if (status === 'pending' && !isRequester) {
                         return (
                           <div className="flex gap-2 flex-1">
-                            <button onClick={() => alum.email && respondRequest(alum.email, 'accept')} disabled={connLoading} className="flex-1 py-3 rounded-2xl font-bold text-xs bg-[#16161c] text-white hover:bg-gray-800 disabled:opacity-50">Accept</button>
+                            <button onClick={() => alum.email && respondRequest(alum.email, 'accept')} disabled={connLoading} className="flex-1 py-3 rounded-2xl font-bold text-xs bg-teal-950 text-white hover:bg-gray-800 disabled:opacity-50">Accept</button>
                             <button onClick={() => alum.email && respondRequest(alum.email, 'reject')} disabled={connLoading} className="flex-1 py-3 rounded-2xl font-bold text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">Decline</button>
                           </div>
                         );
@@ -484,7 +485,7 @@ const AlumniDirectoryPage = () => {
                         return (
                           <button
                             onClick={() => alum.email && connectToAlumni(alum.email)}
-                            className="flex-1 py-3 rounded-2xl font-bold text-sm bg-[#16161c] text-white hover:bg-gray-800 flex items-center justify-center gap-2"
+                            className="flex-1 py-3 rounded-2xl font-bold text-sm bg-teal-950 text-white hover:bg-gray-800 flex items-center justify-center gap-2"
                           >
                             <MessageSquare className="w-4 h-4" /> Connect
                           </button>
@@ -507,7 +508,7 @@ const AlumniDirectoryPage = () => {
           {/* Load More Button */}
           {filteredAlumni.length > 0 && (
             <div className="text-center mt-12 mb-8">
-              <button className="px-8 py-3 bg-white border-2 border-gray-100 rounded-full font-bold text-sm text-[#16161c] hover:border-[#16161c] hover:bg-gray-50 transition-all shadow-sm">
+              <button className="px-8 py-3 bg-white border-2 border-gray-100 rounded-full font-bold text-sm text-[#16161c] hover:border-[#16161c] hover:bg-[#f6f3eb] transition-all shadow-sm">
                 Load More Alumni
               </button>
             </div>
@@ -515,7 +516,7 @@ const AlumniDirectoryPage = () => {
 
         </div>
       </div>
-    </StudentNavigation>
+    </>
   );
 };
 

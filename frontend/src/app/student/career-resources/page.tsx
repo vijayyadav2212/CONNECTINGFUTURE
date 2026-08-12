@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import StudentNavigation from '../StudentNavigation/StudentNavigation';
+
 import { Search, Filter, BookOpen, Video, FileText, ExternalLink, Star, Clock, Users, TrendingUp, Briefcase, GraduationCap, Code, X, Sparkles, ListChecks, Layers3, Github } from 'lucide-react';
 import { useAuthToken } from '../../../../contexts/AuthTokenContext';
 import tokenManager from '../../../../lib/auth/tokenManager';
@@ -146,12 +146,12 @@ export default function CareerResources() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'course': return 'bg-blue-100 text-blue-600';
+      case 'course': return 'bg-teal-100 text-teal-600';
       case 'video': return 'bg-red-100 text-red-600';
       case 'article': return 'bg-green-100 text-green-600';
-      case 'book': return 'bg-purple-100 text-purple-600';
+      case 'book': return 'bg-teal-100 text-teal-600';
       case 'tool': return 'bg-orange-100 text-orange-600';
-      case 'roadmap': return 'bg-indigo-100 text-indigo-600';
+      case 'roadmap': return 'bg-teal-100 text-teal-600';
       default: return 'bg-gray-100 text-gray-600';
     }
   };
@@ -516,16 +516,16 @@ export default function CareerResources() {
   };
 
   return (
-    <StudentNavigation>
-      <div className="min-h-screen bg-[#F5F6FA] p-4 lg:p-6">
+    <>
+      <div className="min-h-screen bg-[#f6f3eb] p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header Banner */}
-          <div className="bg-[#0f0f12] rounded-[32px] p-8 lg:p-10 shadow-2xl border border-white/5 relative overflow-hidden mb-8">
+          <div className="bg-teal-950 rounded-[32px] p-8 lg:p-10 shadow-2xl border border-teal-900/10 relative overflow-hidden mb-8">
             <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
             
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 text-blue-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
+                <div className="flex items-center gap-2 text-teal-400 font-bold text-[12px] uppercase tracking-[0.1em] mb-4">
                   <Sparkles size={16} />
                   <span>Curated Learning</span>
                 </div>
@@ -540,18 +540,18 @@ export default function CareerResources() {
                 
                 <div className="flex flex-wrap gap-4 text-[13px] font-bold text-gray-400">
                    <div className="bg-white/5 px-4 py-2 rounded-[14px] border border-white/10 flex items-center gap-2.5">
-                     <BookOpen size={16} className="text-blue-500" />
+                     <BookOpen size={16} className="text-teal-500" />
                      <span>{allResources.length} Resources</span>
                    </div>
                    <div className="bg-white/5 px-4 py-2 rounded-[14px] border border-white/10 flex items-center gap-2.5">
-                     <TrendingUp size={16} className="text-emerald-500" />
+                     <TrendingUp size={16} className="text-teal-400" />
                      <span>Expert Verified</span>
                    </div>
                 </div>
               </div>
               
               <div className="hidden lg:block">
-                <div className="w-32 h-32 rounded-[40px] bg-white/5 flex items-center justify-center text-blue-400 border border-white/10">
+                <div className="w-32 h-32 rounded-[40px] bg-white/5 flex items-center justify-center text-teal-400 border border-white/10">
                   <GraduationCap size={48} strokeWidth={1.5} />
                 </div>
               </div>
@@ -563,7 +563,7 @@ export default function CareerResources() {
             <div className="fixed inset-0 bg-white z-[100] overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
               <div className="min-h-screen flex flex-col">
                 {/* Immersive Header */}
-                <div className="bg-[#0f0f12] text-white p-8 lg:p-12 relative overflow-hidden border-b border-white/5">
+                <div className="bg-teal-950 text-white p-8 lg:p-12 relative overflow-hidden border-b border-teal-900/10">
                   <div className="absolute top-0 left-0 right-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-30 pointer-events-none"></div>
                   <div className="max-w-7xl mx-auto relative z-10">
                     <button 
@@ -582,7 +582,7 @@ export default function CareerResources() {
                     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                       <div className="space-y-3">
                         <div className="flex gap-2">
-                          <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-full bg-teal-500/20 border border-teal-500/30 text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                             <Sparkles className="w-3 h-3" /> AI Generated Path
                           </span>
                           <span className={`px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase tracking-widest`}>
@@ -615,19 +615,19 @@ export default function CareerResources() {
                       </div>
                     </div>
                     {statusMessage && (
-                      <p className="mt-4 text-xs font-bold text-indigo-200 uppercase tracking-widest">{statusMessage}</p>
+                      <p className="mt-4 text-xs font-bold text-teal-200 uppercase tracking-widest">{statusMessage}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 bg-slate-50/50">
+                <div className="flex-1 bg-[#f6f3eb]">
                   <div className="max-w-7xl mx-auto py-6 px-4 lg:px-8">
                     <div className="grid grid-cols-1 xl:grid-cols-[1fr_350px] gap-8">
                       {/* Left: Milestone Timeline */}
                       <div className="space-y-8">
                         <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-indigo-600 text-white">
+                          <div className="p-2 rounded-xl bg-teal-600 text-white">
                             <ListChecks className="w-6 h-6" />
                           </div>
                           Your Learning Journey
@@ -642,13 +642,13 @@ export default function CareerResources() {
                             return (
                               <div key={idx}>
                                 <div className="relative group">
-                                  <div className={`absolute -left-[45px] top-4 w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs shadow-sm transition-transform ${unlocked ? 'bg-white border-indigo-600 text-indigo-600 group-hover:scale-110' : 'bg-slate-100 border-slate-300 text-slate-400'}`}>
+                                  <div className={`absolute -left-[45px] top-4 w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs shadow-sm transition-transform ${unlocked ? 'bg-white border-teal-600 text-teal-600 group-hover:scale-110' : 'bg-[#f6f3eb] border-slate-300 text-slate-400'}`}>
                                     {order}
                                   </div>
-                                  <div className={`rounded-[2.5rem] p-8 shadow-sm transition-all duration-300 border ${unlocked ? 'bg-white border-slate-200 hover:shadow-xl hover:border-indigo-100' : 'bg-slate-50 border-slate-200 opacity-85'}`}>
+                                  <div className={`rounded-[2.5rem] p-8 shadow-sm transition-all duration-300 border ${unlocked ? 'bg-white border-slate-200 hover:shadow-xl hover:border-teal-100' : 'bg-[#f6f3eb] border-slate-200 opacity-85'}`}>
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-                                      <h3 className={`text-xl font-black uppercase transition-colors ${unlocked ? 'text-slate-900 group-hover:text-indigo-600' : 'text-slate-500'}`}>{m.title}</h3>
-                                      <span className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${completed ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : unlocked ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                                      <h3 className={`text-xl font-black uppercase transition-colors ${unlocked ? 'text-slate-900 group-hover:text-teal-600' : 'text-slate-500'}`}>{m.title}</h3>
+                                      <span className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${completed ? 'text-emerald-700 bg-[#f6f3eb] border-teal-900/10' : unlocked ? 'text-teal-700 bg-teal-50 border-teal-100' : 'text-slate-500 bg-[#f6f3eb] border-slate-200'}`}>
                                         <Clock className="w-3 h-3" /> {completed ? 'Milestone Achieved' : unlocked ? `Step ${order}` : 'Locked'}
                                       </span>
                                     </div>
@@ -656,11 +656,11 @@ export default function CareerResources() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <div className="space-y-4">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 underline decoration-indigo-200 underline-offset-4">Core Concepts</h4>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 underline decoration-teal-200 underline-offset-4">Core Concepts</h4>
                                         <ul className="space-y-2">
                                           {(m.subtopics || []).map((st: any, sIdx: number) => (
                                             <li key={sIdx} className={`flex items-start gap-2 text-[13px] font-bold ${unlocked ? 'text-slate-700' : 'text-slate-500'}`}>
-                                              <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${unlocked ? 'bg-indigo-400' : 'bg-slate-300'}`} />
+                                              <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${unlocked ? 'bg-teal-400' : 'bg-slate-300'}`} />
                                               {st.title}
                                             </li>
                                           ))}
@@ -670,8 +670,8 @@ export default function CareerResources() {
                                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 underline decoration-emerald-200 underline-offset-4">Action Steps</h4>
                                         <div className="space-y-3">
                                           {(m.learning_steps || []).map((step: string, lIdx: number) => (
-                                            <div key={lIdx} className={`flex gap-3 text-[12px] leading-relaxed p-3 rounded-2xl border ${unlocked ? 'text-slate-600 bg-slate-50/50 border-slate-100' : 'text-slate-500 bg-slate-100/60 border-slate-200'}`}>
-                                              <span className={`font-black shrink-0 ${unlocked ? 'text-indigo-400' : 'text-slate-400'}`}>{lIdx + 1}.</span>
+                                            <div key={lIdx} className={`flex gap-3 text-[12px] leading-relaxed p-3 rounded-2xl border ${unlocked ? 'text-slate-600 bg-[#f6f3eb] border-slate-100' : 'text-slate-500 bg-[#f6f3eb]/60 border-slate-200'}`}>
+                                              <span className={`font-black shrink-0 ${unlocked ? 'text-teal-400' : 'text-slate-400'}`}>{lIdx + 1}.</span>
                                               {step}
                                             </div>
                                           ))}
@@ -681,13 +681,13 @@ export default function CareerResources() {
 
                                     <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
                                       {!unlocked ? (
-                                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
+                                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 bg-[#f6f3eb] px-4 py-2 rounded-xl border border-slate-200">
                                           Finish the current milestone quiz to unlock this step.
                                         </span>
                                       ) : !completed ? (
                                         <button
                                           onClick={() => markMilestoneAchieved(order)}
-                                          className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all"
+                                          className="px-5 py-2.5 rounded-xl bg-teal-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all"
                                         >
                                           Mark Milestone Achieved
                                         </button>
@@ -696,13 +696,13 @@ export default function CareerResources() {
                                         <button
                                           onClick={() => startMilestoneQuiz(order)}
                                           disabled={quizGenerating === order}
-                                          className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                                          className="px-5 py-2.5 rounded-xl bg-[#f3b13a] text-teal-950 font-bold text-[11px] font-black uppercase tracking-widest hover:bg-[#d89c30] disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                                         >
                                           {quizGenerating === order ? 'Generating your quiz...' : 'Take Quiz To Unlock Next'}
                                         </button>
                                       )}
                                       {completed && Number(selectedProgress?.unlocked_milestone_order || 1) > order && (
-                                        <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                                        <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700 bg-[#f6f3eb] px-4 py-2 rounded-xl border border-teal-900/10">
                                           Quiz Passed, Next Milestone Unlocked
                                         </span>
                                       )}
@@ -715,12 +715,12 @@ export default function CareerResources() {
                                   <div className="mt-6 ml-4 pl-8">
                                     {!quizResults ? (
                                       /* Quiz Form */
-                                      <div className="bg-white rounded-[2.5rem] border border-indigo-100 p-8 shadow-sm space-y-4">
-                                        <h3 className="text-sm font-black text-indigo-700 uppercase tracking-widest">Milestone {activeQuizMilestoneOrder} Quiz</h3>
+                                      <div className="bg-white rounded-[2.5rem] border border-teal-100 p-8 shadow-sm space-y-4">
+                                        <h3 className="text-sm font-black text-teal-700 uppercase tracking-widest">Milestone {activeQuizMilestoneOrder} Quiz</h3>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pass score: {quizPayload.pass_score}%</p>
                                         <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
                                           {quizPayload.questions.map((q, qIdx) => (
-                                            <div key={qIdx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                            <div key={qIdx} className="p-4 rounded-2xl bg-[#f6f3eb] border border-slate-100">
                                               <p className="text-sm font-bold text-slate-800 mb-3">{qIdx + 1}. {q.question}</p>
                                               <div className="space-y-2">
                                                 {q.options.map((option, oIdx) => (
@@ -733,7 +733,7 @@ export default function CareerResources() {
                                                         return next;
                                                       });
                                                     }}
-                                                    className={`w-full text-left p-3 rounded-xl border text-xs font-bold transition-all ${quizAnswers[qIdx] === oIdx ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200'}`}
+                                                    className={`w-full text-left p-3 rounded-xl border text-xs font-bold transition-all ${quizAnswers[qIdx] === oIdx ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:border-teal-200'}`}
                                                   >
                                                     {option}
                                                   </button>
@@ -745,7 +745,7 @@ export default function CareerResources() {
                                         <button
                                           onClick={submitQuiz}
                                           disabled={quizSubmitting}
-                                          className="w-full px-5 py-3 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-60 transition-all"
+                                          className="w-full px-5 py-3 rounded-2xl bg-teal-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-teal-700 disabled:opacity-60 transition-all"
                                         >
                                           {quizSubmitting ? 'Submitting Quiz...' : 'Submit Quiz'}
                                         </button>
@@ -760,14 +760,14 @@ export default function CareerResources() {
                                           </div>
                                           <button
                                             onClick={() => setQuizResults(null)}
-                                            className="p-2 hover:bg-slate-100 rounded-xl transition-all hover:text-red-600"
+                                            className="p-2 hover:bg-[#f6f3eb] rounded-xl transition-all hover:text-red-600"
                                           >
                                             <X className="w-6 h-6" />
                                           </button>
                                         </div>
 
                                         {/* Score Summary */}
-                                        <div className={`rounded-[28px] p-6 border-2 ${quizResults.passed ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200'}`}>
+                                        <div className={`rounded-[28px] p-6 border-2 ${quizResults.passed ? 'bg-[#f6f3eb] border-emerald-200' : 'bg-orange-50 border-orange-200'}`}>
                                           <div className="flex items-center justify-between mb-3">
                                             <h3 className={`text-lg font-black uppercase tracking-widest ${quizResults.passed ? 'text-emerald-700' : 'text-orange-700'}`}>
                                               {quizResults.passed ? '✓ Quiz Passed!' : '✗ Quiz Not Passed'}
@@ -776,7 +776,7 @@ export default function CareerResources() {
                                               {quizResults.score}%
                                             </span>
                                           </div>
-                                          <p className={`text-sm font-bold ${quizResults.passed ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                          <p className={`text-sm font-bold ${quizResults.passed ? 'text-teal-950' : 'text-orange-600'}`}>
                                             Pass Score Requirement: {quizResults.pass_score}%
                                           </p>
                                         </div>
@@ -790,7 +790,7 @@ export default function CareerResources() {
                                             const isCorrect = userAnswerIdx === correctAnswerIdx;
 
                                             return (
-                                              <div key={qIdx} className={`rounded-[24px] p-4 border-2 ${isCorrect ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                                              <div key={qIdx} className={`rounded-[24px] p-4 border-2 ${isCorrect ? 'bg-[#f6f3eb] border-teal-900/10' : 'bg-red-50 border-red-100'}`}>
                                                 <p className="text-sm font-bold text-slate-800 mb-3">
                                                   {qIdx + 1}. {q.question}
                                                   <span className={`ml-2 text-xs font-black ${isCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
@@ -834,7 +834,7 @@ export default function CareerResources() {
                                                     }
 
                                                     return (
-                                                      <div key={oIdx} className="flex items-start gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                                      <div key={oIdx} className="flex items-start gap-3 p-2 rounded-lg bg-[#f6f3eb] border border-slate-100">
                                                         <span className="text-slate-400 font-black mt-0.5">○</span>
                                                         <span className="text-sm font-bold text-slate-600">{option}</span>
                                                       </div>
@@ -862,7 +862,7 @@ export default function CareerResources() {
                                                 setActiveQuizMilestoneOrder(null);
                                                 setQuizAnswers([]);
                                               }}
-                                              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition-all"
+                                              className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-2xl font-bold text-[11px] uppercase tracking-widest hover:bg-teal-700 transition-all"
                                             >
                                               Try Again
                                             </button>
@@ -871,10 +871,10 @@ export default function CareerResources() {
 
                                         {/* Next Milestone Unlocked Notification */}
                                         {quizResults.passed && (
-                                          <div className="mt-6 p-6 rounded-[24px] bg-gradient-to-r from-emerald-50 to-cyan-50 border-2 border-emerald-300 shadow-lg">
+                                          <div className="mt-6 p-6 rounded-[24px] bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 shadow-lg">
                                             <div className="flex items-center justify-between mb-4">
                                               <div className="flex items-center gap-3">
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 flex items-center justify-center text-white">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 flex items-center justify-center text-white">
                                                   <Sparkles className="w-6 h-6" />
                                                 </div>
                                                 <div>
@@ -885,7 +885,7 @@ export default function CareerResources() {
                                             </div>
 
                                             {selectedRoadmap.milestones && selectedRoadmap.milestones[activeQuizMilestoneOrder] && (
-                                              <div className="p-4 rounded-[20px] bg-white border border-emerald-100 mt-4">
+                                              <div className="p-4 rounded-[20px] bg-white border border-teal-900/10 mt-4">
                                                 <div className="mb-3">
                                                   <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">Milestone {activeQuizMilestoneOrder + 1}</span>
                                                 </div>
@@ -894,7 +894,7 @@ export default function CareerResources() {
                                               </div>
                                             )}
 
-                                            <div className="mt-4 p-3 rounded-lg bg-white/60 border border-emerald-100">
+                                            <div className="mt-4 p-3 rounded-lg bg-white/60 border border-teal-900/10">
                                               <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">📈 You&apos;ve completed {Number(selectedProgress?.unlocked_milestone_order || 1)} milestone{Number(selectedProgress?.unlocked_milestone_order || 1) !== 1 ? 's' : ''} so far</p>
                                             </div>
                                           </div>
@@ -919,7 +919,7 @@ export default function CareerResources() {
                             Resource Hub
                           </h2>
 
-                          <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl">
+                          <div className="bg-teal-950 rounded-[2.5rem] p-8 text-white shadow-xl">
                             <div className="flex items-center justify-between gap-4 mb-4">
                               <div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Quiz Gate</p>
@@ -951,12 +951,12 @@ export default function CareerResources() {
                             </div>
                             <div className="space-y-3">
                               {roadmapLeaders.slice(0, 5).map((leader, idx) => (
-                                <div key={leader.id || leader.email || idx} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                <div key={leader.id || leader.email || idx} className="flex items-center justify-between p-3 rounded-2xl bg-[#f6f3eb] border border-slate-100">
                                   <div className="min-w-0">
                                     <p className="text-xs font-black text-slate-900 truncate">#{idx + 1} {leader.name}</p>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{leader.follow_count} follows • {leader.passed_count} passed quizzes</p>
                                   </div>
-                                  <span className="text-xs font-black text-indigo-700">{Number(leader.total_points || 0).toFixed(1)}</span>
+                                  <span className="text-xs font-black text-teal-700">{Number(leader.total_points || 0).toFixed(1)}</span>
                                 </div>
                               ))}
                               {roadmapLeaders.length === 0 && (
@@ -969,19 +969,19 @@ export default function CareerResources() {
                             {/* YouTube Hub */}
                             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-6 shadow-sm">
                               <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                                <div className="p-2 rounded-xl bg-teal-50 text-teal-950">
                                   <Video className="w-5 h-5" />
                                 </div>
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Video Tutorials</h3>
                               </div>
                               <div className="space-y-3">
                                 {selectedRoadmap.resources?.youtube?.map((r: any, idx: number) => (
-                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-rose-50 border border-slate-100 hover:border-rose-100 transition-all">
+                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-[#f6f3eb] hover:bg-teal-50 border border-slate-100 hover:border-rose-100 transition-all">
                                     <div className="min-w-0">
                                       <p className="text-[13px] font-black text-slate-900 group-hover:text-rose-700 truncate">{r.label}</p>
                                       <p className="text-[10px] text-slate-400 font-bold tracking-tight">YouTube Library</p>
                                     </div>
-                                    <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-rose-500" />
+                                    <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-teal-950" />
                                   </a>
                                 ))}
                                 {(!selectedRoadmap.resources?.youtube || selectedRoadmap.resources.youtube.length === 0) && (
@@ -993,14 +993,14 @@ export default function CareerResources() {
                             {/* GitHub Hub */}
                             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-6 shadow-sm">
                               <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 rounded-xl bg-slate-900 text-white">
+                                <div className="p-2 rounded-xl bg-teal-950 text-white">
                                   <Github className="w-5 h-5" />
                                 </div>
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Code Repos</h3>
                               </div>
                               <div className="space-y-3">
                                 {selectedRoadmap.resources?.github?.map((r: any, idx: number) => (
-                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-slate-900 hover:text-white border border-slate-100 hover:border-slate-800 transition-all">
+                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-[#f6f3eb] hover:bg-teal-950 hover:text-white border border-slate-100 hover:border-slate-800 transition-all">
                                     <div className="min-w-0">
                                       <p className="text-[13px] font-black group-hover:text-white truncate">{r.label}</p>
                                       <p className="text-[10px] text-slate-400 font-bold tracking-tight group-hover:text-slate-500">GitHub Open Source</p>
@@ -1024,7 +1024,7 @@ export default function CareerResources() {
                               </div>
                               <div className="space-y-3">
                                 {selectedRoadmap.resources?.reading?.map((r: any, idx: number) => (
-                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 hover:bg-amber-50 border border-slate-100 hover:border-amber-200 transition-all">
+                                  <a key={idx} href={r.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between p-4 rounded-2xl bg-[#f6f3eb] hover:bg-amber-50 border border-slate-100 hover:border-amber-200 transition-all">
                                     <div className="min-w-0">
                                       <p className="text-[13px] font-black text-slate-900 group-hover:text-amber-700 truncate">{r.label}</p>
                                       <p className="text-[10px] text-slate-400 font-bold tracking-tight">Official Docs / Articles</p>
@@ -1049,8 +1049,8 @@ export default function CareerResources() {
 
           {/* Standard Resources Modal (Non-Roadmap) */}
           {selectedRoadmap && selectedRoadmap.type !== 'roadmap' && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-              <div className="bg-white rounded-[40px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/50 animate-in zoom-in-95 duration-300">
+            <div className="fixed inset-0 bg-teal-950/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+              <div className="bg-white rounded-[40px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-teal-900/100 animate-in zoom-in-95 duration-300">
                 <div className="p-8 lg:p-10 border-b border-slate-50 flex justify-between items-start">
                   <div>
                     <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight uppercase">{selectedRoadmap.title}</h2>
@@ -1070,7 +1070,7 @@ export default function CareerResources() {
                       setQuizAnswers([]);
                       setStatusMessage('');
                     }}
-                    className="p-3 hover:bg-slate-50 rounded-2xl transition-all"
+                    className="p-3 hover:bg-[#f6f3eb] rounded-2xl transition-all"
                   >
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
@@ -1083,14 +1083,14 @@ export default function CareerResources() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-6 rounded-[28px] border border-slate-100">
+                    <div className="bg-[#f6f3eb] p-6 rounded-[28px] border border-slate-100">
                       <div className="flex items-center gap-3 mb-2">
-                        <Clock className="w-5 h-5 text-emerald-500" />
+                        <Clock className="w-5 h-5 text-teal-950" />
                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Duration</span>
                       </div>
                       <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{selectedRoadmap.duration || 'Self-paced'}</p>
                     </div>
-                    <div className="bg-slate-50 p-6 rounded-[28px] border border-slate-100">
+                    <div className="bg-[#f6f3eb] p-6 rounded-[28px] border border-slate-100">
                       <div className="flex items-center gap-3 mb-2">
                         <Star className="w-5 h-5 text-amber-500" />
                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Rating</span>
@@ -1102,18 +1102,18 @@ export default function CareerResources() {
                   {selectedRoadmap.milestones && selectedRoadmap.milestones.length > 0 && (
                     <div className="pt-8 border-t border-slate-50">
                       <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <ListChecks className="w-4 h-4 text-emerald-500" />
+                        <ListChecks className="w-4 h-4 text-teal-950" />
                         Learning Milestones
                       </h3>
                       <div className="space-y-4">
                         {selectedRoadmap.milestones.map((m: any, idx: number) => (
-                           <div key={idx} className="p-5 rounded-3xl bg-slate-50/70 border border-slate-100 group hover:bg-white hover:shadow-xl transition-all duration-300">
+                           <div key={idx} className="p-5 rounded-3xl bg-[#f6f3eb]/70 border border-slate-100 group hover:bg-white hover:shadow-xl transition-all duration-300">
                              <div className="flex items-start gap-4">
-                               <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 text-xs font-black shrink-0">
+                               <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-emerald-100 text-teal-950 text-xs font-black shrink-0">
                                  {idx + 1}
                                </span>
                                <div className="flex-1">
-                                 <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-2 group-hover:text-emerald-600 transition-colors">
+                                 <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-2 group-hover:text-teal-950 transition-colors">
                                    {m.title}
                                  </h4>
                                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
@@ -1148,7 +1148,7 @@ export default function CareerResources() {
                         setQuizAnswers([]);
                         setStatusMessage('');
                       }}
-                      className="px-6 py-3 border border-slate-200 rounded-2xl text-[12px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 transition-all"
+                      className="px-6 py-3 border border-slate-200 rounded-2xl text-[12px] font-black text-slate-400 uppercase tracking-widest hover:bg-[#f6f3eb] transition-all"
                     >
                       Close
                     </button>
@@ -1157,7 +1157,7 @@ export default function CareerResources() {
                         href={selectedRoadmap.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-8 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3"
+                        className="px-8 py-3 bg-[#f3b13a] text-teal-950 font-bold rounded-2xl hover:bg-[#d89c30] font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3"
                       >
                         Access Full Content <ExternalLink className="w-4 h-4" />
                       </a>
@@ -1174,7 +1174,7 @@ export default function CareerResources() {
           <div className="mb-4">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-1 relative group">
-                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-emerald-600 transition-colors" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-teal-950 transition-colors" />
                 <input
                   type="text"
                   placeholder="Search resources..."
@@ -1213,21 +1213,21 @@ export default function CareerResources() {
           <div className="rounded-[24px] space-y-2">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-black">
+                 <div className="w-8 h-8 rounded-xl bg-[#f6f3eb] flex items-center justify-center text-teal-950 font-black">
                    <Filter size={16} />
                  </div>
                  <h2 className="text-base font-black text-slate-900 uppercase tracking-widest">Resources</h2>
               </div>
-              <span className="bg-emerald-50 px-3 py-1 rounded-lg text-[10px] font-black text-emerald-600 uppercase tracking-widest border border-emerald-200">{filteredResources.length} Found</span>
+              <span className="bg-[#f6f3eb] px-3 py-1 rounded-lg text-[10px] font-black text-teal-950 uppercase tracking-widest border border-emerald-200">{filteredResources.length} Found</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredResources.map(resource => (
-                <div key={resource.id} className="bg-gradient-to-br from-emerald-50/30 via-white to-white rounded-[28px] p-5 border border-emerald-100/10 shadow-md hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+                <div key={resource.id} className="bg-gradient-to-br from-emerald-50/30 via-white to-white rounded-[28px] p-5 border border-teal-900/10/10 shadow-md hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#f6f3eb]0/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-[#f6f3eb]0/10 transition-colors" />
                   
                   <div className="flex items-start justify-between mb-4 relative z-10">
-                    <div className={`p-4 rounded-[24px] ${getTypeColor(resource.type)} shadow-inner border border-white/50`}>
+                    <div className={`p-4 rounded-[24px] ${getTypeColor(resource.type)} shadow-inner border border-teal-900/100`}>
                       {getTypeIcon(resource.type)}
                     </div>
                     <div className="flex items-center gap-2 bg-white/80 px-4 py-2 rounded-2xl shadow-sm border border-slate-50">
@@ -1236,13 +1236,13 @@ export default function CareerResources() {
                     </div>
                   </div>
                   
-                  <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight uppercase group-hover:text-emerald-600 transition-colors">{resource.title}</h3>
+                  <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight uppercase group-hover:text-teal-950 transition-colors">{resource.title}</h3>
                   <p className="text-slate-500 font-medium text-sm mb-3 line-clamp-2 leading-relaxed">{resource.description}</p>
                   
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="flex items-center gap-1.5 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-                      <Users className="w-3.5 h-3.5 text-indigo-600" />
-                      <span className="text-[11px] font-black text-indigo-700 uppercase tracking-tight">{resource.followers || 0} following</span>
+                    <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100">
+                      <Users className="w-3.5 h-3.5 text-teal-600" />
+                      <span className="text-[11px] font-black text-teal-700 uppercase tracking-tight">{resource.followers || 0} following</span>
                     </div>
                   </div>
                   
@@ -1253,7 +1253,7 @@ export default function CareerResources() {
                       </span>
                       {resource.duration && (
                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          <Clock className="w-3 h-3 text-emerald-500" />
+                          <Clock className="w-3 h-3 text-teal-950" />
                           {resource.duration}
                         </span>
                       )}
@@ -1264,7 +1264,7 @@ export default function CareerResources() {
                         loadRoadmapProgress(resource);
                         loadStudentLeaderboard();
                       }}
-                      className="p-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                      className="p-3 bg-[#f3b13a] text-teal-950 font-bold rounded-2xl hover:bg-[#d89c30] shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                     >
                       <ExternalLink size={20} />
                     </button>
@@ -1274,7 +1274,7 @@ export default function CareerResources() {
             </div>
 
             {filteredResources.length === 0 && (
-              <div className="text-center py-20 bg-slate-50 rounded-[40px] border border-slate-100 mt-6">
+              <div className="text-center py-20 bg-[#f6f3eb] rounded-[40px] border border-slate-100 mt-6">
                 <div className="bg-white w-20 h-20 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-sm grayscale opacity-50">
                    <BookOpen size={36} className="text-slate-300" />
                 </div>
@@ -1285,6 +1285,6 @@ export default function CareerResources() {
           </div>
         </div>
       </div>
-    </StudentNavigation>
+    </>
   );
 }
